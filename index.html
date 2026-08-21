@@ -56,7 +56,14 @@
   .tile.dim{opacity:.45}
   .tile.hint{outline:2px dashed rgba(230,198,103,.9);outline-offset:1px}
   #bottomHand{padding:5px 4px 8px;display:flex;flex-direction:column;align-items:center;gap:6px;background:rgba(0,0,0,.22)}
+  #guide{font-size:13px;background:rgba(0,0,0,.3);border:1px solid var(--line);border-radius:20px;padding:6px 15px;text-align:center;max-width:94vw;line-height:1.4}
+  #guide b{color:var(--gold)}
+  #guide .tag{display:inline-block;background:var(--gold);color:#3a2c00;font-weight:800;border-radius:6px;padding:0 6px;margin:0 2px}
+  #myHand{padding-top:15px}
   #myMelds{min-height:0}
+  .tile.rec{outline:3px solid var(--gold);outline-offset:1px}
+  .tile.rec::before{content:'おすすめ';position:absolute;top:-15px;left:50%;transform:translateX(-50%);font-size:9px;background:var(--gold);color:#3a2c00;padding:0 5px;border-radius:6px;font-weight:800;white-space:nowrap;z-index:2}
+  .tile.hint::after{content:'待';position:absolute;top:-14px;left:50%;transform:translateX(-50%);font-size:9px;background:#3f8ae0;color:#fff;padding:0 4px;border-radius:5px;font-weight:800}
   #actions{display:flex;gap:8px;min-height:46px;align-items:center;flex-wrap:wrap;justify-content:center}
   .btn{background:linear-gradient(#f4e2a1,#e6c667);color:#3a2c00;border:none;padding:9px 18px;border-radius:22px;font-weight:800;font-size:15px;cursor:pointer;box-shadow:0 3px 0 #b89a3e}
   .btn:active{transform:translateY(2px);box-shadow:0 1px 0 #b89a3e}
@@ -89,7 +96,8 @@
   <span class="badge">残<b id="wallTop">70</b></span>
   <span class="badge">ドラ <span id="dora"></span></span>
   <span style="flex:1"></span>
-  <label class="badge" style="cursor:pointer"><input type="checkbox" id="hintChk" style="vertical-align:-1px"> 待ち表示</label>
+  <label class="badge" style="cursor:pointer"><input type="checkbox" id="begChk" checked style="vertical-align:-1px"> 初心者モード</label>
+  <button class="btn blue sm" id="helpBtn">遊び方</button>
   <button class="btn gray sm" id="newGame">新局</button>
 </div>
 
@@ -102,6 +110,7 @@
 </div>
 
 <div id="bottomHand">
+  <div id="guide">あなたの番です。いらない牌をタップして捨てましょう</div>
   <div id="myMelds" class="melds"></div>
   <div id="myHand" class="handrow hand"></div>
   <div id="actions"></div>
@@ -337,7 +346,7 @@ function newHand(keep){
   players.forEach(p=>p.hand.sort((a,b)=>a-b));
   G={wall,dead,doraInd:[dead[4]],uraInd:[dead[5]],players,dealer,round,honba,turn:dealer,roundWind:round,
      phase:'draw',over:false,riichiSticks:sticks,ippatsu:[false,false,false,false],callHappened:false,
-     rinshanFlag:false,lastDiscard:null,advance:false,keepHonba:false,pendingRiichiDeclarer:-1};
+     rinshanFlag:false,lastDiscard:null,advance:false,keepHonba:false,pendingRiichiDeclarer:-1,offering:false};
   render();
   setTimeout(drawStep,320);
 }
@@ -364,6 +373,7 @@ function buildCtx(pid,tsumo,winTile){
 
 /* ===== 人間の番 ===== */
 function humanTurn(){
+  G.offering=false;
   const p=G.players[0];const acts=[];
   if(isAgari(p.hand,p.melds.length)){
     const ev=evaluate(p.hand,p.melds,buildCtx(0,true,p.drawn));
@@ -429,6 +439,7 @@ function ronPhase(fromPid,tile){
       {label:'スルー',cls:'gray',fn:()=>{const p=G.players[0];if(p.riichi)p.riichiFuriten=true;p.tempFuriten=true;
         const cpu=claim.find(x=>x!==0);if(cpu!==undefined)return win(cpu,fromPid,false,tile);ponPhase(fromPid,tile);}}
     ],false);
+    G.offering=true;setGuide('相手の捨て牌で<b>あがれます</b>！ <span class="tag">ロン</span>を押そう（見送るなら スルー）');
     flash('ロン?');return;
   }
   if(claim.length){claim.sort((a,b)=>((a-fromPid+4)%4)-((b-fromPid+4)%4));return win(claim[0],fromPid,false,tile);}
@@ -440,8 +451,9 @@ function ponPhase(fromPid,tile){
   if(pid===0){
     const opts=[{label:'ポン',cls:'',fn:()=>doPon(0,fromPid,tile,false)}];
     if(canKan&&G.wall.length>0)opts.push({label:'カン',cls:'gray',fn:()=>doPon(0,fromPid,tile,true)});
-    opts.push({label:'スルー',cls:'gray',fn:()=>chiPhase(fromPid,tile)});
-    renderActions(opts,false);return;
+    opts.push({label:'スルー',cls:'gray',fn:()=>{G.offering=false;chiPhase(fromPid,tile);}});
+    renderActions(opts,false);
+    G.offering=true;setGuide(`同じ<b>${tileName(tile)}</b>が2枚あります。<span class="tag">ポン</span>で3枚そろえて手を早くできます（鳴くと役が必要／不要なら スルー）`);return;
   }else if(pid!==null){
     if(cpuWantsPon(pid,tile)){return doPon(pid,fromPid,tile,false);}
   }
@@ -460,8 +472,9 @@ function chiPhase(fromPid,tile){
   if(combos.length){
     if(pid===0){
       const opts=combos.map(cb=>({label:'チー'+(combos.length>1?tileName(cb[0]):''),cls:'',fn:()=>doChi(0,fromPid,tile,cb)}));
-      opts.push({label:'スルー',cls:'gray',fn:()=>advanceTurn(fromPid)});
-      renderActions(opts,false);return;
+      opts.push({label:'スルー',cls:'gray',fn:()=>{G.offering=false;advanceTurn(fromPid);}});
+      renderActions(opts,false);
+      G.offering=true;setGuide(`数字がつながる牌です。<span class="tag">チー</span>で順子（連番3枚）が作れます（上家からのみ／不要なら スルー）`);return;
     }else{
       const cb=cpuWantsChi(pid,tile,combos);if(cb)return doChi(pid,fromPid,tile,cb);
     }
@@ -474,7 +487,7 @@ function doPon(pid,fromPid,tile,kan){
   src.discards.pop();src.discards.push({claimed:true,t:tile});
   let need=kan?3:2,rm=0;p.hand=p.hand.filter(t=>{if(t===tile&&rm<need){rm++;return false;}return true;});
   p.melds.push({t:'trip',tile,k:kan?4:3,concealed:false,kan,from:fromPid,called:tile});
-  clearIppatsu();G.callHappened=true;flash(kan?'カン':'ポン');sfx.call();
+  clearIppatsu();G.callHappened=true;G.offering=false;flash(POS[pid]+(kan?'のカン':'のポン'));sfx.call();
   if(kan){revealKanDora();const rt=G.wall.shift();p.hand.push(rt);p.drawn=rt;p.hand.sort((a,b)=>a-b);G.rinshanFlag=true;}
   G.turn=pid;G.phase='discard';p.drawn=kan?p.drawn:-1;
   render();
@@ -486,12 +499,13 @@ function doChi(pid,fromPid,tile,combo){
   for(const t of combo){const i=p.hand.indexOf(t);p.hand.splice(i,1);}
   const low=Math.min(tile,...combo);
   p.melds.push({t:'seq',tile:low,k:3,concealed:false,from:fromPid,called:tile});
-  clearIppatsu();G.callHappened=true;flash('チー');sfx.call();
+  clearIppatsu();G.callHappened=true;G.offering=false;flash(POS[pid]+'のチー');sfx.call();
   G.turn=pid;G.phase='discard';p.drawn=-1;p.hand.sort((a,b)=>a-b);
   render();
   if(pid===0)humanTurn();else setTimeout(()=>cpuDiscardOnly(pid),450);
 }
 function advanceTurn(fromPid){
+  G.offering=false;
   // 立直宣言が通った（鳴かれず）→ 一発フラグ
   if(G.pendingRiichiDeclarer>=0){G.ippatsu[G.pendingRiichiDeclarer]=true;G.pendingRiichiDeclarer=-1;}
   G.turn=(fromPid+1)%4;G.phase='draw';
@@ -524,6 +538,18 @@ function cpuDiscardOnly(pid){
   const p=G.players[pid];
   if(isAgari(p.hand,p.melds.length)){const ev=evaluate(p.hand,p.melds,buildCtx(pid,true,p.drawn));if(ev)return win(pid,pid,true,p.drawn);}
   doDiscard(pid,chooseBestDiscard(p));
+}
+function recommendDiscard(p){
+  const hand=p.hand,c=toCounts(hand),seen=new Set();let cands=[];
+  for(let i=0;i<hand.length;i++){const t=hand[i];if(seen.has(t))continue;seen.add(t);
+    const r=hand.slice();r.splice(i,1);const sh=shanten(r,p.melds.length);
+    const isolated=c[t]===1&&(t>=27||(!(t%9>0&&c[t-1])&&!(t%9>1&&c[t-2])&&!(t%9<8&&c[t+1])&&!(t%9<7&&c[t+2])));
+    const cc=toCounts(r);let uke=0;for(let d=0;d<34;d++){if(cc[d]>=4)continue;if(shanten(r.concat([d]),p.melds.length)<sh)uke+=(4-cc[d]);}
+    cands.push({i,sh,uke,iso:isolated?1:0,hon:t>=27?1:0,term:isTermHon(t)?1:0});
+  }
+  const minsh=Math.min(...cands.map(x=>x.sh));cands=cands.filter(x=>x.sh===minsh);
+  cands.sort((a,b)=>(b.iso*b.term)-(a.iso*a.term)||(b.iso*b.hon)-(a.iso*a.hon)||b.uke-a.uke||b.term-a.term);
+  return cands[0].i;
 }
 function chooseTenpaiDiscard(p){const seen=new Set();for(let i=0;i<p.hand.length;i++){const t=p.hand[i];if(seen.has(t))continue;seen.add(t);const r=p.hand.slice();r.splice(i,1);if(shanten(r,p.melds.length)===0)return i;}return -1;}
 function chooseBestDiscard(p){
@@ -612,13 +638,36 @@ function render(){
   renderSeat('seat3',G.players[3],'left');
   // 自分の手牌
   const mh=document.getElementById('myHand');mh.innerHTML='';const me=G.players[0];
-  const showHint=document.getElementById('hintChk').checked&&G.turn===0&&G.phase==='discard';
+  const beg=document.getElementById('begChk').checked;
+  document.getElementById('guide').style.display=beg?'block':'none';
+  const myTurn=G.turn===0&&G.phase==='discard'&&!G.over;
+  let recIdx=-1;
+  if(beg&&myTurn&&!me.riichi&&!isAgari(me.hand,me.melds.length))recIdx=recommendDiscard(me);
   me.hand.forEach((t,i)=>{const el=tileEl(t);
-    if(t===me.drawn&&G.turn===0&&G.phase==='discard')el.classList.add('drawn');
+    if(t===me.drawn&&myTurn)el.classList.add('drawn');
     if(me.riichi&&t!==me.drawn)el.classList.add('dim');
-    if(showHint){const r=me.hand.slice();r.splice(i,1);if(shanten(r,me.melds.length)===0)el.classList.add('hint');}
+    if(i===recIdx)el.classList.add('rec');
     el.onclick=()=>humanDiscard(i);mh.appendChild(el);});
   const mm=document.getElementById('myMelds');mm.innerHTML='';me.melds.forEach(m=>mm.appendChild(meldEl(m)));
+  if(beg&&!G.offering)guideForTurn();
+}
+function setGuide(h){document.getElementById('guide').innerHTML=h;}
+function guideForTurn(){
+  const me=G.players[0];
+  if(G.over)return setGuide('局が終わりました');
+  if(G.turn!==0||G.phase!=='discard')return setGuide('相手の番です…少し待ってね');
+  if(isAgari(me.hand,me.melds.length))return setGuide('🎉 <b>あがれます！</b> 下の<span class="tag">ツモ</span>を押そう');
+  let best=99,seen=new Set();
+  for(let i=0;i<me.hand.length;i++){const t=me.hand[i];if(seen.has(t))continue;seen.add(t);const r=me.hand.slice();r.splice(i,1);const s=shanten(r,me.melds.length);if(s<best)best=s;}
+  if(me.riichi){const r=me.hand.slice();const w=waits(me.hand.slice(0,13),me.melds.length);
+    return setGuide(`リーチ中。引いた牌をそのまま切ります（あがり牌が来たら自動で<span class="tag">ツモ</span>）`);}
+  if(best===0){
+    const idx=recommendDiscard(me);const r=me.hand.slice();r.splice(idx,1);
+    const w=waits(r,me.melds.length).map(tileName).join(' ');
+    setGuide(`<b>テンパイ！</b> あと1枚であがり（待ち: <b>${w||'―'}</b>）。<span class="tag">おすすめ</span>の牌を切ろう`+(me.melds.length===0?'。<b>立直</b>もできます':''));
+  }else{
+    setGuide(`あがりまで あと <b>${best}</b> 歩。<span class="tag">おすすめ</span>の牌を切って手を進めよう`);
+  }
 }
 function meldEl(m){
   const g=document.createElement('div');g.className='meldgroup';
@@ -706,6 +755,42 @@ function showFinal(){
 }
 
 document.getElementById('newGame').onclick=()=>{if(confirm('この局をやり直しますか？'))newHand(true);};
-document.getElementById('hintChk').onchange=()=>render();
+document.getElementById('begChk').onchange=()=>render();
+
+function showHelp(){
+  const ov=document.getElementById('overlay');ov.style.display='flex';
+  const m=document.getElementById('modal');
+  m.innerHTML=`<h2>麻雀の遊び方</h2>
+  <div style="text-align:left;font-size:14px;line-height:1.7;max-width:460px">
+    <p><b style="color:var(--gold)">■ 目的</b><br>
+    自分の手牌を「<b>3枚のセット×4組</b>」＋「<b>同じ牌2枚（アタマ）</b>」の形にそろえたら「あがり」。一番早くあがった人が点をもらえます。</p>
+    <p><b style="color:var(--gold)">■ セットは2種類</b><br>
+    ・<b>順子</b>：同じ種類の連番3枚（例 2筒3筒4筒）<br>
+    ・<b>刻子</b>：同じ牌3枚（例 5索5索5索）</p>
+    <p><b style="color:var(--gold)">■ あがり方</b><br>
+    ・<b>ツモ</b>：自分で引いてきてそろう<br>
+    ・<b>ロン</b>：あと1枚を相手が捨てたらもらってあがる</p>
+    <p><b style="color:var(--gold)">■ あがるには「役」が必要</b><br>
+    ただそろえるだけではダメで、1つ以上の「役」がいります。初心者が狙いやすいのは…<br>
+    ・<b>立直(リーチ)</b>：鳴かずにテンパイ（あと1枚）で宣言。1000点払うだけでOK<br>
+    ・<b>タンヤオ</b>：2〜8の数字牌だけで作る（1・9・字牌を使わない）</p>
+    <p><b style="color:var(--gold)">■ 操作</b><br>
+    自分の番になったら、いらない牌を<b>1枚タップ</b>して捨てるだけ。<br>
+    <span class="tag" style="background:var(--gold);color:#3a2c00;padding:0 6px;border-radius:6px;font-weight:800">おすすめ</span>と光る牌を捨てれば、自動で一番あがりに近づく牌を選べます（初心者モードON時）。画面下の案内も見てね。</p>
+    <p><b style="color:var(--gold)">■ 鳴き（ポン・チー・カン）</b><br>
+    ・<b>ポン</b>：誰かが捨てた牌と同じ牌が手に2枚→もらって刻子に<br>
+    ・<b>チー</b>：左の人が捨てた牌で順子が作れる時<br>
+    ・<b>カン</b>：同じ牌4枚<br>
+    鳴くと手は早くなりますが、<b>リーチできなくなり役に注意</b>。慣れるまでは「スルー」でもOK。</p>
+    <p><b style="color:var(--gold)">■ ドラ</b><br>
+    上の「ドラ」表示牌の<b>次の牌</b>がドラ。持っているだけで点数アップのボーナスです。</p>
+    <p style="opacity:.75">迷ったら「立直」で宣言 → あとは引いた牌を切るだけ。まずは1回あがってみましょう！</p>
+  </div>
+  <button class="btn" id="closeHelp">とじる</button>`;
+  document.getElementById('closeHelp').onclick=()=>{ov.style.display='none';localStorage.setItem('mjHelpSeen','1');};
+}
+document.getElementById('helpBtn').onclick=showHelp;
+
 newHand(false);
+if(!localStorage.getItem('mjHelpSeen'))setTimeout(showHelp,400);
 </script>
