@@ -1,7 +1,14 @@
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="麻雀">
 <meta name="theme-color" content="#0b3d27">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
 <title>麻雀 - 4人打ち</title>
 <style>
   :root{
@@ -11,7 +18,7 @@
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;height:100%;overflow:hidden;font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",system-ui,sans-serif;color:var(--ivory);touch-action:manipulation}
   body{background:radial-gradient(ellipse at 50% 42%,var(--felt) 0%,var(--felt2) 92%);display:flex;flex-direction:column}
-  #topbar{display:flex;align-items:center;gap:8px;padding:6px 10px;background:rgba(0,0,0,.28);font-size:12px;flex-wrap:wrap}
+  #topbar{display:flex;align-items:center;gap:8px;padding:6px 10px;padding-top:calc(6px + env(safe-area-inset-top));background:rgba(0,0,0,.28);font-size:12px;flex-wrap:wrap}
   #topbar .badge{background:rgba(0,0,0,.3);padding:3px 9px;border-radius:20px;border:1px solid var(--line)}
   #topbar .badge b{color:var(--gold)}
   #dora{display:inline-flex;gap:2px;align-items:center;vertical-align:middle}
@@ -55,7 +62,7 @@
   @keyframes drawpop{from{transform:translateY(-14px) scale(.85);opacity:.4}to{transform:none;opacity:1}}
   .tile.dim{opacity:.45}
   .tile.hint{outline:2px dashed rgba(230,198,103,.9);outline-offset:1px}
-  #bottomHand{padding:5px 4px 8px;display:flex;flex-direction:column;align-items:center;gap:6px;background:rgba(0,0,0,.22)}
+  #bottomHand{padding:5px 4px 8px;padding-bottom:calc(8px + env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;gap:6px;background:rgba(0,0,0,.22)}
   #guide{font-size:13px;background:rgba(0,0,0,.3);border:1px solid var(--line);border-radius:20px;padding:6px 15px;text-align:center;max-width:94vw;line-height:1.4}
   #guide b{color:var(--gold)}
   #guide .tag{display:inline-block;background:var(--gold);color:#3a2c00;font-weight:800;border-radius:6px;padding:0 6px;margin:0 2px}
@@ -793,4 +800,6 @@ document.getElementById('helpBtn').onclick=showHelp;
 
 newHand(false);
 if(!localStorage.getItem('mjHelpSeen'))setTimeout(showHelp,400);
+
+if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 </script>
