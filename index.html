@@ -116,14 +116,15 @@
   .tile.sm .num{font-size:12px}.tile.sm .suit{font-size:6px;bottom:1px}
   .tile .face{position:relative;z-index:1;display:block;width:86%;height:86%}
   .tile.sm .face{width:92%;height:92%}
-  .tile.back{border:1px solid #37458a;
+  .tile.back{border:1px solid #3a4a92;
     background:
-      repeating-linear-gradient(125deg,rgba(95,240,221,.08) 0 6px,transparent 6px 12px),
-      linear-gradient(150deg,#1e2a63 0%,#141a45 50%,#0b0f2c 100%);
-    box-shadow:inset 0 1px 0 rgba(120,150,235,.4),inset 0 0 12px rgba(95,240,221,.18),0 3px 0 #0a0f26,0 5px 10px rgba(0,0,0,.55)}
-  .tile.back::before{background:linear-gradient(158deg,rgba(120,150,235,.35),transparent 45%)}
-  .tile.back::after{content:"";position:absolute;inset:3px;border:1px solid rgba(95,240,221,.4);border-radius:4px;
-    box-shadow:inset 0 0 8px rgba(95,240,221,.3)}
+      radial-gradient(120% 80% at 50% 20%,rgba(139,123,255,.25),transparent 60%),
+      repeating-linear-gradient(125deg,rgba(95,240,221,.07) 0 5px,transparent 5px 11px),
+      linear-gradient(150deg,#222f6e 0%,#151d4c 48%,#0a0f2e 100%);
+    box-shadow:inset 0 1px 0 rgba(140,165,255,.45),inset 0 0 14px rgba(95,240,221,.2),0 3px 0 #0a0f26,0 5px 11px rgba(0,0,0,.6)}
+  .tile.back::before{background:linear-gradient(158deg,rgba(160,180,255,.4),transparent 42%)}
+  .tile.back .bk{position:relative;z-index:1;display:block;width:100%;height:100%;
+    filter:drop-shadow(0 0 3px rgba(95,240,221,.5))}
   .tile.rot{transform:rotate(90deg);margin:0 6px}
   .tile.rotm{transform:rotate(90deg)}
   .tile.last{outline:2px solid var(--gold);outline-offset:1px;
@@ -323,9 +324,19 @@ function faceSVG(t){
   else inner=honSVG(t-27);
   return `<svg class="face" viewBox="0 0 100 140" preserveAspectRatio="xMidYMid meet">${inner}</svg>`;
 }
+function backSVG(){return `<svg class="bk" viewBox="0 0 100 140" preserveAspectRatio="xMidYMid meet">
+  <rect x="11" y="13" width="78" height="114" rx="11" fill="none" stroke="#5ff0dd" stroke-width="2.5" opacity=".5"/>
+  <rect x="18" y="20" width="64" height="100" rx="8" fill="none" stroke="#8b7bff" stroke-width="1.5" opacity=".4"/>
+  <g transform="translate(50,70)">
+    <path d="M0,-30 L22,0 L0,30 L-22,0 Z" fill="rgba(95,240,221,.12)" stroke="#5ff0dd" stroke-width="2.5" opacity=".8"/>
+    <path d="M0,-15 L12,0 L0,15 L-12,0 Z" fill="#f4d98a" opacity=".9"/>
+    <circle r="3.4" fill="#0a0f28"/>
+  </g>
+  <path d="M22,27 L22,21 L30,21 M78,27 L78,21 L70,21 M22,113 L22,119 L30,119 M78,113 L78,119 L70,119" stroke="#5ff0dd" stroke-width="2" fill="none" opacity=".55"/>
+</svg>`;}
 function tileEl(t,cls=''){
   const d=document.createElement('div');d.className='tile '+cls;
-  if(t<0){d.classList.add('back');return d;}
+  if(t<0){d.classList.add('back');d.innerHTML=backSVG();return d;}
   d.classList.add(t<27?SUIT[(t/9)|0]:'hon');
   d.innerHTML=faceSVG(t);
   return d;
