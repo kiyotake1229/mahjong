@@ -251,6 +251,18 @@
   #chooser .opt{display:block;width:100%;margin:8px 0;text-align:left;padding:13px 16px;border-radius:12px;border:1px solid var(--line);background:rgba(84,230,210,.05);color:var(--ink);font-size:15px;cursor:pointer;transition:.15s}
   #chooser .opt b{color:var(--gold);font-size:16px}#chooser .opt small{opacity:.7;display:block;margin-top:2px;font-size:12px}
   #chooser .opt:hover{background:rgba(84,230,210,.14);border-color:var(--cyan);box-shadow:0 0 14px rgba(84,230,210,.35)}
+  #dojo{max-width:420px;margin:6px auto 12px}
+  .lesson{display:flex;align-items:center;gap:12px;width:100%;margin:8px 0;padding:11px 14px;border-radius:14px;cursor:pointer;text-align:left;
+    background:linear-gradient(160deg,rgba(30,40,86,.55),rgba(11,16,38,.45));border:1px solid var(--line);color:var(--ink);transition:.16s}
+  .lesson:hover{border-color:var(--cyan);background:linear-gradient(160deg,rgba(95,240,221,.14),rgba(20,40,60,.35));box-shadow:0 0 16px rgba(84,230,210,.3);transform:translateX(2px)}
+  .lesson .lic{flex:0 0 auto;width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(160deg,rgba(95,240,221,.14),rgba(139,123,255,.14));border:1px solid var(--line);color:var(--gold)}
+  .lesson .lic svg{width:22px;height:22px}
+  .lesson .ltx{flex:1;min-width:0}
+  .lesson .ltx b{font-size:15px}.lesson .ltx small{display:block;opacity:.7;font-size:11px;margin-top:2px}
+  .lesson .chk{flex:0 0 auto;font-family:var(--f-num);font-weight:700;font-size:14px;color:var(--muted);width:24px;height:24px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;border:1px solid var(--line)}
+  .lesson .chk.on{color:#062;background:var(--cyan);border-color:var(--cyan);box-shadow:0 0 12px rgba(95,240,221,.7)}
 </style>
 
 <div id="bg"></div>
@@ -1014,10 +1026,11 @@ function showResult(pid,fromPid,tsumo,hand,winTile,ev,pay,gained,sticks){
     <div class="yaku">${ev.yaku.map(v=>`${v.n}<span class="h">${v.dora?v.h:v.h+'翻'}</span>`).join('<br>')}</div>
     ${p.riichi&&G.uraInd.length?`<div class="sub">裏ドラ表示: ${liveUra().map(t=>tileName(t)).join(' ')}</div>`:''}
     <div class="score">${ev.han}翻 ${ev.fu}符　${(gained+sticks).toLocaleString()}点</div>
-    ${G.tutorial?'<div class="sub" style="color:var(--gold);font-size:14px;margin:8px 0">🎉 チュートリアルクリア！これが麻雀の基本の流れです。<br>あとは自由に対局して慣れていきましょう。</div>':''}
-    <button class="btn" id="nextBtn">${G.tutorial?'自由対局をはじめる':'次の局へ'}</button>`;
+    ${G.tutorial?'<div class="sub" style="color:var(--gold);font-size:14px;margin:8px 0">🎉 レッスンクリア！この調子で他のレッスンも進めよう。</div>':''}
+    <button class="btn" id="nextBtn">${G.tutorial?'道場に戻る':'次の局へ'}</button>`;
+  const wasTut=G.tutorial,lesId=tut.lesson;
   document.getElementById('nextBtn').onclick=()=>{ov.style.display='none';
-    if(G.tutorial){endTutorial();return;}
+    if(wasTut){lessonComplete(lesId);return;}
     G.advance=(pid!==G.dealer);G.keepHonba=(pid===G.dealer);endCheck();};
 }
 function showDraw(tenpai){
@@ -1075,7 +1088,7 @@ function showHelp(){
     <p style="opacity:.75">迷ったら「立直」で宣言 → あとは引いた牌を切るだけ。まずは1回あがってみましょう！</p>
   </div>
   <button class="btn" id="closeHelp">とじる</button>`;
-  document.getElementById('closeHelp').onclick=()=>{ov.style.display='none';lsSet('mjHelpSeen','1');if(!G)newHand(false);};
+  document.getElementById('closeHelp').onclick=()=>{ov.style.display='none';lsSet('mjHelpSeen','1');if(G&&G.tutorial){showDojo();}else if(!G)newHand(false);};
 }
 document.getElementById('helpBtn').onclick=showChooser;
 
@@ -1125,32 +1138,28 @@ document.getElementById('sk1').onclick=()=>useSkill(1);
 document.getElementById('sk2').onclick=()=>useSkill(2);
 
 /* ===== 対話式チュートリアル ===== */
-let tut={phase:'',i:0};
-const INTRO=[
-  `<b>ようこそ！</b> 麻雀は「3枚のまとまり×4組」＋「同じ牌2枚（アタマ）」がそろえば<b>アガリ</b>。<br>いきなり1回、一緒にアガってみましょう。`,
-  `画面の下があなたの手牌13枚。牌は<b>萬子(m)・筒子(p)・索子(s)</b>と、東南西北白發中の<b>字牌</b>。<br>「連番3枚（例 2索3索4索）」か「同じ牌3枚」でまとまりを作ります。`
-];
+let tut={lesson:'',mode:'',phase:'',i:0};
 function coachShow(html,btns,showSkip){
   const c=document.getElementById('coach');c.hidden=false;
   document.getElementById('coachMsg').innerHTML=html;
   const bc=document.getElementById('coachBtns');bc.innerHTML='';
-  if(showSkip){const s=document.createElement('button');s.className='skip';s.textContent='スキップ';
-    s.onclick=()=>{if(confirm('チュートリアルを終了して自由対局を始めますか？'))endTutorial();};bc.appendChild(s);}
+  if(showSkip){const s=document.createElement('button');s.className='skip';s.textContent='やめる';
+    s.onclick=()=>{if(confirm('レッスンを中断して道場に戻りますか？')){document.getElementById('coach').hidden=true;clearHL();if(G)G.tutGate=null;showDojo();}};bc.appendChild(s);}
   (btns||[]).forEach(b=>{const el=document.createElement('button');el.className='btn '+(b.cls||'');el.textContent=b.label;el.onclick=b.fn;bc.appendChild(el);});
 }
 function clearHL(){document.querySelectorAll('.pulse').forEach(e=>e.classList.remove('pulse'));}
-function hlTile(val){const me=G.players[0];const i=me.hand.indexOf(val);if(i<0)return;const el=document.querySelectorAll('#myHand .tile')[i];if(el)el.classList.add('pulse');}
+function hlTile(val){const me=G.players[0];const els=document.querySelectorAll('#myHand .tile');
+  me.hand.forEach((t,i)=>{if(t===val&&els[i])els[i].classList.add('pulse');});}
 function hlBtn(label){document.querySelectorAll('#actions .btn').forEach(b=>{if(b.textContent.startsWith(label))b.classList.add('pulse');});}
-function tutStart(){
-  document.getElementById('overlay').style.display='none';
+/* 共通：レッスン用に場を仕込む */
+function rigGame(hand0,draws){
   let wall=[];for(let t=0;t<34;t++)for(let k=0;k<4;k++)wall.push(t);
-  const hand0=[1,2,3,4,5,6,15,16,21,22,17,17,33]; // 234m 567m 78p 45s 9p9p 中
   const rm=t=>{const i=wall.indexOf(t);if(i>=0)wall.splice(i,1);};
-  hand0.forEach(rm);[14,27,23].forEach(rm); // 引く牌: 6p 東 6s
+  hand0.forEach(rm);draws.forEach(rm);
   const cpu=[[],[],[]];for(let c=0;c<3;c++)for(let k=0;k<13;k++)cpu[c].push(wall.pop());
   for(let i=wall.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;[wall[i],wall[j]]=[wall[j],wall[i]];}
-  wall.push(23,27,14); // pop順: 6p→東→6s
-  const dead=[0,0,0,0,31,30,7,7,7,7,7,7,7,7]; // ドラ表示=白→ドラ發(手に無し)
+  for(let k=draws.length-1;k>=0;k--)wall.push(draws[k]);
+  const dead=[0,0,0,0,31,30,7,7,7,7,7,7,7,7];
   const players=[0,1,2,3].map(i=>({id:i,hand:i===0?hand0.slice():cpu[i-1],melds:[],discards:[],riichi:false,doubleRiichi:false,riichiIdx:-1,
     riichiFuriten:false,tempFuriten:false,score:25000,seatWind:i,isDealer:i===0,drawn:-1,pendingRiichi:false}));
   players[0].hand.sort((a,b)=>a-b);
@@ -1158,24 +1167,84 @@ function tutStart(){
      phase:'draw',over:false,riichiSticks:0,ippatsu:[false,false,false,false],callHappened:false,
      rinshanFlag:false,lastDiscard:null,advance:false,keepHonba:false,pendingRiichiDeclarer:-1,offering:false,
      tutorial:true,tutGate:null,gen:++GEN,skill:{foresight:false,peekTiles:null,god:false}};
-  render();
-  tut={phase:'intro',i:0};tutIntroShow();
+  render();renderActions([],false);document.getElementById('coach').hidden=false;
 }
-function tutIntroShow(){
-  clearHL();
-  const last=tut.i>=INTRO.length-1;
-  coachShow(INTRO[tut.i],[{label:last?'やってみる':'次へ',cls:'',fn:()=>{
-    if(!last){tut.i++;tutIntroShow();}else{tut.phase='play';G.turn=0;G.phase='draw';drawStep();}
-  }}],true);
+function tutIntro(list,onDone){tut._intro=list;tut._i2=0;tut._done=onDone;tutIntroStep();}
+function tutIntroStep(){clearHL();const last=tut._i2>=tut._intro.length-1;
+  coachShow(tut._intro[tut._i2],[{label:last?'はじめる':'次へ',fn:()=>{if(!last){tut._i2++;tutIntroStep();}else tut._done();}}],true);}
+/* ===== 情報系レッスン（読む＋ハイライト） ===== */
+function infoRun(){clearHL();const s=tut.steps[tut.i],last=tut.i>=tut.steps.length-1;
+  coachShow(s.html,[{label:last?'道場に戻る':'次へ',fn:()=>{if(!last){tut.i++;infoRun();}else lessonComplete(tut.lesson);}}],true);
+  (s.hl||[]).forEach(v=>hlTile(v));}
+function startKihon(){
+  rigGame([0,3,4,5,9,10,11,19,19,19,27,31,33],[]);
+  tut={lesson:'kihon',mode:'info',i:0,steps:[
+    {html:`牌は大きく3種類。<br><b>萬子</b>=漢数字＋萬 ・ <b>筒子</b>=●の数 ・ <b>索子</b>=竹の本数。<br>それに <b>東南西北白發中</b> の<b>字牌</b>があります。`},
+    {html:`<b>順子（シュンツ）</b>＝同じ種類の<b>連番3枚</b>。<br>例：光った <b>4萬5萬6萬</b>。`,hl:[3,4,5]},
+    {html:`<b>刻子（コーツ）</b>＝<b>同じ牌3枚</b>。<br>例：光った <b>2索</b>が3枚。`,hl:[19]},
+    {html:`この「まとまり」を<b>4組</b>＋<b>アタマ（同じ2枚）</b>そろえたら<b>アガリ</b>。<br>次は「はじめての和了」で実際にやってみよう！`}
+  ]};infoRun();
+}
+function startYaku(){
+  rigGame([1,2,3,4,5,6,10,11,12,14,15,16,13],[]);
+  tut={lesson:'yaku',mode:'info',i:0,steps:[
+    {html:`アガるには、形をそろえるだけでなく<b>1つ以上の「役」</b>が必要です。`},
+    {html:`初心者が狙いやすい役①<br><b>リーチ</b>＝鳴かずにテンパイしたら宣言するだけ（1000点）。`},
+    {html:`狙いやすい役②<br><b>タンヤオ</b>＝<b>2〜8の数字牌だけ</b>で作る（1・9・字牌を使わない）。この手が例。`,hl:[1,2,3,4,5,6,10,11,12,14,15,16,13]},
+    {html:`<b>ドラ</b>＝点数アップのボーナス牌。<br>画面上の「ドラ表示牌」の<b>次の牌</b>がドラ。持っているほど高得点！`}
+  ]};infoRun();
+}
+/* ===== 実戦系レッスン ===== */
+function startTsumo(){
+  rigGame([1,2,3,4,5,6,15,16,21,22,17,17,33],[14,27,23]); // 中を切る／6p・東・6s
+  tut={lesson:'tsumo',mode:'play',phase:'intro'};
+  tutIntro([
+    `<b>はじめての和了！</b> いらない牌を切って形を作り、最後の1枚を自分で引く<b>ツモ</b>であがります。`,
+    `下があなたの13枚。まずは<b>使いにくい牌</b>を切っていきます。コーチが光る牌を教えるよ。`
+  ],()=>{tut.phase='play';G.turn=0;G.phase='draw';drawStep();});
+}
+function startRiichiRon(){
+  rigGame([1,2,3,4,5,6,15,16,21,22,17,17,33],[14,27]); // 中→テンパイ→リーチ→相手が6sを捨てロン
+  tut={lesson:'riichi',mode:'play',phase:'intro'};
+  tutIntro([
+    `<b>リーチとロン</b>を覚えよう。テンパイで<b>リーチ</b>を宣言し、<br>相手の捨て牌であがるのが<b>ロン</b>です。`,
+    `まずは前回と同じくテンパイまで進めます。光る牌を切ってね。`
+  ],()=>{tut.phase='play';G.turn=0;G.phase='draw';drawStep();});
+}
+function startNaki(){
+  rigGame([1,2,3,4,5,6,15,16,19,20,21,33,33],[]); // 中中を持つ／下家が中を捨てる
+  tut={lesson:'naki',mode:'play',phase:'intro'};
+  tutIntro([
+    `<b>鳴き</b>を覚えよう。相手が捨てた牌をもらって、まとまりを作り手を早くできます。`,
+    `あなたは<b>中</b>を2枚持っています。下家が中を捨てるので…`
+  ],()=>{tut.phase='play';nakiOfferPon();});
+}
+function nakiOfferPon(){
+  const opp=1,t=33;const p=G.players[opp];p.discards.push(t);G.lastDiscard={pid:opp,tile:t};G.turn=opp;render();
+  renderActions([{label:'ポン',cls:'',fn:()=>doPon(0,opp,t,false)}],false);
+  clearHL();coachShow(`下家が <b>中</b> を捨てた！ あなたは中を2枚持ってる。<br><span class="k">ポン</span>で刻子にして手を進めよう！`,[],true);hlBtn('ポン');
+}
+function triggerRon(){
+  const opp=1,wt=23;const p=G.players[opp];p.discards.push(wt);G.lastDiscard={pid:opp,tile:wt};G.turn=opp;G.tutGate=null;render();
+  renderActions([{label:'ロン',cls:'red',fn:()=>win(0,opp,false,wt)}],false);
+  clearHL();coachShow(`下家が <b>${tileName(wt)}</b> を捨てた！これがアタリ牌。<br><span class="k">ロン</span>であがろう！`,[],true);hlBtn('ロン');
 }
 function tutorialAfterDiscard(){
   if(G.over)return;
+  if(tut.mode==='info'){return;}
   if(G.pendingRiichiDeclarer===0){G.ippatsu[0]=true;G.pendingRiichiDeclarer=-1;}
-  G.turn=0;G.phase='draw';G.tutGate=null;
-  drawStep();
+  if(tut.lesson==='naki'){nakiDefense();return;}
+  if(tut.lesson==='riichi'&&G.players[0].riichi){triggerRon();return;}
+  G.turn=0;G.phase='draw';G.tutGate=null;drawStep();
+}
+function nakiDefense(){
+  clearHL();G.tutGate=null;
+  coachShow(`鳴くと手は早いけど<b>リーチはできない</b>ので、あがれる役に注意（今回は<b>中</b>が役）。<br><br><b>守り</b>：リーチした相手が捨てた牌と<b>同じ牌（現物）</b>は必ず安全。危ない時はそれを切ろう。`,
+    [{label:'道場に戻る',fn:()=>lessonComplete('naki')}],false);
 }
 function tutGuide(){
-  if(tut.phase!=='play')return;
+  if(tut.mode!=='play'||tut.phase!=='play')return;
+  if(tut.lesson==='naki')return guideNaki();
   const me=G.players[0];clearHL();
   if(me.pendingRiichi){G.tutGate=me.drawn;
     coachShow(`リーチ宣言する牌を選びます。引いてきた<b>${tileName(me.drawn)}</b>を捨てればOK。<br>光ってる牌をタップ！`,[],true);hlTile(me.drawn);return;}
@@ -1190,23 +1259,50 @@ function tutGuide(){
   if(me.riichi){G.tutGate=me.drawn;coachShow(`リーチ中は引いた牌をそのまま捨てます。光ってる牌をタップ。`,[],true);hlTile(me.drawn);return;}
   G.tutGate=null;coachShow(`いらない牌を1枚タップして捨てよう。`,[],true);
 }
-function endTutorial(){
-  document.getElementById('coach').hidden=true;clearHL();
-  document.getElementById('overlay').style.display='none';
-  lsSet('mjHelpSeen','1');
-  G=null;newHand(false);
+function guideNaki(){
+  const me=G.players[0];clearHL();
+  const idx=recommendDiscard(me);const tile=me.hand[idx];G.tutGate=tile;
+  coachShow(`<b>ポン成功！</b> 中の刻子ができたね。<br>手番が来たので、いらない牌を1枚捨てよう（光ってる牌でOK）。`,[],true);hlTile(tile);
 }
-function showChooser(){
+const LESSONS=[
+  {id:'kihon',t:'牌のきほん',d:'牌の種類と、順子・刻子のまとまり',run:startKihon,
+   ic:'<rect x="5" y="3" width="14" height="18" rx="3"/><path d="M9 8h6M9 12h6M9 16h3"/>'},
+  {id:'tsumo',t:'はじめての和了',d:'実際に1回ツモであがってみる',run:startTsumo,
+   ic:'<circle cx="12" cy="12" r="9"/><path d="M8 12l2.5 2.5L16 9"/>'},
+  {id:'riichi',t:'リーチとロン',d:'リーチ宣言と、相手の捨て牌であがるロン',run:startRiichiRon,
+   ic:'<path d="M3 8l11-3v14L3 16z"/><path d="M14 8h6M17 5v6"/>'},
+  {id:'naki',t:'鳴きと守り',d:'ポンで手を早く／リーチへの守り',run:startNaki,
+   ic:'<rect x="3" y="9" width="7" height="11" rx="2"/><rect x="12" y="4" width="7" height="16" rx="2"/>'},
+  {id:'yaku',t:'役とドラ',d:'あがるのに必要な役と、点数アップのドラ',run:startYaku,
+   ic:'<path d="M12 3l2.5 5.5L20 9l-4 4 1 6-5-3-5 3 1-6-4-4 5.5-.5z"/>'}
+];
+function lessonComplete(id){
+  if(id)lsSet('mjLesson_'+id,'1');
+  document.getElementById('coach').hidden=true;
+  document.getElementById('coachBtns').innerHTML='';
+  document.getElementById('actions').innerHTML='';
+  clearHL();if(G)G.tutGate=null;
+  showDojo();
+}
+function showDojo(){
   const ov=document.getElementById('overlay');ov.style.display='flex';
   const m=document.getElementById('modal');
-  m.innerHTML=`<h2>麻雀へようこそ</h2><div id="chooser" style="max-width:380px">
-    <button class="opt" id="optTut"><b>▶ 一緒に練習する（おすすめ）</b><small>コーチの案内で、実際にアガるまでを体験。初めてならコレ</small></button>
-    <button class="opt" id="optRead"><b>説明を読む</b><small>ルールを文章でざっと確認</small></button>
-    <button class="opt" id="optPlay"><b>そのまま遊ぶ</b><small>すぐ対局を始める</small></button></div>`;
-  document.getElementById('optTut').onclick=()=>tutStart();
-  document.getElementById('optRead').onclick=()=>showHelp();
-  document.getElementById('optPlay').onclick=()=>{ov.style.display='none';lsSet('mjHelpSeen','1');if(!G)newHand(false);};
+  const done=LESSONS.filter(L=>lsGet('mjLesson_'+L.id)==='1').length;
+  const rows=LESSONS.map(L=>{const ok=lsGet('mjLesson_'+L.id)==='1';
+    return `<button class="opt lesson" data-id="${L.id}">
+      <span class="lic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${L.ic}</svg></span>
+      <span class="ltx"><b>${L.t}</b><small>${L.d}</small></span>
+      <span class="chk ${ok?'on':''}">${ok?'✓':'▶'}</span></button>`;}).join('');
+  m.innerHTML=`<h2>麻雀道場</h2><div class="sub">好きなレッスンを選ぼう（${done}/${LESSONS.length} クリア）</div>
+    <div id="dojo">${rows}</div>
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:4px">
+      <button class="btn" id="dojoPlay">自由対局を始める</button>
+      <button class="btn gray" id="dojoRead">説明を読む</button></div>`;
+  m.querySelectorAll('.lesson').forEach(b=>b.onclick=()=>{const L=LESSONS.find(x=>x.id===b.dataset.id);ov.style.display='none';L.run();});
+  document.getElementById('dojoPlay').onclick=()=>{ov.style.display='none';lsSet('mjHelpSeen','1');G=null;newHand(false);};
+  document.getElementById('dojoRead').onclick=()=>showHelp();
 }
+function showChooser(){showDojo();}
 
 // 空気感の粒子
 (function(){const fx=document.getElementById('fx');let h='';
