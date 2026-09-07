@@ -148,8 +148,10 @@
   #gaugeFill::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);width:30%;animation:gshine 2.4s linear infinite}
   @keyframes gshine{0%{transform:translateX(-120%)}100%{transform:translateX(430%)}}
   #gauge .gl{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--f-num);font-weight:700;font-size:8px;letter-spacing:1.5px;color:#eafffb;text-shadow:0 0 4px rgba(0,0,0,.7)}
-  .skill{font-family:var(--f-ui);background:linear-gradient(160deg,rgba(30,40,86,.5),rgba(11,16,38,.4));border:1px solid var(--line);color:var(--ink);border-radius:11px;padding:6px 10px;font-size:11px;font-weight:600;letter-spacing:.5px;cursor:pointer;position:relative;white-space:nowrap;transition:.18s}
-  .skill .c{color:var(--cyan);font-family:var(--f-num);font-size:9px;margin-left:4px}
+  .skill{display:inline-flex;align-items:center;gap:5px;font-family:var(--f-ui);background:linear-gradient(160deg,rgba(30,40,86,.55),rgba(11,16,38,.45));border:1px solid var(--line);color:var(--ink);border-radius:11px;padding:6px 11px;font-size:12px;font-weight:600;letter-spacing:.5px;cursor:pointer;position:relative;white-space:nowrap;transition:.18s;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}
+  .skill svg{width:15px;height:15px;flex:0 0 auto;opacity:.85}
+  .skill .c{color:var(--cyan);font-family:var(--f-num);font-weight:700;font-size:9px;margin-left:1px;padding:1px 5px;border-radius:6px;background:rgba(95,240,221,.12);border:1px solid var(--line)}
   .skill.on{border-color:var(--cyan);box-shadow:0 0 12px rgba(95,240,221,.6),inset 0 0 10px rgba(95,240,221,.12);background:linear-gradient(160deg,rgba(95,240,221,.16),rgba(20,40,60,.3));color:#fff}
   .skill.on:hover{box-shadow:0 0 18px rgba(95,240,221,.85)}
   .skill.used{border-color:var(--gold);color:var(--gold);box-shadow:0 0 10px rgba(244,217,138,.5)}
@@ -165,13 +167,31 @@
   .tile.rec::before{content:'おすすめ';position:absolute;top:-15px;left:50%;transform:translateX(-50%);font-size:9px;background:linear-gradient(var(--gold),#d9b95a);color:#3a2c00;padding:0 5px;border-radius:6px;font-weight:800;white-space:nowrap;z-index:2;box-shadow:0 0 8px rgba(240,209,122,.6)}
   .tile.peek{outline:2px solid var(--cyan);outline-offset:1px;box-shadow:0 0 12px rgba(84,230,210,.8)}
   #actions{display:flex;gap:8px;min-height:46px;align-items:center;flex-wrap:wrap;justify-content:center}
-  .btn{background:linear-gradient(180deg,#fdf1bd,var(--gold) 60%,var(--gold2));color:#3a2c00;border:none;padding:10px 20px;border-radius:13px;font-family:var(--f-ui);font-weight:700;font-size:15px;cursor:pointer;
-    box-shadow:0 3px 0 #a4863a,0 6px 14px rgba(0,0,0,.4),0 0 16px rgba(244,217,138,.5),inset 0 1px 0 rgba(255,255,255,.6);letter-spacing:1px}
-  .btn:active{transform:translateY(2px);box-shadow:0 1px 0 #a4863a,0 3px 8px rgba(0,0,0,.4)}
-  .btn.red{background:linear-gradient(180deg,#ff9ab0,var(--rose) 60%,#d93a68);color:#fff;box-shadow:0 3px 0 #a1284a,0 6px 14px rgba(0,0,0,.4),0 0 20px rgba(255,94,138,.7),inset 0 1px 0 rgba(255,255,255,.4)}
-  .btn.gray{background:linear-gradient(180deg,#3c4676,#252b4f);color:var(--ink);box-shadow:0 3px 0 #141833,0 6px 12px rgba(0,0,0,.4),inset 0 0 0 1px var(--line)}
-  .btn.blue{background:linear-gradient(180deg,#a3f4ea,var(--cyan) 60%,var(--cyan2));color:#053038;box-shadow:0 3px 0 #1c8a92,0 6px 14px rgba(0,0,0,.4),0 0 20px rgba(95,240,221,.65),inset 0 1px 0 rgba(255,255,255,.5)}
-  .btn.sm{padding:7px 13px;font-size:13px;border-radius:10px}
+  .btn{position:relative;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;gap:7px;
+    background:linear-gradient(180deg,#fdf1bd,var(--gold) 52%,var(--gold2));color:#3a2c00;border:none;
+    padding:11px 22px;border-radius:13px;font-family:var(--f-ui);font-weight:700;font-size:15px;letter-spacing:1.5px;cursor:pointer;
+    box-shadow:0 3px 0 #a4863a,0 8px 16px rgba(0,0,0,.45),0 0 20px rgba(244,217,138,.5),
+      inset 0 1.5px 0 rgba(255,255,255,.85),inset 0 -3px 4px rgba(120,90,20,.28),inset 0 0 0 1.5px rgba(255,255,255,.35);
+    transition:transform .1s,box-shadow .2s,filter .18s}
+  .btn::before{content:"";position:absolute;left:2px;right:2px;top:2px;height:46%;border-radius:11px 11px 40% 40%/11px 11px 60% 60%;
+    background:linear-gradient(rgba(255,255,255,.6),transparent);pointer-events:none}
+  .btn::after{content:"";position:absolute;top:-20%;bottom:-20%;width:30%;left:-60%;transform:skewX(-22deg);
+    background:linear-gradient(90deg,transparent,rgba(255,255,255,.6),transparent);animation:btnshine 3.6s ease-in-out infinite;pointer-events:none}
+  @keyframes btnshine{0%{left:-60%}40%,100%{left:170%}}
+  .btn>*{position:relative;z-index:1}
+  .btn .ic{width:17px;height:17px;flex:0 0 auto;filter:drop-shadow(0 1px 0 rgba(255,255,255,.4))}
+  .btn:hover{filter:brightness(1.07) saturate(1.05)}
+  .btn:active{transform:translateY(2px);box-shadow:0 1px 0 #a4863a,0 3px 8px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.6),inset 0 0 0 1.5px rgba(255,255,255,.3)}
+  .btn.red{background:linear-gradient(180deg,#ffb2c3,var(--rose) 52%,#d5385f);color:#fff;
+    box-shadow:0 3px 0 #9e274a,0 8px 18px rgba(0,0,0,.45),0 0 26px rgba(255,94,138,.7),inset 0 1.5px 0 rgba(255,255,255,.6),inset 0 -3px 4px rgba(150,20,60,.35),inset 0 0 0 1.5px rgba(255,255,255,.28)}
+  .btn.blue{background:linear-gradient(180deg,#bdf8f0,var(--cyan) 52%,var(--cyan2));color:#053038;
+    box-shadow:0 3px 0 #1c8a92,0 8px 18px rgba(0,0,0,.45),0 0 26px rgba(95,240,221,.65),inset 0 1.5px 0 rgba(255,255,255,.7),inset 0 -3px 4px rgba(10,90,90,.3),inset 0 0 0 1.5px rgba(255,255,255,.3)}
+  .btn.gray{background:linear-gradient(180deg,#454f86,#242b52);color:var(--ink);
+    box-shadow:0 3px 0 #12162e,0 8px 16px rgba(0,0,0,.5),inset 0 1.5px 0 rgba(150,175,255,.4),inset 0 -3px 5px rgba(0,0,0,.35),inset 0 0 0 1.5px var(--line)}
+  .btn.gray::before{background:linear-gradient(rgba(160,180,255,.28),transparent)}
+  .btn.sm{padding:8px 14px;font-size:13px;border-radius:11px;gap:5px;letter-spacing:1px}
+  .btn.sm::after{display:none}
+  .btn.sm .ic{width:14px;height:14px}
   #overlay{position:fixed;inset:0;background:rgba(4,6,20,.72);display:none;align-items:center;justify-content:center;z-index:50;padding:14px;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
   #modal{background:linear-gradient(160deg,rgba(24,32,68,.96),rgba(9,13,32,.97));border:1px solid rgba(84,230,210,.5);border-radius:18px;padding:20px 22px;max-width:min(94vw,540px);max-height:92vh;overflow:auto;text-align:center;
     box-shadow:0 10px 50px rgba(0,0,0,.7),0 0 30px rgba(84,230,210,.25),inset 0 1px 0 rgba(255,255,255,.06)}
@@ -244,8 +264,8 @@
   <span class="badge">ドラ <span id="dora"></span></span>
   <span style="flex:1"></span>
   <label class="badge" style="cursor:pointer"><input type="checkbox" id="begChk" checked style="vertical-align:-1px"> 初心者モード</label>
-  <button class="btn blue sm" id="helpBtn">遊び方</button>
-  <button class="btn gray sm" id="newGame">新局</button>
+  <button class="btn blue sm" id="helpBtn"><svg class="ic" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="7"/><path d="M6.8 6.8a2.2 2.2 0 1 1 3 2.1c-.6.3-1 .7-1 1.6"/><circle cx="8.8" cy="13" r=".7" fill="currentColor" stroke="none"/></svg><span>遊び方</span></button>
+  <button class="btn gray sm" id="newGame"><svg class="ic" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 5.5A6 6 0 1 0 15 9"/><path d="M15 3v3h-3"/></svg><span>新局</span></button>
 </div>
 
 <div id="peekStrip" hidden></div>
@@ -261,9 +281,9 @@
 <div id="bottomHand">
   <div id="skillbar">
     <div id="gauge"><div id="gaugeFill"></div><div class="gl" id="gaugeLbl">SKILL 0</div></div>
-    <button class="skill" id="sk0">透視<span class="c">30</span></button>
-    <button class="skill" id="sk1">千里眼<span class="c">45</span></button>
-    <button class="skill" id="sk2">神引き<span class="c">80</span></button>
+    <button class="skill" id="sk0"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1.5 9S4 4.5 9 4.5 16.5 9 16.5 9 14 13.5 9 13.5 1.5 9 1.5 9Z"/><circle cx="9" cy="9" r="2"/></svg><span>透視</span><span class="c">30</span></button>
+    <button class="skill" id="sk1"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="9" cy="9" r="2"/><path d="M9 2v2.4M9 13.6V16M2 9h2.4M13.6 9H16M4 4l1.7 1.7M14 14l-1.7-1.7M14 4l-1.7 1.7M4 14l1.7-1.7"/></svg><span>千里眼</span><span class="c">45</span></button>
+    <button class="skill" id="sk2"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2l1.8 4.2L15 7l-3 3 .8 4.4L9 12.4 5.2 14.4 6 10 3 7l4.2-.8Z"/></svg><span>神引き</span><span class="c">80</span></button>
   </div>
   <div id="guide">あなたの番です。いらない牌をタップして捨てましょう</div>
   <div id="myMelds" class="melds"></div>
@@ -958,9 +978,23 @@ function renderSeat(id,p,pos){
     el.appendChild(buildDiscards(p,false));
   }
 }
+function btnIcon(label){
+  const I={
+    'ツモ':'<path d="M9 2.5v8m0 0l-3-3m3 3l3-3"/><rect x="3" y="13" width="12" height="2.6" rx="1.3"/>',
+    'ロン':'<circle cx="9" cy="9" r="5.6"/><circle cx="9" cy="9" r="1.5" fill="currentColor" stroke="none"/><path d="M9 1.2v2.2M9 14.6v2.2M1.2 9h2.2M14.6 9h2.2"/>',
+    'リーチ':'<rect x="2" y="7.2" width="14" height="3.6" rx="1.8"/><circle cx="9" cy="9" r="1.3" fill="currentColor" stroke="none"/>',
+    'ポン':'<rect x="3" y="3" width="7.5" height="7.5" rx="1.6"/><rect x="7.5" y="7.5" width="7.5" height="7.5" rx="1.6"/>',
+    'チー':'<path d="M4 11l3.2-3.2L10 10M9 8l3-3 3 3"/>',
+    'カン':'<rect x="2.4" y="2.4" width="5.6" height="5.6" rx="1.2"/><rect x="10" y="2.4" width="5.6" height="5.6" rx="1.2"/><rect x="2.4" y="10" width="5.6" height="5.6" rx="1.2"/><rect x="10" y="10" width="5.6" height="5.6" rx="1.2"/>',
+    'スルー':'<path d="M4 4.5l4.5 4.5L4 13.5M9.5 4.5L14 9l-4.5 4.5"/>',
+    'やめ':'<path d="M5 5l8 8M13 5l-8 8"/>'
+  };
+  const k=Object.keys(I).find(x=>label.startsWith(x));
+  return k?`<svg class="ic" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${I[k]}</svg>`:'';
+}
 function renderActions(acts,showTurn){
   const el=document.getElementById('actions');el.innerHTML='';
-  acts.forEach(a=>{const b=document.createElement('button');b.className='btn '+(a.cls||'');b.textContent=a.label;b.onclick=a.fn;el.appendChild(b);});
+  acts.forEach(a=>{const b=document.createElement('button');b.className='btn '+(a.cls||'');b.innerHTML=btnIcon(a.label)+'<span>'+a.label+'</span>';b.onclick=a.fn;el.appendChild(b);});
   if(showTurn&&!acts.some(a=>a.label==='ツモ')){const s=document.createElement('span');s.textContent=acts.length?'':'牌を選んで捨てる';s.style.opacity=.6;el.appendChild(s);}
 }
 let toastT;function toast(m){const e=document.getElementById('toast');e.textContent=m;e.style.display='block';clearTimeout(toastT);toastT=setTimeout(()=>e.style.display='none',1500);}
