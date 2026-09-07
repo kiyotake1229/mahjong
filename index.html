@@ -95,6 +95,23 @@
     .discards{grid-template-columns:repeat(6,auto)}
   }
   @media (max-height:680px){ .tile{height:40px} }
+  /* コーチ（対話式チュートリアル） */
+  #coach{position:fixed;left:0;right:0;bottom:calc(150px + env(safe-area-inset-bottom));display:flex;justify-content:center;z-index:45;padding:0 10px;pointer-events:none}
+  #coach[hidden]{display:none}
+  #coachBubble{pointer-events:auto;max-width:460px;width:100%;background:linear-gradient(#1c4d37,#123726);border:2px solid var(--gold);border-radius:16px;padding:13px 16px;box-shadow:0 8px 30px rgba(0,0,0,.5);position:relative}
+  #coachBubble::before{content:"コーチ";position:absolute;top:-11px;left:16px;background:var(--gold);color:#3a2c00;font-size:11px;font-weight:800;padding:1px 10px;border-radius:10px}
+  #coachBubble::after{content:"";position:absolute;bottom:-11px;left:50%;transform:translateX(-50%);border:11px solid transparent;border-top-color:var(--gold);border-bottom:0}
+  #coachMsg{font-size:15px;line-height:1.55}#coachMsg b{color:var(--gold)}
+  #coachMsg .k{display:inline-block;background:var(--gold);color:#3a2c00;font-weight:800;border-radius:6px;padding:0 7px;margin:0 2px}
+  #coachBtns{display:flex;gap:8px;justify-content:flex-end;margin-top:10px;align-items:center}
+  #coachBtns .skip{background:none;border:none;color:var(--ivory);opacity:.6;font-size:12px;cursor:pointer;margin-right:auto;text-decoration:underline}
+  .tile.pulse{animation:pulse 1s infinite;z-index:3}
+  .btn.pulse{animation:pulse 1s infinite}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(230,198,103,.9),0 3px 0 #b89a3e}50%{box-shadow:0 0 0 8px rgba(230,198,103,0),0 3px 0 #b89a3e}}
+  .tile.pulse{outline:3px solid var(--gold);outline-offset:1px;border-radius:5px}
+  #chooser .opt{display:block;width:100%;margin:8px 0;text-align:left;padding:13px 16px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--ivory);font-size:15px;cursor:pointer}
+  #chooser .opt b{color:var(--gold);font-size:16px}#chooser .opt small{opacity:.7;display:block;margin-top:2px;font-size:12px}
+  #chooser .opt:hover{background:rgba(255,255,255,.1)}
 </style>
 
 <div id="topbar">
@@ -126,6 +143,12 @@
 <div id="overlay"><div id="modal"></div></div>
 <div class="toast" id="toast"></div>
 <div class="callflash" id="callflash"></div>
+<div id="coach" hidden>
+  <div id="coachBubble">
+    <div id="coachMsg"></div>
+    <div id="coachBtns"></div>
+  </div>
+</div>
 
 <script>
 /* ===== 牌 index: 0-8萬 9-17筒 18-26索 27-33字(東南西北白發中) ===== */
@@ -337,7 +360,10 @@ const sfx={
 };
 
 /* ===== ゲーム状態 ===== */
-let G;
+let G, GEN=0;
+function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+function later(fn,ms){const g=G.gen;setTimeout(()=>{if(G&&G.gen===g&&!G.over)fn();},ms);}
 function newHand(keep){
   const prev=G;
   const scores=keep&&prev?prev.players.map(p=>p.score):[25000,25000,25000,25000];
@@ -353,9 +379,10 @@ function newHand(keep){
   players.forEach(p=>p.hand.sort((a,b)=>a-b));
   G={wall,dead,doraInd:[dead[4]],uraInd:[dead[5]],players,dealer,round,honba,turn:dealer,roundWind:round,
      phase:'draw',over:false,riichiSticks:sticks,ippatsu:[false,false,false,false],callHappened:false,
-     rinshanFlag:false,lastDiscard:null,advance:false,keepHonba:false,pendingRiichiDeclarer:-1,offering:false};
+     rinshanFlag:false,lastDiscard:null,advance:false,keepHonba:false,pendingRiichiDeclarer:-1,offering:false,
+     tutorial:false,tutGate:null,gen:++GEN};
   render();
-  setTimeout(drawStep,320);
+  later(drawStep,320);
 }
 
 function drawStep(){
@@ -367,7 +394,7 @@ function drawStep(){
   G.phase='discard';
   if(G.turn!==0)sfx.draw();
   render();
-  if(G.turn===0)humanTurn();else setTimeout(cpuTurn,430);
+  if(G.turn===0)humanTurn();else later(cpuTurn,430);
 }
 
 function buildCtx(pid,tsumo,winTile){
@@ -386,14 +413,15 @@ function humanTurn(){
     const ev=evaluate(p.hand,p.melds,buildCtx(0,true,p.drawn));
     if(ev)acts.push({label:'ツモ',cls:'red',fn:()=>win(0,0,true,p.drawn)});
   }
-  if(!p.riichi&&p.melds.length===0&&p.score>=1000&&G.wall.length>=4){
+  if(!p.riichi&&p.melds.length===0&&p.score>=1000&&G.wall.length>=4&&!(G.tutorial&&p.hand.includes(33))){
     const seen=new Set();let ok=false;
     for(let i=0;i<p.hand.length;i++){const t=p.hand[i];if(seen.has(t))continue;seen.add(t);const r=p.hand.slice();r.splice(i,1);if(shanten(r,0)===0){ok=true;break;}}
-    if(ok)acts.push({label:'立直',cls:'blue',fn:()=>{p.pendingRiichi=true;toast('立直する牌を選ぶ');renderActions([{label:'やめ',cls:'gray',fn:()=>{p.pendingRiichi=false;humanTurn();}}],false);}});
+    if(ok)acts.push({label:'立直',cls:'blue',fn:()=>{p.pendingRiichi=true;toast('立直する牌を選ぶ');renderActions([{label:'やめ',cls:'gray',fn:()=>{p.pendingRiichi=false;humanTurn();}}],false);if(G.tutorial)tutGuide();}});
   }
   if(!p.riichi){const c=toCounts(p.hand),ks=[];for(let i=0;i<34;i++)if(c[i]===4)ks.push(i);
     if(ks.length&&G.wall.length>0)acts.push({label:'カン',cls:'gray',fn:()=>ankan(ks[0])});}
   renderActions(acts,true);
+  if(G.tutorial)tutGuide();
 }
 function ankan(tile){
   const p=G.players[0];
@@ -407,6 +435,7 @@ function ankan(tile){
 function humanDiscard(idx){
   const p=G.players[0];if(G.phase!=='discard'||G.turn!==0||G.over)return;
   const tile=p.hand[idx];
+  if(G.tutorial&&G.tutGate!=null&&tile!==G.tutGate){flash('光ってる牌をタップ');return;}
   if(p.riichi&&tile!==p.drawn)return;
   if(p.pendingRiichi){
     const r=p.hand.slice();r.splice(idx,1);
@@ -425,6 +454,7 @@ function doDiscard(pid,idx){
   const w=waits(p.hand,p.melds.length);if(p.discards.some(d=>w.includes(d)))p.tempFuriten=true;
   if(pid!==0)sfx.tick();
   render();renderActions([],false);
+  if(G.tutorial)return tutorialAfterDiscard();
   startResolve(pid,tile);
 }
 
@@ -498,7 +528,7 @@ function doPon(pid,fromPid,tile,kan){
   if(kan){revealKanDora();const rt=G.wall.shift();p.hand.push(rt);p.drawn=rt;p.hand.sort((a,b)=>a-b);G.rinshanFlag=true;}
   G.turn=pid;G.phase='discard';p.drawn=kan?p.drawn:-1;
   render();
-  if(pid===0)humanTurn();else setTimeout(()=>cpuDiscardOnly(pid),450);
+  if(pid===0)humanTurn();else later(()=>cpuDiscardOnly(pid),450);
 }
 function doChi(pid,fromPid,tile,combo){
   const p=G.players[pid],src=G.players[fromPid];
@@ -509,7 +539,7 @@ function doChi(pid,fromPid,tile,combo){
   clearIppatsu();G.callHappened=true;G.offering=false;flash(POS[pid]+'のチー');sfx.call();
   G.turn=pid;G.phase='discard';p.drawn=-1;p.hand.sort((a,b)=>a-b);
   render();
-  if(pid===0)humanTurn();else setTimeout(()=>cpuDiscardOnly(pid),450);
+  if(pid===0)humanTurn();else later(()=>cpuDiscardOnly(pid),450);
 }
 function advanceTurn(fromPid){
   G.offering=false;
@@ -524,6 +554,7 @@ function advanceTurn(fromPid){
 
 /* ===== CPU ===== */
 function cpuTurn(){
+  if(G.tutorial)return;
   const pid=G.turn,p=G.players[pid];
   // ツモ評価に使う一発は今のフラグ。引いた後に消す。
   if(isAgari(p.hand,p.melds.length)){
@@ -542,6 +573,7 @@ function cpuTurn(){
   doDiscard(pid,chooseBestDiscard(p));
 }
 function cpuDiscardOnly(pid){
+  if(G.tutorial)return;
   const p=G.players[pid];
   if(isAgari(p.hand,p.melds.length)){const ev=evaluate(p.hand,p.melds,buildCtx(pid,true,p.drawn));if(ev)return win(pid,pid,true,p.drawn);}
   doDiscard(pid,chooseBestDiscard(p));
@@ -646,10 +678,10 @@ function render(){
   // 自分の手牌
   const mh=document.getElementById('myHand');mh.innerHTML='';const me=G.players[0];
   const beg=document.getElementById('begChk').checked;
-  document.getElementById('guide').style.display=beg?'block':'none';
+  document.getElementById('guide').style.display=(beg&&!G.tutorial)?'block':'none';
   const myTurn=G.turn===0&&G.phase==='discard'&&!G.over;
   let recIdx=-1;
-  if(beg&&myTurn&&!me.riichi&&!isAgari(me.hand,me.melds.length))recIdx=recommendDiscard(me);
+  if(beg&&myTurn&&!G.tutorial&&!me.riichi&&!isAgari(me.hand,me.melds.length))recIdx=recommendDiscard(me);
   me.hand.forEach((t,i)=>{const el=tileEl(t);
     if(t===me.drawn&&myTurn)el.classList.add('drawn');
     if(me.riichi&&t!==me.drawn)el.classList.add('dim');
@@ -736,8 +768,11 @@ function showResult(pid,fromPid,tsumo,hand,winTile,ev,pay,gained,sticks){
     <div class="yaku">${ev.yaku.map(v=>`${v.n}<span class="h">${v.dora?v.h:v.h+'翻'}</span>`).join('<br>')}</div>
     ${p.riichi&&G.uraInd.length?`<div class="sub">裏ドラ表示: ${liveUra().map(t=>tileName(t)).join(' ')}</div>`:''}
     <div class="score">${ev.han}翻 ${ev.fu}符　${(gained+sticks).toLocaleString()}点</div>
-    <button class="btn" id="nextBtn">次の局へ</button>`;
-  document.getElementById('nextBtn').onclick=()=>{ov.style.display='none';G.advance=(pid!==G.dealer);G.keepHonba=(pid===G.dealer);endCheck();};
+    ${G.tutorial?'<div class="sub" style="color:var(--gold);font-size:14px;margin:8px 0">🎉 チュートリアルクリア！これが麻雀の基本の流れです。<br>あとは自由に対局して慣れていきましょう。</div>':''}
+    <button class="btn" id="nextBtn">${G.tutorial?'自由対局をはじめる':'次の局へ'}</button>`;
+  document.getElementById('nextBtn').onclick=()=>{ov.style.display='none';
+    if(G.tutorial){endTutorial();return;}
+    G.advance=(pid!==G.dealer);G.keepHonba=(pid===G.dealer);endCheck();};
 }
 function showDraw(tenpai){
   const ov=document.getElementById('overlay');ov.style.display='flex';const m=document.getElementById('modal');
@@ -794,12 +829,96 @@ function showHelp(){
     <p style="opacity:.75">迷ったら「立直」で宣言 → あとは引いた牌を切るだけ。まずは1回あがってみましょう！</p>
   </div>
   <button class="btn" id="closeHelp">とじる</button>`;
-  document.getElementById('closeHelp').onclick=()=>{ov.style.display='none';localStorage.setItem('mjHelpSeen','1');};
+  document.getElementById('closeHelp').onclick=()=>{ov.style.display='none';lsSet('mjHelpSeen','1');if(!G)newHand(false);};
 }
-document.getElementById('helpBtn').onclick=showHelp;
+document.getElementById('helpBtn').onclick=showChooser;
 
-newHand(false);
-if(!localStorage.getItem('mjHelpSeen'))setTimeout(showHelp,400);
+/* ===== 対話式チュートリアル ===== */
+let tut={phase:'',i:0};
+const INTRO=[
+  `<b>ようこそ！</b> 麻雀は「3枚のまとまり×4組」＋「同じ牌2枚（アタマ）」がそろえば<b>アガリ</b>。<br>いきなり1回、一緒にアガってみましょう。`,
+  `画面の下があなたの手牌13枚。牌は<b>萬子(m)・筒子(p)・索子(s)</b>と、東南西北白發中の<b>字牌</b>。<br>「連番3枚（例 2索3索4索）」か「同じ牌3枚」でまとまりを作ります。`
+];
+function coachShow(html,btns,showSkip){
+  const c=document.getElementById('coach');c.hidden=false;
+  document.getElementById('coachMsg').innerHTML=html;
+  const bc=document.getElementById('coachBtns');bc.innerHTML='';
+  if(showSkip){const s=document.createElement('button');s.className='skip';s.textContent='スキップ';
+    s.onclick=()=>{if(confirm('チュートリアルを終了して自由対局を始めますか？'))endTutorial();};bc.appendChild(s);}
+  (btns||[]).forEach(b=>{const el=document.createElement('button');el.className='btn '+(b.cls||'');el.textContent=b.label;el.onclick=b.fn;bc.appendChild(el);});
+}
+function clearHL(){document.querySelectorAll('.pulse').forEach(e=>e.classList.remove('pulse'));}
+function hlTile(val){const me=G.players[0];const i=me.hand.indexOf(val);if(i<0)return;const el=document.querySelectorAll('#myHand .tile')[i];if(el)el.classList.add('pulse');}
+function hlBtn(label){document.querySelectorAll('#actions .btn').forEach(b=>{if(b.textContent.startsWith(label))b.classList.add('pulse');});}
+function tutStart(){
+  document.getElementById('overlay').style.display='none';
+  let wall=[];for(let t=0;t<34;t++)for(let k=0;k<4;k++)wall.push(t);
+  const hand0=[1,2,3,4,5,6,15,16,21,22,17,17,33]; // 234m 567m 78p 45s 9p9p 中
+  const rm=t=>{const i=wall.indexOf(t);if(i>=0)wall.splice(i,1);};
+  hand0.forEach(rm);[14,27,23].forEach(rm); // 引く牌: 6p 東 6s
+  const cpu=[[],[],[]];for(let c=0;c<3;c++)for(let k=0;k<13;k++)cpu[c].push(wall.pop());
+  for(let i=wall.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;[wall[i],wall[j]]=[wall[j],wall[i]];}
+  wall.push(23,27,14); // pop順: 6p→東→6s
+  const dead=[0,0,0,0,31,30,7,7,7,7,7,7,7,7]; // ドラ表示=白→ドラ發(手に無し)
+  const players=[0,1,2,3].map(i=>({id:i,hand:i===0?hand0.slice():cpu[i-1],melds:[],discards:[],riichi:false,doubleRiichi:false,riichiIdx:-1,
+    riichiFuriten:false,tempFuriten:false,score:25000,seatWind:i,isDealer:i===0,drawn:-1,pendingRiichi:false}));
+  players[0].hand.sort((a,b)=>a-b);
+  G={wall,dead,doraInd:[dead[4]],uraInd:[dead[5]],players,dealer:0,round:0,honba:0,turn:0,roundWind:0,
+     phase:'draw',over:false,riichiSticks:0,ippatsu:[false,false,false,false],callHappened:false,
+     rinshanFlag:false,lastDiscard:null,advance:false,keepHonba:false,pendingRiichiDeclarer:-1,offering:false,
+     tutorial:true,tutGate:null,gen:++GEN};
+  render();
+  tut={phase:'intro',i:0};tutIntroShow();
+}
+function tutIntroShow(){
+  clearHL();
+  const last=tut.i>=INTRO.length-1;
+  coachShow(INTRO[tut.i],[{label:last?'やってみる':'次へ',cls:'',fn:()=>{
+    if(!last){tut.i++;tutIntroShow();}else{tut.phase='play';G.turn=0;G.phase='draw';drawStep();}
+  }}],true);
+}
+function tutorialAfterDiscard(){
+  if(G.over)return;
+  if(G.pendingRiichiDeclarer===0){G.ippatsu[0]=true;G.pendingRiichiDeclarer=-1;}
+  G.turn=0;G.phase='draw';G.tutGate=null;
+  drawStep();
+}
+function tutGuide(){
+  if(tut.phase!=='play')return;
+  const me=G.players[0];clearHL();
+  if(me.pendingRiichi){G.tutGate=me.drawn;
+    coachShow(`リーチ宣言する牌を選びます。引いてきた<b>${tileName(me.drawn)}</b>を捨てればOK。<br>光ってる牌をタップ！`,[],true);hlTile(me.drawn);return;}
+  if(isAgari(me.hand,me.melds.length)){G.tutGate=null;
+    coachShow(`🎉 アガリ牌 <b>${tileName(me.drawn)}</b> が来た！<br>下の<span class="k">ツモ</span>を押してアガリ！`,[],true);hlBtn('ツモ');return;}
+  if(me.hand.includes(33)){G.tutGate=33;
+    coachShow(`いい牌(<b>${tileName(me.drawn)}</b>)を引きました！でも字牌の<b>中</b>は今バラバラで使えません。<br>光ってる<span class="k">中</span>をタップして捨てよう。`,[],true);hlTile(33);return;}
+  let best=99;const seen=new Set();for(let i=0;i<me.hand.length;i++){const t=me.hand[i];if(seen.has(t))continue;seen.add(t);const r=me.hand.slice();r.splice(i,1);best=Math.min(best,shanten(r,0));}
+  if(best===0&&!me.riichi){G.tutGate=null;
+    const idx=recommendDiscard(me);const rr=me.hand.slice();rr.splice(idx,1);const w=waits(rr,0).map(tileName).join('・');
+    coachShow(`<b>テンパイ！</b> あと1枚（待ち: <b>${w}</b>）でアガリ。<br>鳴いてないので<span class="k">立直</span>が使える。下の<b>立直</b>を押そう！`,[],true);hlBtn('立直');return;}
+  if(me.riichi){G.tutGate=me.drawn;coachShow(`リーチ中は引いた牌をそのまま捨てます。光ってる牌をタップ。`,[],true);hlTile(me.drawn);return;}
+  G.tutGate=null;coachShow(`いらない牌を1枚タップして捨てよう。`,[],true);
+}
+function endTutorial(){
+  document.getElementById('coach').hidden=true;clearHL();
+  document.getElementById('overlay').style.display='none';
+  lsSet('mjHelpSeen','1');
+  G=null;newHand(false);
+}
+function showChooser(){
+  const ov=document.getElementById('overlay');ov.style.display='flex';
+  const m=document.getElementById('modal');
+  m.innerHTML=`<h2>麻雀へようこそ</h2><div id="chooser" style="max-width:380px">
+    <button class="opt" id="optTut"><b>▶ 一緒に練習する（おすすめ）</b><small>コーチの案内で、実際にアガるまでを体験。初めてならコレ</small></button>
+    <button class="opt" id="optRead"><b>説明を読む</b><small>ルールを文章でざっと確認</small></button>
+    <button class="opt" id="optPlay"><b>そのまま遊ぶ</b><small>すぐ対局を始める</small></button></div>`;
+  document.getElementById('optTut').onclick=()=>tutStart();
+  document.getElementById('optRead').onclick=()=>showHelp();
+  document.getElementById('optPlay').onclick=()=>{ov.style.display='none';lsSet('mjHelpSeen','1');if(!G)newHand(false);};
+}
+
+if(lsGet('mjHelpSeen'))newHand(false);
+else setTimeout(showChooser,300);
 
 if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 </script>
