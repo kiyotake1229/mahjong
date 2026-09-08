@@ -263,6 +263,31 @@
   .lesson .chk{flex:0 0 auto;font-family:var(--f-num);font-weight:700;font-size:14px;color:var(--muted);width:24px;height:24px;border-radius:50%;
     display:flex;align-items:center;justify-content:center;border:1px solid var(--line)}
   .lesson .chk.on{color:#062;background:var(--cyan);border-color:var(--cyan);box-shadow:0 0 12px rgba(95,240,221,.7)}
+  .dojo-sec{font-family:var(--f-ui);font-weight:700;letter-spacing:3px;font-size:11px;color:var(--violet);margin:12px 4px 2px;text-align:left;
+    position:relative}
+  .dojo-sec::after{content:"";position:absolute;left:44px;right:0;top:50%;height:1px;background:linear-gradient(90deg,var(--line2),transparent)}
+  .dojo-prog{position:relative;height:20px;max-width:420px;margin:6px auto 4px;border-radius:12px;background:rgba(95,240,221,.08);border:1px solid var(--line);overflow:hidden}
+  .dojo-bar{position:absolute;inset:0;width:0;background:linear-gradient(90deg,var(--cyan2),var(--cyan),var(--gold));box-shadow:0 0 14px rgba(95,240,221,.6);transition:width .5s}
+  .dojo-prog span{position:relative;z-index:1;font-family:var(--f-ui);font-weight:600;font-size:11px;line-height:20px;letter-spacing:1px;color:#eafffb;text-shadow:0 0 4px rgba(0,0,0,.6)}
+  /* クイズ */
+  #coachBtns{flex-wrap:wrap}
+  .qtag{display:inline-block;background:linear-gradient(var(--violet),#6a5bdf);color:#fff;font-weight:800;font-size:11px;letter-spacing:1px;padding:1px 8px;border-radius:8px;margin-right:4px;box-shadow:0 0 10px rgba(139,123,255,.6)}
+  #coachBtns.quizrow{justify-content:center}
+  .qopt{padding:8px 12px}.qopt span{display:inline-flex;gap:2px;align-items:center}
+  .qopt.qok{outline:2px solid var(--cyan);box-shadow:0 0 18px rgba(95,240,221,.8),0 3px 0 #12162e}
+  .qopt.qng{animation:shake .4s}
+  @keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+  /* クリア演出 */
+  .confetti{position:fixed;inset:0;z-index:70;pointer-events:none;overflow:hidden}
+  .confetti span{position:absolute;top:-24px;border-radius:1px;animation:conffall linear forwards}
+  @keyframes conffall{0%{transform:translateY(0) rotate(var(--r));opacity:1}100%{transform:translateY(112vh) rotate(calc(var(--r) + 720deg));opacity:.85}}
+  .badge-big{width:88px;height:88px;margin:6px auto 8px;border-radius:24px;display:flex;align-items:center;justify-content:center;color:var(--gold);
+    background:radial-gradient(circle at 50% 35%,rgba(244,217,138,.28),rgba(139,123,255,.14));border:1.5px solid var(--gold);
+    box-shadow:0 0 30px rgba(244,217,138,.55),inset 0 0 20px rgba(244,217,138,.25);animation:badgepop .5s cubic-bezier(.2,1.5,.4,1)}
+  .badge-big svg{width:46px;height:46px}
+  .badge-big.grand{color:var(--cyan);border-color:var(--cyan);box-shadow:0 0 40px rgba(95,240,221,.7),inset 0 0 24px rgba(95,240,221,.3)}
+  @keyframes badgepop{0%{transform:scale(.3) rotate(-20deg);opacity:0}100%{transform:none;opacity:1}}
+  .title-earn{font-family:var(--f-mincho);font-weight:800;font-size:19px;color:var(--gold);letter-spacing:1px;margin:2px 0 4px;text-shadow:0 0 14px rgba(244,217,138,.5)}
 </style>
 
 <div id="bg"></div>
@@ -1173,15 +1198,58 @@ function tutIntro(list,onDone){tut._intro=list;tut._i2=0;tut._done=onDone;tutInt
 function tutIntroStep(){clearHL();const last=tut._i2>=tut._intro.length-1;
   coachShow(tut._intro[tut._i2],[{label:last?'はじめる':'次へ',fn:()=>{if(!last){tut._i2++;tutIntroStep();}else tut._done();}}],true);}
 /* ===== 情報系レッスン（読む＋ハイライト） ===== */
-function infoRun(){clearHL();const s=tut.steps[tut.i],last=tut.i>=tut.steps.length-1;
-  coachShow(s.html,[{label:last?'道場に戻る':'次へ',fn:()=>{if(!last){tut.i++;infoRun();}else lessonComplete(tut.lesson);}}],true);
+const thtml=(...v)=>v.map(x=>tileEl(x,'sm').outerHTML).join('');
+function infoNext(){const last=tut.i>=tut.steps.length-1;if(!last){tut.i++;infoRun();}else lessonComplete(tut.lesson);}
+function infoRun(){clearHL();const s=tut.steps[tut.i];
+  if(s.quiz){renderQuiz(s.quiz,infoNext);return;}
+  const last=tut.i>=tut.steps.length-1;
+  coachShow(s.html,[{label:last?'道場に戻る':'次へ',fn:infoNext}],true);
   (s.hl||[]).forEach(v=>hlTile(v));}
+function renderQuiz(q,onOk){
+  clearHL();const c=document.getElementById('coach');c.hidden=false;
+  document.getElementById('coachMsg').innerHTML=`<span class="qtag">クイズ</span> ${q.q}`;
+  const bc=document.getElementById('coachBtns');bc.innerHTML='';bc.classList.add('quizrow');
+  const skip=document.createElement('button');skip.className='skip';skip.textContent='やめる';
+  skip.onclick=()=>{if(confirm('レッスンを中断して道場に戻りますか？')){document.getElementById('coach').hidden=true;bc.classList.remove('quizrow');clearHL();showDojo();}};
+  bc.appendChild(skip);
+  q.opts.forEach(o=>{const b=document.createElement('button');b.className='btn gray qopt';b.innerHTML='<span>'+o.h+'</span>';
+    b.onclick=()=>{ if(o.ok){b.classList.add('qok');toast('正解！ ✨');setTimeout(()=>{bc.classList.remove('quizrow');onOk();},700);}
+      else{b.classList.add('qng');toast('おしい！ もう一度');setTimeout(()=>b.classList.remove('qng'),500);} };
+    bc.appendChild(b);});
+}
+function confetti(){
+  const c=document.createElement('div');c.className='confetti';
+  const cols=['#f4d98a','#5ff0dd','#ff5e8a','#8b7bff','#ffffff'];let h='';
+  for(let i=0;i<70;i++){const l=Math.random()*100,d=1.3+Math.random()*1.4,delay=Math.random()*.4,col=cols[i%cols.length],rot=Math.random()*360,w=6+Math.random()*7;
+    h+=`<span style="left:${l}%;background:${col};width:${w}px;height:${w*.5}px;animation-duration:${d}s;animation-delay:${delay}s;--r:${rot}deg"></span>`;}
+  c.innerHTML=h;document.body.appendChild(c);setTimeout(()=>c.remove(),2800);
+}
+function showCelebrate(id,allDone){
+  const ov=document.getElementById('overlay');ov.style.display='flex';
+  const m=document.getElementById('modal');const L=LESSONS.find(x=>x.id===id)||{};
+  if(allDone){
+    m.innerHTML=`<h2>全レッスン制覇！</h2>
+      <div class="badge-big grand"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8l4 4 4-7 4 7 4-4-1.5 10H5.5z"/><circle cx="12" cy="19" r="0"/></svg></div>
+      <div class="title-earn">称号「麻雀マスター」獲得</div>
+      <div class="sub">おめでとう！基本はバッチリ。自由対局を存分に楽しもう。</div>
+      <button class="btn" id="celBtn">道場へ</button>`;
+  }else{
+    m.innerHTML=`<h2>レッスンクリア！</h2>
+      <div class="badge-big"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${L.ic||''}</svg></div>
+      <div class="title-earn">称号「${L.badge||L.t}」を獲得</div>
+      <div class="sub">${LESSONS.filter(x=>lsGet('mjLesson_'+x.id)==='1').length} / ${LESSONS.length} クリア</div>
+      <button class="btn" id="celBtn">道場へ</button>`;
+  }
+  document.getElementById('celBtn').onclick=()=>showDojo();
+}
 function startKihon(){
   rigGame([0,3,4,5,9,10,11,19,19,19,27,31,33],[]);
   tut={lesson:'kihon',mode:'info',i:0,steps:[
     {html:`牌は大きく3種類。<br><b>萬子</b>=漢数字＋萬 ・ <b>筒子</b>=●の数 ・ <b>索子</b>=竹の本数。<br>それに <b>東南西北白發中</b> の<b>字牌</b>があります。`},
     {html:`<b>順子（シュンツ）</b>＝同じ種類の<b>連番3枚</b>。<br>例：光った <b>4萬5萬6萬</b>。`,hl:[3,4,5]},
     {html:`<b>刻子（コーツ）</b>＝<b>同じ牌3枚</b>。<br>例：光った <b>2索</b>が3枚。`,hl:[19]},
+    {quiz:{q:`次のうち<b>順子</b>はどれ？`,opts:[
+      {h:thtml(1,2,3),ok:true},{h:thtml(13,13,13),ok:false},{h:thtml(0,8,27),ok:false}]}},
     {html:`この「まとまり」を<b>4組</b>＋<b>アタマ（同じ2枚）</b>そろえたら<b>アガリ</b>。<br>次は「はじめての和了」で実際にやってみよう！`}
   ]};infoRun();
 }
@@ -1191,7 +1259,9 @@ function startYaku(){
     {html:`アガるには、形をそろえるだけでなく<b>1つ以上の「役」</b>が必要です。`},
     {html:`初心者が狙いやすい役①<br><b>リーチ</b>＝鳴かずにテンパイしたら宣言するだけ（1000点）。`},
     {html:`狙いやすい役②<br><b>タンヤオ</b>＝<b>2〜8の数字牌だけ</b>で作る（1・9・字牌を使わない）。この手が例。`,hl:[1,2,3,4,5,6,10,11,12,14,15,16,13]},
-    {html:`<b>ドラ</b>＝点数アップのボーナス牌。<br>画面上の「ドラ表示牌」の<b>次の牌</b>がドラ。持っているほど高得点！`}
+    {quiz:{q:`<b>タンヤオ</b>に使えない牌はどれ？`,opts:[
+      {h:thtml(0),ok:true},{h:thtml(13),ok:false},{h:thtml(20),ok:false}]}},
+    {html:`そう、<b>1萬（＝1や9）や字牌</b>はタンヤオに使えません。<br><b>ドラ</b>＝ボーナス牌。「ドラ表示牌」の<b>次の牌</b>がドラで、持つほど高得点！`}
   ]};infoRun();
 }
 /* ===== 実戦系レッスン ===== */
@@ -1264,36 +1334,78 @@ function guideNaki(){
   const idx=recommendDiscard(me);const tile=me.hand[idx];G.tutGate=tile;
   coachShow(`<b>ポン成功！</b> 中の刻子ができたね。<br>手番が来たので、いらない牌を1枚捨てよう（光ってる牌でOK）。`,[],true);hlTile(tile);
 }
+function startFuriten(){
+  rigGame([0,1,2,9,10,11,18,19,20,4,4,6,7],[]);
+  tut={lesson:'furiten',mode:'info',i:0,steps:[
+    {html:`<b>フリテン</b>とは…<br>自分が<b>一度でも捨てた牌</b>（＝自分の待ち牌のどれか）がある間は、<b>ロンであがれない</b>ルール。`},
+    {html:`ただしフリテンでも<b>ツモ</b>ならあがれる！<br>ロンだけが禁止。だから<b>待ち牌は自分で捨てない</b>のが基本です。`},
+    {quiz:{q:`あなたの待ちは <b>3萬・6萬</b>。自分の捨て牌に <b>6萬</b> がある。相手の6萬で<b>ロン</b>できる？`,
+      opts:[{h:'ロンできない',ok:true},{h:'ロンできる',ok:false}]}},
+    {html:`正解！待ち牌を捨てているとフリテンでロン不可。その時は<b>ツモ</b>を狙おう。`}
+  ]};infoRun();
+}
+function startScore(){
+  rigGame([1,2,3,4,5,6,10,11,12,14,15,16,13],[]);
+  tut={lesson:'score',mode:'info',i:0,steps:[
+    {html:`点数は<b>翻（ハン）</b>で決まる。役やドラが増えるほど翻が上がり、高得点になります。`},
+    {html:`だいたいの目安（子）：<br>1〜2翻＝1000〜2600点<br>3〜4翻＝3900〜8000点<br><b>5翻＝満貫8000点</b>、以降 跳満・倍満…と上昇。`},
+    {quiz:{q:`<b>リーチ＋ツモ＋ドラ2</b>なら合計何翻？`,
+      opts:[{h:'4翻',ok:true},{h:'2翻',ok:false},{h:'6翻',ok:false}]}},
+    {html:`そう、立直1＋門前ツモ1＋ドラ2＝<b>4翻</b>。<br>まずは<b>リーチ＋タンヤオ＋ドラ</b>で3〜4翻を目標に！`}
+  ]};infoRun();
+}
+function startChiitoi(){
+  rigGame([0,0,3,3,10,10,15,15,19,19,24,24,33],[]);
+  tut={lesson:'chiitoi',mode:'info',i:0,steps:[
+    {html:`<b>七対子（チートイツ）</b>＝<b>ペア（2枚1組）を7つ</b>作る特別な形。<br>順子・刻子を使わない変則手です。`},
+    {html:`今の手は<b>ペア6組</b>＋<b>中1枚</b>（下の光った牌がペア）。<br>あと1枚<b>中</b>が来れば7ペア完成でアガリ！`,hl:[0,3,10,15,19,24]},
+    {quiz:{q:`七対子を作るのに使えるのは？`,
+      opts:[{h:'同じ牌のペア',ok:true},{h:'連番3枚',ok:false}]}},
+    {html:`七対子は<b>2翻・25符</b>固定。リーチと合わせやすい手。<br>同じ牌が2枚ずつ集まってきたら狙ってみよう！`}
+  ]};infoRun();
+}
 const LESSONS=[
-  {id:'kihon',t:'牌のきほん',d:'牌の種類と、順子・刻子のまとまり',run:startKihon,
+  {id:'kihon',t:'牌のきほん',d:'牌の種類と、順子・刻子のまとまり',badge:'牌の見習い',run:startKihon,
    ic:'<rect x="5" y="3" width="14" height="18" rx="3"/><path d="M9 8h6M9 12h6M9 16h3"/>'},
-  {id:'tsumo',t:'はじめての和了',d:'実際に1回ツモであがってみる',run:startTsumo,
+  {id:'tsumo',t:'はじめての和了',d:'実際に1回ツモであがってみる',badge:'初あがり',run:startTsumo,
    ic:'<circle cx="12" cy="12" r="9"/><path d="M8 12l2.5 2.5L16 9"/>'},
-  {id:'riichi',t:'リーチとロン',d:'リーチ宣言と、相手の捨て牌であがるロン',run:startRiichiRon,
+  {id:'riichi',t:'リーチとロン',d:'リーチ宣言と、相手の捨て牌であがるロン',badge:'リーチ使い',run:startRiichiRon,
    ic:'<path d="M3 8l11-3v14L3 16z"/><path d="M14 8h6M17 5v6"/>'},
-  {id:'naki',t:'鳴きと守り',d:'ポンで手を早く／リーチへの守り',run:startNaki,
+  {id:'naki',t:'鳴きと守り',d:'ポンで手を早く／リーチへの守り',badge:'鳴き習得',run:startNaki,
    ic:'<rect x="3" y="9" width="7" height="11" rx="2"/><rect x="12" y="4" width="7" height="16" rx="2"/>'},
-  {id:'yaku',t:'役とドラ',d:'あがるのに必要な役と、点数アップのドラ',run:startYaku,
-   ic:'<path d="M12 3l2.5 5.5L20 9l-4 4 1 6-5-3-5 3 1-6-4-4 5.5-.5z"/>'}
+  {id:'yaku',t:'役とドラ',d:'あがるのに必要な役と、点数アップのドラ',badge:'役を知る者',run:startYaku,
+   ic:'<path d="M12 3l2.5 5.5L20 9l-4 4 1 6-5-3-5 3 1-6-4-4 5.5-.5z"/>'},
+  {id:'furiten',t:'フリテン',d:'捨てた待ち牌ではロンできない注意点',badge:'フリテン回避',run:startFuriten,adv:1,
+   ic:'<circle cx="12" cy="12" r="9"/><path d="M6 6l12 12"/>'},
+  {id:'score',t:'点数の見方',d:'翻とドラで点数が上がる仕組み',badge:'点数がわかる',run:startScore,adv:1,
+   ic:'<circle cx="9" cy="9" r="5"/><path d="M13.5 13.5A5 5 0 1 0 17 17"/><path d="M9 7v4M7 9h4"/>'},
+  {id:'chiitoi',t:'七対子',d:'ペアを7つ作る変則手',badge:'七対子マスター',run:startChiitoi,adv:1,
+   ic:'<rect x="3" y="4" width="6" height="7" rx="1"/><rect x="3" y="13" width="6" height="7" rx="1"/><rect x="15" y="4" width="6" height="7" rx="1"/><rect x="15" y="13" width="6" height="7" rx="1"/>'}
 ];
 function lessonComplete(id){
-  if(id)lsSet('mjLesson_'+id,'1');
   document.getElementById('coach').hidden=true;
-  document.getElementById('coachBtns').innerHTML='';
+  document.getElementById('coachBtns').innerHTML='';document.getElementById('coachBtns').classList.remove('quizrow');
   document.getElementById('actions').innerHTML='';
   clearHL();if(G)G.tutGate=null;
-  showDojo();
+  if(!id){showDojo();return;}
+  lsSet('mjLesson_'+id,'1');
+  const allDone=LESSONS.every(L=>lsGet('mjLesson_'+L.id)==='1');
+  confetti();showCelebrate(id,allDone);
 }
 function showDojo(){
   const ov=document.getElementById('overlay');ov.style.display='flex';
   const m=document.getElementById('modal');
   const done=LESSONS.filter(L=>lsGet('mjLesson_'+L.id)==='1').length;
+  let prevAdv=false;
   const rows=LESSONS.map(L=>{const ok=lsGet('mjLesson_'+L.id)==='1';
-    return `<button class="opt lesson" data-id="${L.id}">
+    let head='';if(L.adv&&!prevAdv){head='<div class="dojo-sec">上級</div>';prevAdv=true;}
+    return head+`<button class="opt lesson" data-id="${L.id}">
       <span class="lic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${L.ic}</svg></span>
       <span class="ltx"><b>${L.t}</b><small>${L.d}</small></span>
       <span class="chk ${ok?'on':''}">${ok?'✓':'▶'}</span></button>`;}).join('');
-  m.innerHTML=`<h2>麻雀道場</h2><div class="sub">好きなレッスンを選ぼう（${done}/${LESSONS.length} クリア）</div>
+  const pct=Math.round(done/LESSONS.length*100);
+  m.innerHTML=`<h2>麻雀道場</h2>
+    <div class="dojo-prog"><div class="dojo-bar" style="width:${pct}%"></div><span>${done}/${LESSONS.length} クリア</span></div>
     <div id="dojo">${rows}</div>
     <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:4px">
       <button class="btn" id="dojoPlay">自由対局を始める</button>
