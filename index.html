@@ -101,6 +101,9 @@
     box-shadow:inset 0 1px 0 rgba(255,255,255,.2),0 2px 0 #2c4d3c,0 3px 3px rgba(0,0,0,.45),0 7px 12px rgba(0,0,0,.3)}
   .tile.back::before{background:linear-gradient(165deg,rgba(255,255,255,.2),transparent 42%)}
   .tile.back .bk{position:relative;z-index:1;display:block;width:100%;height:100%;opacity:.75}
+  .handrow .tile.drew{margin-left:9px;animation:drewin .22s ease-out}
+  .handcol .tile.drew{margin-top:9px;animation:drewin .22s ease-out}
+  @keyframes drewin{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:none}}
   .tile.rot{transform:rotate(90deg);margin:0 6px}
   .tile.rotm{transform:rotate(90deg)}
   .tile.last{outline:1px solid var(--gold);outline-offset:1px;animation:justput .34s cubic-bezier(.25,1.2,.4,1)}
@@ -269,6 +272,7 @@
   <span class="badge">残<b id="wallTop">70</b></span>
   <span class="badge">ドラ <span id="dora"></span></span>
   <span style="flex:1"></span>
+  <button class="badge" id="speedBtn" style="cursor:pointer;font-family:inherit;font-size:12px">速度 標準</button>
   <label class="badge" style="cursor:pointer"><input type="checkbox" id="begChk" checked style="vertical-align:-1px"> 初心者モード</label>
   <button class="btn blue sm" id="helpBtn"><svg class="ic" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="7"/><path d="M6.8 6.8a2.2 2.2 0 1 1 3 2.1c-.6.3-1 .7-1 1.6"/><circle cx="8.8" cy="13" r=".7" fill="currentColor" stroke="none"/></svg><span>遊び方</span></button>
   <button class="btn gray sm" id="newGame"><svg class="ic" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 5.5A6 6 0 1 0 15 9"/><path d="M15 3v3h-3"/></svg><span>新局</span></button>
@@ -564,6 +568,12 @@ let G, GEN=0, SKILL={gauge:0};
 function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
 function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
 function later(fn,ms){const g=G.gen;setTimeout(()=>{if(G&&G.gen===g&&!G.over)fn();},ms);}
+const SPEEDS={slow:{label:'じっくり',think:[950,1900],react:400,draw:280,call:700},
+              normal:{label:'標準',think:[620,1300],react:300,draw:200,call:520},
+              fast:{label:'はやい',think:[260,540],react:150,draw:100,call:260}};
+let SPEED=lsGet('mjSpeed')||'normal';
+function sp(){return SPEEDS[SPEED]||SPEEDS.normal;}
+function think(){const t=sp().think;return t[0]+Math.random()*(t[1]-t[0]);}
 function newHand(keep){
   const prev=G;
   const scores=keep&&prev?prev.players.map(p=>p.score):[25000,25000,25000,25000];
@@ -582,7 +592,7 @@ function newHand(keep){
      rinshanFlag:false,lastDiscard:null,advance:false,keepHonba:false,pendingRiichiDeclarer:-1,offering:false,
      tutorial:false,tutGate:null,gen:++GEN,skill:{foresight:false,peekTiles:null,god:false}};
   render();
-  later(drawStep,320);
+  later(drawStep,620);
 }
 
 function godPick(hand,mc,wall){
@@ -608,7 +618,7 @@ function drawStep(){
   G.phase='discard';
   if(G.turn!==0)sfx.draw();
   render();
-  if(G.turn===0)humanTurn();else later(cpuTurn,430);
+  if(G.turn===0)humanTurn();else later(cpuTurn,think());
 }
 
 function buildCtx(pid,tsumo,winTile){
@@ -670,7 +680,7 @@ function doDiscard(pid,idx){
   if(pid===0)gaugeAdd(8);
   render();renderActions([],false);
   if(G.tutorial)return tutorialAfterDiscard();
-  startResolve(pid,tile);
+  later(()=>startResolve(pid,tile),sp().react);
 }
 
 /* ===== 反応解決（ロン>ポン/カン>チー） ===== */
@@ -694,7 +704,7 @@ function ronPhase(fromPid,tile){
     G.offering=true;setGuide('相手の捨て牌で<b>あがれます</b>！ <span class="tag">ロン</span>を押そう（見送るなら スルー）');
     flash('ロン?');return;
   }
-  if(claim.length){claim.sort((a,b)=>((a-fromPid+4)%4)-((b-fromPid+4)%4));return win(claim[0],fromPid,false,tile);}
+  if(claim.length){claim.sort((a,b)=>((a-fromPid+4)%4)-((b-fromPid+4)%4));const w=claim[0];flash(POS[w]+'のロン');return later(()=>win(w,fromPid,false,tile),sp().call);}
   ponPhase(fromPid,tile);
 }
 function ponPhase(fromPid,tile){
@@ -743,7 +753,7 @@ function doPon(pid,fromPid,tile,kan){
   if(kan){revealKanDora();const rt=G.wall.shift();p.hand.push(rt);p.drawn=rt;p.hand.sort((a,b)=>a-b);G.rinshanFlag=true;}
   G.turn=pid;G.phase='discard';p.drawn=kan?p.drawn:-1;
   render();
-  if(pid===0)humanTurn();else later(()=>cpuDiscardOnly(pid),450);
+  if(pid===0)humanTurn();else later(()=>cpuDiscardOnly(pid),think());
 }
 function doChi(pid,fromPid,tile,combo){
   const p=G.players[pid],src=G.players[fromPid];
@@ -754,16 +764,15 @@ function doChi(pid,fromPid,tile,combo){
   clearIppatsu();G.callHappened=true;G.offering=false;flash(POS[pid]+'のチー');sfx.call();
   G.turn=pid;G.phase='discard';p.drawn=-1;p.hand.sort((a,b)=>a-b);
   render();
-  if(pid===0)humanTurn();else later(()=>cpuDiscardOnly(pid),450);
+  if(pid===0)humanTurn();else later(()=>cpuDiscardOnly(pid),think());
 }
 function advanceTurn(fromPid){
   G.offering=false;
   // 立直宣言が通った（鳴かれず）→ 一発フラグ
   if(G.pendingRiichiDeclarer>=0){G.ippatsu[G.pendingRiichiDeclarer]=true;G.pendingRiichiDeclarer=-1;}
   G.turn=(fromPid+1)%4;G.phase='draw';
-  // 自分の一発は次の自分ツモまで。相手番を経るのでここでは消さない。ツモ時drawStep後に消す。
-  G.ippatsu[(fromPid+1)%4]&&(G.ippatsu[(fromPid+1)%4]=G.ippatsu[(fromPid+1)%4]); // no-op
-  drawStep();
+  render();
+  later(drawStep,sp().draw);
   // 次に手番が来たプレイヤーの一発は、その人がツモを引いた時点で評価後に消える → drawStepで処理
 }
 
@@ -774,7 +783,7 @@ function cpuTurn(){
   // ツモ評価に使う一発は今のフラグ。引いた後に消す。
   if(isAgari(p.hand,p.melds.length)){
     const ev=evaluate(p.hand,p.melds,buildCtx(pid,true,p.drawn));
-    if(ev){G.ippatsu[pid]=false;return win(pid,pid,true,p.drawn);}
+    if(ev){G.ippatsu[pid]=false;flash(POS[pid]+'のツモ');return later(()=>win(pid,pid,true,p.drawn),sp().call);}
   }
   G.ippatsu[pid]=false; // 自分のツモ番を過ぎたので一発消滅
   if(!p.riichi&&p.melds.length===0&&p.score>=1000&&G.wall.length>=4&&shanten(p.hand,0)===0){
@@ -782,7 +791,7 @@ function cpuTurn(){
     if(idx>=0){p.riichi=true;p.riichiIdx=p.discards.length;p.score-=1000;G.riichiSticks++;
       if(p.discards.length===0&&!G.callHappened)p.doubleRiichi=true;
       G.pendingRiichiDeclarer=pid;sfx.riichi();toast(POS[pid]+' リーチ');
-      return doDiscard(pid,idx);}
+      return later(()=>doDiscard(pid,idx),sp().call);}
   }
   if(p.riichi){const i=p.hand.indexOf(p.drawn);return doDiscard(pid,i>=0?i:0);}
   doDiscard(pid,chooseBestDiscard(p));
@@ -964,9 +973,10 @@ function renderSeat(id,p,pos){
   const fsTenpai=G.skill&&G.skill.foresight&&p.id!==0&&!p.riichi&&!G.over&&shanten(p.hand,p.melds.length)===0;
   info.innerHTML=`<span class="dl">${POS[p.id]}</span> ${WINDS[p.seatWind]}${p.isDealer?'<b>親</b>':''} <span class="sc">${p.score}</span>`+(p.riichi?' <span class="rii">立</span>':'')+(fsTenpai?' <span class="tenpai">聴</span>':'');
   el.appendChild(info);
+  const drew=(G.turn===p.id&&G.phase==='discard'&&!G.over&&p.drawn>=0);
   if(side){
     const backs=document.createElement('div');backs.className='handcol';
-    for(let i=0;i<p.hand.length;i++)backs.appendChild(tileEl(-1,'sm'));
+    for(let i=0;i<p.hand.length;i++)backs.appendChild(tileEl(-1,'sm'+(drew&&i===p.hand.length-1?' drew':'')));
     const right=document.createElement('div');
     if(p.melds.length)right.appendChild(buildMelds(p));
     right.appendChild(buildDiscards(p,true));
@@ -974,7 +984,8 @@ function renderSeat(id,p,pos){
     if(pos==='left'){wrap.appendChild(backs);wrap.appendChild(right);}else{wrap.appendChild(right);wrap.appendChild(backs);}
     el.appendChild(wrap);
   }else{
-    if(p.id!==0){const hr=document.createElement('div');hr.className='handrow';for(let i=0;i<p.hand.length;i++)hr.appendChild(tileEl(-1,'sm'));el.appendChild(hr);}
+    if(p.id!==0){const hr=document.createElement('div');hr.className='handrow';
+      for(let i=0;i<p.hand.length;i++)hr.appendChild(tileEl(-1,'sm'+(drew&&i===p.hand.length-1?' drew':'')));el.appendChild(hr);}
     if(p.melds.length)el.appendChild(buildMelds(p));
     el.appendChild(buildDiscards(p,false));
   }
@@ -1046,6 +1057,11 @@ function showFinal(){
 
 document.getElementById('newGame').onclick=()=>{if(confirm('この局をやり直しますか？'))newHand(true);};
 document.getElementById('begChk').onchange=()=>render();
+function updateSpeedBtn(){document.getElementById('speedBtn').textContent='速度 '+sp().label;}
+document.getElementById('speedBtn').onclick=()=>{
+  const order=['slow','normal','fast'];SPEED=order[(order.indexOf(SPEED)+1)%3];
+  lsSet('mjSpeed',SPEED);updateSpeedBtn();toast('対局速度: '+sp().label);};
+updateSpeedBtn();
 
 function showHelp(){
   const ov=document.getElementById('overlay');ov.style.display='flex';
