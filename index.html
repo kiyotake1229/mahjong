@@ -224,7 +224,13 @@
   .qtag{display:inline-block;background:rgba(201,169,97,.16);color:var(--gold-hi);border:1px solid var(--line2);
     font-weight:700;font-size:11px;letter-spacing:.02em;padding:1px 8px;border-radius:4px;margin-right:6px}
   #coachBtns.quizrow{justify-content:center}
-  .qopt{padding:8px 12px}.qopt span{display:inline-flex;gap:2px;align-items:center}
+  .qopt{padding:9px 13px}.qopt span{display:inline-flex;gap:3px;align-items:center}
+  .qopt .tile.sm{width:27px;height:37px;border-radius:4px}
+  .qfb{min-height:18px;margin-top:8px;font-size:13px;font-weight:700}
+  .qfb.ok{color:var(--gold-hi)}.qfb.ng{color:var(--shu)}
+  .chap-num{font-family:var(--f-mincho);font-size:13px;color:var(--muted);letter-spacing:.2em;margin-bottom:2px}
+  .badge-big svg{width:40px;height:40px}
+  @media (min-width:900px) and (min-height:700px){ .tile.sm{width:21px;height:29px} .qopt .tile.sm{width:29px;height:40px} }
   .qopt.qok{outline:1.5px solid var(--gold);outline-offset:2px}
   .qopt.qng{animation:shake .38s}
   @keyframes shake{0%,100%{transform:translateX(0)}25%,75%{transform:translateX(-5px)}50%{transform:translateX(5px)}}
@@ -335,6 +341,7 @@
 const SUIT=['man','pin','sou'], SUITJ=['萬','筒','索'], HON=['東','南','西','北','白','發','中'];
 const WINDS=['東','南','西','北'], POS=['あなた','下家','対面','上家'];
 const isHonor=t=>t>=27;
+const pname=i=>(G&&G.players[i]&&G.players[i].name)||POS[i];
 const isTermHon=t=>t>=27||t%9===0||t%9===8;
 function tileName(t){return t<27?(t%9+1)+['m','p','s'][(t/9)|0]:HON[t-27];}
 const KAN_NUM=['一','二','三','四','五','六','七','八','九'];
@@ -728,7 +735,7 @@ function ronPhase(fromPid,tile){
     G.offering=true;setGuide('相手の捨て牌で<b>あがれます</b>！ <span class="tag">ロン</span>を押そう（見送るなら スルー）');
     flash('ロン?');return;
   }
-  if(claim.length){claim.sort((a,b)=>((a-fromPid+4)%4)-((b-fromPid+4)%4));const w=claim[0];flash(POS[w]+'のロン');return later(()=>win(w,fromPid,false,tile),sp().call);}
+  if(claim.length){claim.sort((a,b)=>((a-fromPid+4)%4)-((b-fromPid+4)%4));const w=claim[0];flash(pname(w)+'のロン');return later(()=>win(w,fromPid,false,tile),sp().call);}
   ponPhase(fromPid,tile);
 }
 function ponPhase(fromPid,tile){
@@ -773,7 +780,7 @@ function doPon(pid,fromPid,tile,kan){
   src.discards.pop();src.discards.push({claimed:true,t:tile});
   let need=kan?3:2,rm=0;p.hand=p.hand.filter(t=>{if(t===tile&&rm<need){rm++;return false;}return true;});
   p.melds.push({t:'trip',tile,k:kan?4:3,concealed:false,kan,from:fromPid,called:tile});
-  clearIppatsu();G.callHappened=true;G.offering=false;flash(POS[pid]+(kan?'のカン':'のポン'));sfx.call();
+  clearIppatsu();G.callHappened=true;G.offering=false;flash(pname(pid)+(kan?'のカン':'のポン'));sfx.call();
   if(kan){revealKanDora();const rt=G.wall.shift();p.hand.push(rt);p.drawn=rt;p.hand.sort((a,b)=>a-b);G.rinshanFlag=true;}
   G.turn=pid;G.phase='discard';p.drawn=kan?p.drawn:-1;
   render();
@@ -785,7 +792,7 @@ function doChi(pid,fromPid,tile,combo){
   for(const t of combo){const i=p.hand.indexOf(t);p.hand.splice(i,1);}
   const low=Math.min(tile,...combo);
   p.melds.push({t:'seq',tile:low,k:3,concealed:false,from:fromPid,called:tile});
-  clearIppatsu();G.callHappened=true;G.offering=false;flash(POS[pid]+'のチー');sfx.call();
+  clearIppatsu();G.callHappened=true;G.offering=false;flash(pname(pid)+'のチー');sfx.call();
   G.turn=pid;G.phase='discard';p.drawn=-1;p.hand.sort((a,b)=>a-b);
   render();
   if(pid===0)humanTurn();else later(()=>cpuDiscardOnly(pid),think());
@@ -807,14 +814,14 @@ function cpuTurn(){
   // ツモ評価に使う一発は今のフラグ。引いた後に消す。
   if(isAgari(p.hand,p.melds.length)){
     const ev=evaluate(p.hand,p.melds,buildCtx(pid,true,p.drawn));
-    if(ev){G.ippatsu[pid]=false;flash(POS[pid]+'のツモ');return later(()=>win(pid,pid,true,p.drawn),sp().call);}
+    if(ev){G.ippatsu[pid]=false;flash(pname(pid)+'のツモ');return later(()=>win(pid,pid,true,p.drawn),sp().call);}
   }
   G.ippatsu[pid]=false; // 自分のツモ番を過ぎたので一発消滅
   if(!p.riichi&&p.melds.length===0&&p.score>=1000&&G.wall.length>=4&&shanten(p.hand,0)===0){
     const idx=chooseTenpaiDiscard(p);
     if(idx>=0){p.riichi=true;p.riichiIdx=p.discards.length;p.score-=1000;G.riichiSticks++;
       if(p.discards.length===0&&!G.callHappened)p.doubleRiichi=true;
-      G.pendingRiichiDeclarer=pid;sfx.riichi();toast(POS[pid]+' リーチ');
+      G.pendingRiichiDeclarer=pid;sfx.riichi();toast(pname(pid)+' リーチ');
       return later(()=>doDiscard(pid,idx),sp().call);}
   }
   if(p.riichi){const i=p.hand.indexOf(p.drawn);return doDiscard(pid,i>=0?i:0);}
@@ -840,6 +847,12 @@ function recommendDiscard(p){
 }
 function chooseTenpaiDiscard(p){const seen=new Set();for(let i=0;i<p.hand.length;i++){const t=p.hand[i];if(seen.has(t))continue;seen.add(t);const r=p.hand.slice();r.splice(i,1);if(shanten(r,p.melds.length)===0)return i;}return -1;}
 /* 打ち方のキャラ: normal / call(鳴き多め) / defense(守り重視) / riichi(門前・リーチ派) */
+/* 役牌の対子/刻子を持っている＝鳴いても役が付く見込み */
+function hasYakuhaiSource(p){
+  const c=toCounts(p.hand);
+  for(let t=27;t<34;t++){const yk=t>=31||(t-27===p.seatWind)||(t-27===G.roundWind);if(yk&&c[t]>=2)return true;}
+  return p.melds.some(m=>m.t==='trip'&&(m.tile>=31||m.tile-27===p.seatWind||m.tile-27===G.roundWind));
+}
 function riichiOpponents(p){return G.players.filter(o=>o.id!==p.id&&o.riichi);}
 function safeDiscardIdx(p){
   const opps=riichiOpponents(p);if(!opps.length)return -1;
@@ -872,7 +885,7 @@ function cpuWantsPon(pid,tile){
   let rm=0;const rest=p.hand.filter(t=>{if(t===tile&&rm<2){rm++;return false;}return true;});
   const before=shanten(p.hand,p.melds.length),after=shanten(rest,p.melds.length+1);
   const yakuhai=tile>=31||(tile>=27&&(tile-27===p.seatWind||tile-27===G.roundWind));
-  if(st==='call'){ if(after>before)return false; if(yakuhai)return true; }
+  if(st==='call'){ if(after>before)return false; if(yakuhai)return true; if(hasYakuhaiSource(p)&&after<before)return true; }
   else { if(after>=before)return false; if(yakuhai)return true; }
   const simple=p.hand.every(t=>!isTermHon(t))&&!isTermHon(tile);
   const suits=new Set(p.hand.concat(p.melds.flatMap(expandMeld)).filter(t=>t<27).map(t=>(t/9)|0));
@@ -891,7 +904,8 @@ function cpuWantsChi(pid,tile,combos){
     const suits=new Set(p.hand.concat(p.melds.flatMap(expandMeld)).filter(t=>t<27).map(t=>(t/9)|0));
     const honitsu=suits.size<=1;
     const ok=st==='call'?after<=before:after<before;
-    if(ok&&(simple||honitsu)&&after<bestSh){bestSh=after;best=cb;}
+    const yk=st==='call'&&hasYakuhaiSource(p)&&after<before;
+    if(ok&&(simple||honitsu||yk)&&after<bestSh){bestSh=after;best=cb;}
   }
   return best;
 }
@@ -1235,14 +1249,15 @@ function infoRun(){clearHL();const s=tut.steps[tut.i];
   (s.hl||[]).forEach(v=>hlTile(v));}
 function renderQuiz(q,onOk){
   clearHL();const c=document.getElementById('coach');c.hidden=false;
-  document.getElementById('coachMsg').innerHTML=`<span class="qtag">クイズ</span> ${q.q}`;
+  document.getElementById('coachMsg').innerHTML=`<span class="qtag">クイズ</span> ${q.q}<div class="qfb" id="quizFb"></div>`;
   const bc=document.getElementById('coachBtns');bc.innerHTML='';bc.classList.add('quizrow');
   const skip=document.createElement('button');skip.className='skip';skip.textContent='やめる';
-  skip.onclick=()=>{if(confirm('レッスンを中断して道場に戻りますか？')){document.getElementById('coach').hidden=true;bc.classList.remove('quizrow');clearHL();showDojo();}};
+  skip.onclick=()=>{if(confirm('レッスンを中断しますか？')){document.getElementById('coach').hidden=true;bc.classList.remove('quizrow');clearHL();const st=tut.story!=null;tut.story=null;setSpeaker(null);st?showStory():showDojo();}};
   bc.appendChild(skip);
   q.opts.forEach(o=>{const b=document.createElement('button');b.className='btn gray qopt';b.innerHTML='<span>'+o.h+'</span>';
-    b.onclick=()=>{ if(o.ok){b.classList.add('qok');toast('正解！ ✨');setTimeout(()=>{bc.classList.remove('quizrow');onOk();},700);}
-      else{b.classList.add('qng');toast('おしい！ もう一度');setTimeout(()=>b.classList.remove('qng'),500);} };
+    b.onclick=()=>{ const fb=document.getElementById('quizFb');
+      if(o.ok){b.classList.add('qok');fb.textContent='正解。';fb.className='qfb ok';bc.querySelectorAll('.qopt').forEach(x=>x.disabled=true);setTimeout(()=>{bc.classList.remove('quizrow');onOk();},800);}
+      else{b.classList.add('qng');fb.textContent='おしい、もう一度。';fb.className='qfb ng';setTimeout(()=>b.classList.remove('qng'),500);} };
     bc.appendChild(b);});
 }
 function confetti(){
@@ -1537,6 +1552,7 @@ function storyChapterDone(id){
   if(id)lsSet('mjLesson_'+id,'1');
   const finish=()=>{tut.story=null;setSpeaker(null);document.getElementById('coach').hidden=true;
     confetti();
+    if(ch<5){showChapterClear(ch);return;}
     if(ch===5){const ov=document.getElementById('overlay');ov.style.display='flex';
       document.getElementById('modal').innerHTML=`<h2>物語クリア</h2>
         <div class="badge-big grand"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8l4 4 4-7 4 7 4-4-1.5 10H5.5z"/></svg></div>
@@ -1549,6 +1565,16 @@ function storyChapterDone(id){
   say(c.outro,finish);
 }
 /* 最終章：三人と本気の一局（配牌だけ少し良くする） */
+function showChapterClear(ch){
+  const c=STORY[ch];const ov=document.getElementById('overlay');ov.style.display='flex';
+  document.getElementById('modal').innerHTML=`<div class="chap-num">第${['一','二','三','四','五','終'][ch]}章</div>
+    <h2>${c.t}</h2>
+    <div class="badge-big">${avSVG(c.who)}</div>
+    <div class="title-earn">クリア</div>
+    <div class="sub">${ch+1<STORY.length?'次の章が開きました。':''}</div>
+    <button class="btn" id="chapNext">つづける</button>`;
+  document.getElementById('chapNext').onclick=()=>showStory();
+}
 function storyFinalStart(){
   document.getElementById('coach').hidden=true;setSpeaker(null);
   G=null;newHand(false);
