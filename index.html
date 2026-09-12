@@ -203,6 +203,18 @@
   #coachWho.story{background:#1b2520;color:var(--gold-hi);border:1px solid var(--line2);padding-left:3px}
   #coachWho.story .av{background:var(--gold);color:#1b2520}
   #coachBubble.story{border-color:var(--line2)}
+  #coachBubble.hasport{display:grid;grid-template-columns:auto 1fr;column-gap:14px;align-items:start}
+  #coachPortrait{grid-row:1/3;width:92px;height:107px;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.45);margin-top:4px}
+  #coachPortrait[hidden]{display:none}
+  #coachPortrait .pt{width:100%;height:100%;display:block}
+  #coachPortrait.in{animation:portin .28s ease-out}
+  @keyframes portin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  #coachBubble.hasport #coachMsg,#coachBubble.hasport #coachBtns{grid-column:2}
+  .st-ch .who{width:36px;height:42px;border-radius:7px;background:none;border:none;overflow:hidden}
+  .st-ch .who .pt{width:100%;height:100%;display:block}
+  .port-big{width:108px;height:126px;margin:10px auto;border-radius:14px;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,.5);animation:badgepop .45s cubic-bezier(.25,1.3,.4,1)}
+  .port-big .pt{width:100%;height:100%;display:block}
+  @media (max-width:560px){ #coachPortrait{width:70px;height:82px} #coachBubble.hasport{column-gap:10px} }
   .st-ch{display:flex;align-items:center;gap:13px;width:100%;margin:7px 0;padding:12px 14px;border-radius:9px;cursor:pointer;text-align:left;
     background:rgba(255,255,255,.07);border:1px solid var(--line);color:var(--ink);transition:.16s;font-family:var(--f-ui)}
   .st-ch:hover:not(.lock){border-color:var(--line2);background:rgba(201,169,97,.09)}
@@ -331,6 +343,7 @@
 <div id="coach" hidden>
   <div id="coachBubble">
     <div id="coachWho"><span class="av"></span><span class="nm">コーチ</span></div>
+    <div id="coachPortrait" hidden></div>
     <div id="coachMsg"></div>
     <div id="coachBtns"></div>
   </div>
@@ -1473,49 +1486,68 @@ const CHARS={
   shizuka:{n:'シズカ',ic:'<path d="M15 3a8 8 0 1 0 6 13 7 7 0 0 1-6-13z"/>'},
   gen:{n:'ゲン',ic:'<path d="M12 3l7 9-7 9-7-9z"/><path d="M12 8l3 4-3 4-3-4z"/>'}
 };
+/* 影絵ポートレート（墨＋朱、金の灯り） */
+let PGN=0;
+const PORTRAITS={
+ master:{body:'<path d="M16,140 C16,110 34,98 50,94 L54,86 L66,86 L70,94 C86,98 104,110 104,140 Z"/>',head:'<ellipse cx="60" cy="54" rx="24" ry="28"/><ellipse cx="60" cy="84" rx="9" ry="7"/>',hair:'<path d="M33,42 C34,22 86,22 87,42 L88,47 L32,47 Z"/><path d="M84,44 L101,49 L86,53 Z"/>',acc:'<path d="M50,97 L60,113 L70,97"/><path d="M36,45 L84,45"/>'},
+ hayato:{body:'<path d="M14,140 C14,108 32,96 50,92 L54,84 L66,84 L70,92 C88,96 106,108 106,140 Z"/>',head:'<ellipse cx="60" cy="54" rx="24" ry="27"/>',hair:'<path d="M35,46 L37,20 L47,35 L54,9 L61,32 L71,11 L76,34 L86,17 L86,46 Z"/>',lean:-6,acc:'<path d="M46,93 L54,105 L60,99 L66,105 L74,93"/><path d="M56,101 L55,118 M64,101 L65,118"/>'},
+ shizuka:{body:'<path d="M22,140 C22,112 38,100 52,96 L55,84 L65,84 L68,96 C82,100 98,112 98,140 Z"/>',head:'<ellipse cx="60" cy="53" rx="22" ry="27"/>',hair:'<path d="M37,54 C35,24 85,24 83,54 L84,60 C78,50 42,50 36,60 Z"/><circle cx="80" cy="30" r="11"/>',acc:'<path d="M81,29 L103,14"/><circle cx="104" cy="13" r="2.8" fill="#b8524a" stroke="none"/><path d="M46,99 L60,119 L74,99"/><path d="M50,96 L60,111 L70,96"/>'},
+ gen:{body:'<path d="M6,140 C6,104 28,92 48,90 L52,84 L68,84 L72,90 C92,92 114,104 114,140 Z"/>',head:'<ellipse cx="60" cy="55" rx="25" ry="27"/>',hair:'<path d="M33,45 L33,27 L87,27 L87,45 Z"/>',acc:'<rect x="37" y="49" width="19" height="11" rx="3"/><rect x="64" y="49" width="19" height="11" rx="3"/><path d="M56,53 L64,53"/><path d="M48,92 L60,105 L72,92"/>'}
+};
+const POSES={
+ point:'<path d="M97,140 C97,112 100,94 104,80 L104,64 L113,64 L113,82 C112,96 110,112 110,140 Z"/><rect x="105" y="46" width="6" height="20" rx="3"/>',
+ cross:'<path d="M8,128 C8,116 16,110 30,108 L34,118 C22,120 16,124 14,140 L8,140 Z"/><path d="M112,128 C112,116 104,110 90,108 L86,118 C98,120 104,124 106,140 L112,140 Z"/>'
+};
+function portraitSVG(id,pose){
+  const P=PORTRAITS[id];if(!P)return '';const gid='pg_'+id+'_'+(++PGN),INK='#1a1f1c',ACC='#b8524a';
+  const tf=P.lean?`transform="rotate(${P.lean} 60 140)"`:'';
+  return `<svg class="pt" viewBox="0 0 120 140" xmlns="http://www.w3.org/2000/svg"><defs><radialGradient id="${gid}" cx="50%" cy="36%" r="72%"><stop offset="0" stop-color="#f4ecd4"/><stop offset="1" stop-color="#c9a961"/></radialGradient></defs><rect x="0" y="0" width="120" height="140" rx="14" fill="url(#${gid})"/><g fill="${INK}" ${tf}>${P.body}${P.head}${P.hair||''}${pose==='point'?POSES.point:''}${pose==='cross'?POSES.cross:''}</g><g fill="none" stroke="${ACC}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" ${tf}>${P.acc||''}${pose==='cross'?'<path d="M30,112 C50,104 70,104 90,112"/>':''}</g></svg>`;
+}
 const SEATNAMES={1:'ハヤト',2:'ゲン',3:'シズカ'};
 const SEATSTYLES={1:'call',2:'riichi',3:'defense'};
 let storyCasting=false;
 function avSVG(id){const c=CHARS[id];return c&&c.ic?`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${c.ic}</svg>`:'';}
-function setSpeaker(id){
-  const w=document.getElementById('coachWho'),b=document.getElementById('coachBubble');
-  const c=CHARS[id]||CHARS.coach;
+function setSpeaker(id,pose){
+  const w=document.getElementById('coachWho'),b=document.getElementById('coachBubble'),pt=document.getElementById('coachPortrait');
+  const c=CHARS[id]||CHARS.coach;const story=!!(id&&id!=='coach');
   w.querySelector('.nm').textContent=c.n;w.querySelector('.av').innerHTML=avSVG(id);
-  w.classList.toggle('story',!!(id&&id!=='coach'));b.classList.toggle('story',!!(id&&id!=='coach'));
+  w.classList.toggle('story',story);b.classList.toggle('story',story);b.classList.toggle('hasport',story);
+  if(story){const key=id+'/'+(pose||'calm');if(pt.dataset.key!==key){pt.innerHTML=portraitSVG(id,pose||'calm');pt.dataset.key=key;pt.classList.remove('in');void pt.offsetWidth;pt.classList.add('in');}pt.hidden=false;}
+  else{pt.hidden=true;pt.dataset.key='';}
 }
 function castSeats(){for(let i=1;i<4;i++){G.players[i].name=SEATNAMES[i];G.players[i].style=SEATSTYLES[i];}render();}
 /* セリフを順に表示 */
 function say(lines,onDone){
-  let i=0;const step=()=>{clearHL();const L=lines[i];setSpeaker(L.who);
+  let i=0;const step=()=>{clearHL();const L=lines[i];setSpeaker(L.who,L.pose);
     const last=i>=lines.length-1;
     coachShow(L.t,[{label:last?(lines.done||'次へ'):'次へ',fn:()=>{i++;if(i<lines.length)step();else onDone();}}],true);};
   step();
 }
 const STORY=[
   {id:0,t:'入店',sub:'雀荘「翠」の扉を開ける',who:'master',
-   intro:[{who:'master',t:'いらっしゃい。ここは雀荘「翠」。麻雀は初めてかい？'},{who:'master',t:'まずは牌を見てみよう。種類さえ分かれば、あとは並べるだけだ。'}],
+   intro:[{who:'master',t:'いらっしゃい。ここは雀荘「翠」。麻雀は初めてかい？'},{who:'master',pose:'point',t:'まずは牌を見てみよう。種類さえ分かれば、あとは並べるだけだ。'}],
    run:()=>{startKihon();setSpeaker('master');},
    outro:[{who:'master',t:'筋がいいね。次は実際に一局、あがってみようか。'}]},
   {id:1,t:'初めての和了',sub:'マスターの手ほどき',who:'master',
    intro:[{who:'master',t:'配牌を見て、いらない牌から切っていく。焦らなくていい。'},{who:'master',t:'最後の1枚を自分で引けば「ツモ」だ。やってごらん。'}],
    run:()=>{startTsumo();setSpeaker('master');},
-   outro:[{who:'master',t:'見事。それが「あがり」だ。'},{who:'hayato',t:'へえ、新人さんやるじゃん。次は俺と打とうぜ！'}]},
+   outro:[{who:'master',pose:'cross',t:'見事。それが「あがり」だ。'},{who:'hayato',pose:'point',t:'へえ、新人さんやるじゃん。次は俺と打とうぜ！'}]},
   {id:2,t:'早打ちのハヤト',sub:'鳴きを覚える',who:'hayato',
-   intro:[{who:'hayato',t:'俺は待たない主義でね。鳴いて鳴いて、速攻であがる！'},{who:'master',t:'彼の打ち方から「鳴き」を学ぶといい。相手の捨て牌をもらう技だ。'}],
+   intro:[{who:'hayato',pose:'point',t:'俺は待たない主義でね。鳴いて鳴いて、速攻であがる！'},{who:'master',t:'彼の打ち方から「鳴き」を学ぶといい。相手の捨て牌をもらう技だ。'}],
    run:()=>{startNaki();setSpeaker('hayato');},
-   outro:[{who:'hayato',t:'そうそう！ でも鳴くとリーチできないし、役がいる。そこは気をつけな。'}]},
+   outro:[{who:'hayato',pose:'cross',t:'そうそう！ でも鳴くとリーチできないし、役がいる。そこは気をつけな。'}]},
   {id:3,t:'シズカの守り',sub:'リーチに振り込まない',who:'shizuka',
-   intro:[{who:'shizuka',t:'攻めるだけが麻雀じゃない。……リーチ。'},{who:'master',t:'相手がリーチしたら、まず守り。彼女の捨て牌をよく見て。'}],
+   intro:[{who:'shizuka',pose:'cross',t:'攻めるだけが麻雀じゃない。……リーチ。'},{who:'master',pose:'point',t:'相手がリーチしたら、まず守り。彼女の捨て牌をよく見て。'}],
    run:()=>{startMamori();setSpeaker('shizuka');},
    outro:[{who:'shizuka',t:'現物は絶対に当たらない。覚えておいて。'}]},
   {id:4,t:'勝負師ゲン',sub:'リーチとロンで取る',who:'gen',
-   intro:[{who:'gen',t:'小さくまとまるな。リーチして、ロンで取る。それが一番気持ちいい。'},{who:'gen',t:'テンパイしたら迷わずリーチだ。俺の捨て牌、しっかり見とけよ。'}],
+   intro:[{who:'gen',pose:'cross',t:'小さくまとまるな。リーチして、ロンで取る。それが一番気持ちいい。'},{who:'gen',pose:'point',t:'テンパイしたら迷わずリーチだ。俺の捨て牌、しっかり見とけよ。'}],
    run:()=>{startRiichiRon();setSpeaker('gen');},
-   outro:[{who:'gen',t:'いい和了だ。役とドラで点は化ける。覚えとけ。'}]},
+   outro:[{who:'gen',pose:'point',t:'いい和了だ。役とドラで点は化ける。覚えとけ。'}]},
   {id:5,t:'翠の一員',sub:'三人と本気の一局',who:'master',
-   intro:[{who:'master',t:'ここまでよく頑張った。最後は三人と一局、本気で打ってみな。'},{who:'master',t:'ハヤトは鳴き、シズカは守り、ゲンはリーチ。三人の癖を思い出して。あがれたら合格だ。'}],
+   intro:[{who:'master',pose:'cross',t:'ここまでよく頑張った。最後は三人と一局、本気で打ってみな。'},{who:'master',pose:'point',t:'ハヤトは鳴き、シズカは守り、ゲンはリーチ。三人の癖を思い出して。あがれたら合格だ。'}],
    run:()=>storyFinalStart(),
-   outro:[{who:'master',t:'今日から君も、この店の一員だ。'}]}
+   outro:[{who:'master',pose:'point',t:'今日から君も、この店の一員だ。'}]}
 ];
 function storyProgress(){return parseInt(lsGet('mjStory')||'0',10);}
 function showStory(){
@@ -1525,7 +1557,7 @@ function showStory(){
     return `<button class="st-ch ${lock?'lock':''}" data-id="${c.id}" ${lock?'disabled':''}>
       <span class="num">第${['一','二','三','四','五','終'][c.id]}章</span>
       <span class="ttl"><b>${c.t}</b><small>${c.sub}</small></span>
-      <span class="who">${avSVG(c.who)}</span>
+      <span class="who">${portraitSVG(c.who,'calm')}</span>
       <span class="st ${done?'on':''}">${done?'✓':(lock?'—':'▶')}</span></button>`;}).join('');
   m.innerHTML=`<h2>雀荘「翠」</h2>
     <div class="st-intro">初めて訪れた小さな雀荘。<br>店主と三人の常連に教わりながら、一人前の打ち手を目指す。</div>
@@ -1569,7 +1601,7 @@ function showChapterClear(ch){
   const c=STORY[ch];const ov=document.getElementById('overlay');ov.style.display='flex';
   document.getElementById('modal').innerHTML=`<div class="chap-num">第${['一','二','三','四','五','終'][ch]}章</div>
     <h2>${c.t}</h2>
-    <div class="badge-big">${avSVG(c.who)}</div>
+    <div class="port-big">${portraitSVG(c.who,'point')}</div>
     <div class="title-earn">クリア</div>
     <div class="sub">${ch+1<STORY.length?'次の章が開きました。':''}</div>
     <button class="btn" id="chapNext">つづける</button>`;
