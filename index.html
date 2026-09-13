@@ -227,6 +227,9 @@
   .st-ch .st.on{color:var(--gold)}
   .st-intro{font-family:var(--f-mincho);color:var(--muted);font-size:13px;line-height:1.8;margin:2px 0 6px}
   .ttl-now{color:var(--gold-hi);font-size:12px}
+  .st-ch .ttl .cond{color:var(--muted);font-size:10px;margin-top:2px}
+  .st-ch .ttl .cond.on{color:var(--gold)}
+  .cond-ok{font-size:13px;color:var(--gold-hi);margin:6px 0 2px;padding:6px 10px;border:1px solid var(--line2);border-radius:8px;display:inline-block}
   #dojo2{max-width:420px;margin:6px auto 4px}
   #coachBubble::after{content:"";position:absolute;bottom:-9px;left:50%;transform:translateX(-50%);
     border:9px solid transparent;border-top-color:var(--line2);border-bottom:0}
@@ -633,10 +636,11 @@ function newHand(keep){
   else{const st=['call','defense','riichi'].sort(()=>Math.random()-.5);for(let i=1;i<4;i++)players[i].style=st[i-1];}
   const storyFinal=keep&&prev?prev.storyFinal:false;
   const stage=keep&&prev?prev.stage:null;
+  const stats=keep&&prev&&prev.stats?prev.stats:{dealIns:0,maxHan:0,ronBoss:false};
   G={wall,dead,doraInd:[dead[4]],uraInd:[dead[5]],players,dealer,round,honba,turn:dealer,roundWind:round,
      phase:'draw',over:false,riichiSticks:sticks,ippatsu:[false,false,false,false],callHappened:false,
      rinshanFlag:false,lastDiscard:null,advance:false,keepHonba:false,pendingRiichiDeclarer:-1,offering:false,
-     tutorial:false,tutGate:null,gen:++GEN,skill:{foresight:false,peekTiles:null,god:false},storyFinal,stage};
+     tutorial:false,tutGate:null,gen:++GEN,skill:{foresight:false,peekTiles:null,god:false},storyFinal,stage,stats};
   render();
   later(drawStep,620);
 }
@@ -948,6 +952,7 @@ function win(pid,fromPid,tsumo,winTile){
     gained=pay.total+G.honba*300;
   }else{G.players[fromPid].score-=pay.total+G.honba*300;gained=pay.total+G.honba*300;}
   const sticks=G.riichiSticks*1000;p.score+=gained+sticks;G.riichiSticks=0;
+  if(G.stats){if(pid===0){G.stats.maxHan=Math.max(G.stats.maxHan,ev.han);if(!tsumo&&fromPid===2)G.stats.ronBoss=true;}else if(!tsumo&&fromPid===0)G.stats.dealIns++;}
   if(pid===0)gaugeAdd(30);
   tsumo?sfx.tsumo():sfx.ron();
   render();
@@ -1601,7 +1606,7 @@ function showStory(){
   const rows2=STAGES.map(st=>{const done=st.id<sprog,lock=!p1||st.id>sprog;
     return `<button class="st-ch ${lock?'lock':''}" data-stage="${st.id}" ${lock?'disabled':''}>
       <span class="num">第${['一','二','三','四','五'][st.id]}戦</span>
-      <span class="ttl"><b>${st.t}</b><small>${st.sub}</small></span>
+      <span class="ttl"><b>${st.t}</b><small>${st.sub}</small>${st.cond?`<small class="cond ${lsGet('mjFlag_'+st.boss)==='1'?'on':''}">流儀 ${lsGet('mjFlag_'+st.boss)==='1'?'◆':'◇'} ${st.cond.text}</small>`:''}</span>
       <span class="who">${portraitSVG(st.boss,'calm')}</span>
       <span class="st ${done?'on':''}">${done?'✓':(lock?'—':'▶')}</span></button>`;}).join('');
   const title=currentTitle();
@@ -1681,30 +1686,35 @@ function storyFinalEnd(won){
 /* ===== 第二部「腕試し」: 半荘で1位を取れば突破 ===== */
 const CHAR_STYLE={hayato:'call',shizuka:'defense',gen:'riichi',ren:'normal',master:'normal'};
 const STAGES=[
- {id:0,boss:'hayato',t:'ハヤト',sub:'鳴き速攻・強化版',level:2,cast:{2:'hayato',1:'gen',3:'shizuka'},title:'ハヤト超え',
+ {id:0,boss:'hayato',t:'ハヤト',sub:'鳴き速攻・強化版',level:2,cast:{2:'hayato',1:'gen',3:'shizuka'},title:'ハヤト超え',cond:{text:'ハヤトから直撃（ロン）で決める',test:(s,r)=>!!s.ronBoss,line:[{who:'hayato',pose:'cross',t:'俺の牌でロンかよ……速さの上を行かれた。完敗だ。'}]},
+  narrow:[{who:'hayato',pose:'point',t:'まあ俺には勝ったけどよ、トップじゃねえだろ。まだ認めねえぞ。'}],
   intro:[{who:'hayato',pose:'point',t:'よし、本気でいくぜ。鳴きの速さについてこれるか？'}],
   win:[{who:'hayato',pose:'cross',t:'……マジかよ。負けたのは俺だ。次はシズカさんに挑んでみな。'}],
   lose:[{who:'hayato',pose:'point',t:'速さで負けてるぜ。守るだけじゃ勝てない、あがりに行け！'}]},
- {id:1,boss:'shizuka',t:'シズカ',sub:'鉄壁の守り・強化版',level:2,cast:{2:'shizuka',1:'hayato',3:'gen'},title:'シズカ超え',
+ {id:1,boss:'shizuka',t:'シズカ',sub:'鉄壁の守り・強化版',level:2,cast:{2:'shizuka',1:'hayato',3:'gen'},title:'シズカ超え',cond:{text:'一度も振り込まずに勝つ',test:(s,r)=>s.dealIns===0,line:[{who:'shizuka',t:'一度も振り込まなかったのね。守りを教えた甲斐があった。'}]},
+  narrow:[{who:'shizuka',t:'私より上……でも一番ではない。まだ、よ。'}],
   intro:[{who:'shizuka',pose:'cross',t:'私は振り込まない。あなたがあがれなければ、それで私の勝ち。'}],
   win:[{who:'shizuka',t:'……見事。守りを崩されるのは久しぶり。'}],
   lose:[{who:'shizuka',pose:'point',t:'焦ってはだめ。相手が降りている時こそ、確実にあがる形を作って。'}]},
- {id:2,boss:'gen',t:'ゲン',sub:'リーチと高打点・強化版',level:2,cast:{2:'gen',1:'hayato',3:'shizuka'},title:'ゲン超え',
+ {id:2,boss:'gen',t:'ゲン',sub:'リーチと高打点・強化版',level:2,cast:{2:'gen',1:'hayato',3:'shizuka'},title:'ゲン超え',cond:{text:'満貫以上をあがって勝つ',test:(s,r)=>s.maxHan>=5,line:[{who:'gen',pose:'point',t:'満貫か。それでこそ勝負師だ。'}]},
+  narrow:[{who:'gen',pose:'cross',t:'俺には勝ったな。だが上がいる。悔しくねえのか？'}],
   intro:[{who:'gen',pose:'cross',t:'手加減はしねえ。リーチが来たら覚悟しろ。'}],
   win:[{who:'gen',t:'……いい打ち手になったな。認めてやる。'}],
   lose:[{who:'gen',pose:'point',t:'俺のリーチに突っ込みすぎだ。押すのは自分がテンパイの時だけだ。'}]},
- {id:3,boss:'ren',t:'レン',sub:'隙のないバランス型',level:3,cast:{2:'ren',1:'hayato',3:'shizuka'},title:'レン超え',
+ {id:3,boss:'ren',t:'レン',sub:'隙のないバランス型',level:3,cast:{2:'ren',1:'hayato',3:'shizuka'},title:'レン超え',cond:{text:'トビを出さず、2着以内',test:(s,r)=>!s.tobi&&r<=2,line:[{who:'ren',t:'淡々と、強い。私が目指す打ち方そのものね。'}]},
+  narrow:[{who:'ren',t:'私を上回ったのは事実。でも一番を取れないなら、まだ完成じゃない。'}],
   intro:[{who:'ren',t:'初めまして。私は攻めも守りも普通にやるだけ。……それが一番強いと思ってる。'}],
   win:[{who:'ren',t:'完敗。あなた、もうこの店で一番強いかもしれない。'}],
   lose:[{who:'ren',pose:'point',t:'どこかで無理をしたでしょう。基本を淡々と。それだけでいい。'}]},
  {id:4,boss:'master',t:'マスター',sub:'翠の最強',level:3,cast:{2:'master',1:'gen',3:'ren'},title:'翠の頂',
+  narrow:[{who:'master',t:'私には勝った。だが頂に立つには、一番を取ることだ。'}],
   intro:[{who:'master',pose:'cross',t:'よくここまで来た。最後は私が相手をしよう。'}],
   win:[{who:'master',pose:'point',t:'……参った。今日から、この店で一番強いのは君だ。'}],
   lose:[{who:'master',t:'まだ私には届かない。だが、あと一歩だ。'}]}
 ];
 function stageProgress(){return parseInt(lsGet('mjStage')||'0',10);}
 function part1Done(){return storyProgress()>=STORY.length;}
-function currentTitle(){const sp=stageProgress();if(sp>=STAGES.length)return '翠の頂';if(sp>0)return STAGES[sp-1].title;if(part1Done())return '翠の一員';return '';}
+function currentTitle(){const t=lsGet('mjTitle');if(t)return t;const sp=stageProgress();if(sp>=STAGES.length)return '翠の頂';if(sp>0)return STAGES[sp-1].title;if(part1Done())return '翠の一員';return '';}
 function castStage(st){
   for(const seat in st.cast){const id=st.cast[seat];const p=G.players[+seat];
     p.name=CHARS[id].n;p.style=CHAR_STYLE[id];p.level=(id===st.boss)?st.level:Math.max(1,st.level-1);}
@@ -1717,22 +1727,47 @@ function startStage(i){
   G=null;
   say(st.intro,()=>{document.getElementById('coach').hidden=true;setSpeaker(null);newHand(false);castStage(st);});
 }
+const TRUE_END=[
+  {who:'hayato',pose:'point',t:'言ったろ、新人さんはやるって。'},
+  {who:'shizuka',t:'守りも攻めも、もう教えることはない。'},
+  {who:'gen',pose:'cross',t:'……認める。お前が一番だ。'},
+  {who:'master',pose:'point',t:'この店を、君に託そう。今日から君が「翠の主」だ。'}
+];
+function flagCount(){return ['hayato','shizuka','gen','ren'].filter(id=>lsGet('mjFlag_'+id)==='1').length;}
 function showStageResult(){
-  const st=STAGES[G.stage];
+  const st=STAGES[G.stage];const bossSeat=2;
   const order=G.players.map((p,i)=>({i,score:p.score})).sort((a,b)=>b.score-a.score);
-  const rank=order.findIndex(o=>o.i===0)+1,won=rank===1;
-  if(won&&stageProgress()<st.id+1)lsSet('mjStage',String(st.id+1));
+  const rank=order.findIndex(o=>o.i===0)+1,bossRank=order.findIndex(o=>o.i===bossSeat)+1;
+  const outcome=rank===1?'win':(rank<bossRank?'narrow':'lose');
+  const stats=Object.assign({dealIns:0,maxHan:0,ronBoss:false},G.stats||{});stats.tobi=G.players.some(p=>p.score<0);
+  const special=outcome!=='lose'&&!!st.cond&&st.cond.test(stats,rank);
+  if(outcome!=='lose'&&stageProgress()<st.id+1)lsSet('mjStage',String(st.id+1));
+  if(special)lsSet('mjFlag_'+st.boss,'1');
+  const isFinal=st.boss==='master';
+  const trueEnd=isFinal&&outcome==='win'&&flagCount()>=3;
+  if(trueEnd)lsSet('mjTitle','翠の主');
   G.stage=null;
   const ov=document.getElementById('overlay');ov.style.display='flex';
   const rows=order.map((o,k)=>`${k+1}位 ${G.players[o.i].name||POS[o.i]}<span class="h">${G.players[o.i].score}</span>`).join('<br>');
+  const head=outcome==='win'?'完全勝利':(outcome==='narrow'?'辛勝':'敗北');
+  const title=outcome==='win'?(trueEnd?'翠の主':st.title):null;
+  const note=outcome==='win'?'':(outcome==='narrow'?`${st.t}より上の順位で突破。称号は1位の時だけ。`:'1位（またはボスより上）で突破。もう一度挑戦できます。');
   document.getElementById('modal').innerHTML=`<div class="chap-num">腕試し 第${['一','二','三','四','五'][st.id]}戦</div>
-    <h2>${won?'勝利':'敗北'}</h2>
-    <div class="port-big">${portraitSVG(st.boss,won?'calm':'point')}</div>
+    <h2>${head}</h2>
+    <div class="port-big">${portraitSVG(st.boss,outcome==='lose'?'point':'calm')}</div>
     <div class="yaku">${rows}</div>
-    ${won?`<div class="title-earn">称号「${st.title}」を獲得</div>`:'<div class="sub">1位になれば突破。もう一度挑戦できます。</div>'}
+    ${special?`<div class="cond-ok">流儀を制した　${st.cond.text}</div>`:''}
+    ${title?`<div class="title-earn">称号「${title}」を獲得</div>`:''}
+    ${note?`<div class="sub">${note}</div>`:''}
     <button class="btn" id="stgNext">つづける</button>`;
   document.getElementById('stgNext').onclick=()=>{ov.style.display='none';
-    say(won?st.win:st.lose,()=>{document.getElementById('coach').hidden=true;setSpeaker(null);if(won)confetti();showStory();});};
+    let lines=outcome==='win'?st.win:(outcome==='narrow'?st.narrow:st.lose);
+    if(special)lines=lines.concat(st.cond.line);
+    if(isFinal&&outcome!=='lose'){
+      if(trueEnd)lines=TRUE_END;
+      else lines=lines.concat([{who:'master',t:'だが三人の流儀は、まだ全部は超えていないようだね。'}]);
+    }
+    say(lines,()=>{document.getElementById('coach').hidden=true;setSpeaker(null);if(outcome!=='lose')confetti();showStory();});};
 }
 function showDojo(){
   const ov=document.getElementById('overlay');ov.style.display='flex';
