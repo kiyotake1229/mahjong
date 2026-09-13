@@ -51,7 +51,7 @@
   #dora{display:inline-flex;gap:2px;align-items:center;vertical-align:middle;margin-left:2px}
   #table{position:relative;flex:1;min-height:0;width:100%;max-width:760px;align-self:center;
     background:radial-gradient(108% 82% at 50% 42%,rgba(58,102,80,.55),rgba(28,44,36,.3) 70%,transparent 100%)}
-  .seat{position:absolute;display:flex;flex-direction:column;align-items:center;gap:4px;z-index:2}
+  .seat{position:absolute;display:flex;flex-direction:column;align-items:center;gap:3px;z-index:2}
   .seat .info{font-size:11px;background:rgba(255,255,255,.08);padding:3px 10px;border-radius:7px;border:1px solid var(--line);
     white-space:nowrap;color:var(--muted);letter-spacing:.02em;box-shadow:var(--sh1)}
   .seat .info .sc{color:var(--ink);font-variant-numeric:tabular-nums;margin-left:2px}
@@ -64,23 +64,56 @@
   .seat .info .dl{opacity:.75}
   .seat.bottom{bottom:4px;left:50%;transform:translateX(-50%)}
   .seat.top{top:4px;left:50%;transform:translateX(-50%)}
-  .seat.left{left:4px;top:48%;transform:translateY(-50%)}
-  .seat.right{right:4px;top:48%;transform:translateY(-50%)}
+  .seat.left{left:6px;top:54%;transform:translateY(-50%)}
+  .seat.right{right:6px;top:54%;transform:translateY(-50%)}
+  :root{--smw:19px;--smh:26px;--xsw:9px;--xsh:13px}
   .handrow{display:flex;gap:2px;flex-wrap:nowrap}
-  .handcol{display:flex;flex-direction:column;gap:2px}
-  .sidewrap{display:flex;gap:5px;align-items:flex-start}
-  .discards{display:grid;grid-template-columns:repeat(6,auto);gap:2px;justify-content:center;margin-top:3px}
-  .discards.side{grid-template-columns:repeat(3,auto)}
-  .center{position:absolute;left:50%;top:47%;transform:translate(-50%,-50%);width:136px;height:136px;border-radius:50%;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;z-index:1}
-  .center svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
-  .center .core{position:absolute;inset:13px;border-radius:50%;
-    background:radial-gradient(circle at 50% 32%,#3a5145,#22302a);
-    box-shadow:inset 0 0 0 1px rgba(255,255,255,.07),inset 0 6px 16px rgba(0,0,0,.4),0 6px 20px rgba(0,0,0,.4)}
-  .center .in{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;gap:1px}
-  .center .wallcnt{font-size:30px;font-weight:500;line-height:1.05;color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:.01em}
-  .center .lb{color:var(--muted);font-size:10px;letter-spacing:.06em;margin-top:2px}
-  .center .sticks{display:flex;gap:9px;font-size:10px;color:var(--muted);margin-top:5px;font-variant-numeric:tabular-nums}
+  /* 横の家：寝かせた牌を縦に積む */
+  .handcol{display:flex;flex-direction:column;gap:1px}
+  .cell{width:var(--smh);height:var(--smw);display:flex;align-items:center;justify-content:center;position:relative}
+  .cell .tile{transform:rotate(90deg);transform-origin:center;flex:0 0 auto}
+  .cell.rot .tile{transform:none}
+  .cell.rot{height:var(--smh)}
+  .cell.drew{margin-top:8px;animation:drewin .22s ease-out}
+  .sidewrap{display:flex;gap:6px;align-items:flex-start}
+  .sidemid{display:flex;flex-direction:column;gap:4px;align-items:center}
+  /* 河：上下は6枚×段、左右は6枚の縦列を中央側へ増やす */
+  .river{display:grid;grid-template-columns:repeat(6,auto);gap:1px 2px;justify-content:center;margin-top:2px;min-height:calc(var(--smh) + 2px)}
+  .river .tile.rot{margin:0 4px}
+  .river.side{grid-template-columns:none;grid-auto-flow:column;grid-template-rows:repeat(6,auto);gap:2px;margin-top:0;min-height:0;min-width:calc(var(--smh) + 2px)}
+  .river.side.right{direction:rtl}
+  .river.side .cell.rot{margin:2px 0}
+  /* リーチ棒 */
+  .rstick{width:64px;height:6px;border-radius:3px;background:#eeeae0;position:relative;box-shadow:0 1px 2px rgba(0,0,0,.5);margin:3px auto}
+  .rstick::after{content:"";position:absolute;left:50%;top:50%;width:4px;height:4px;border-radius:50%;background:var(--shu);transform:translate(-50%,-50%)}
+  .rstick.v{width:6px;height:64px;margin:auto 0;align-self:center}
+  /* 牌山 */
+  .center{position:absolute;left:50%;top:56%;transform:translate(-50%,-50%);z-index:1}
+  .wallring{position:relative;width:calc(var(--xsw) * 17 + 16px + var(--xsh) * 2 + 8px);height:calc(var(--xsw) * 17 + 16px + var(--xsh) * 2 + 8px)}
+  .wside{position:absolute;display:flex;gap:1px}
+  .wside.t{top:0;left:50%;transform:translateX(-50%)}
+  .wside.b{bottom:0;left:50%;transform:translateX(-50%)}
+  .wside.l,.wside.r{flex-direction:column;top:50%;transform:translateY(-50%)}
+  .wside.l{left:0}.wside.r{right:0}
+  .wcell{width:var(--xsw);height:var(--xsh);display:flex;align-items:center;justify-content:center}
+  .wside.l .wcell,.wside.r .wcell{width:var(--xsh);height:var(--xsw)}
+  .wside.l .tile,.wside.r .tile{transform:rotate(90deg)}
+  .wcell.off{opacity:0}
+  .tile.xs{width:var(--xsw);height:var(--xsh);border-radius:2px;box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 1px 0 #15221b,0 1px 2px rgba(0,0,0,.45)}
+  .tile.xs .bk{opacity:.5}
+  .cpanel{position:absolute;inset:calc(var(--xsh) + 8px);border-radius:8px;
+    background:radial-gradient(circle at 50% 30%,#2b3a31,#1a2520);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08),inset 0 4px 14px rgba(0,0,0,.45),0 2px 10px rgba(0,0,0,.4)}
+  .cpanel .cw{position:absolute;font-family:var(--f-mincho);font-size:12px;color:var(--muted);font-weight:700}
+  .cpanel .cw.dealer{color:var(--gold-hi)}
+  .cw-top,.cw-bottom,.cw-left,.cw-right{position:absolute;display:flex;align-items:center;justify-content:center}
+  .cw-top{top:4px;left:0;right:0}.cw-bottom{bottom:4px;left:0;right:0}.cw-left{left:6px;top:0;bottom:0}.cw-right{right:6px;top:0;bottom:0}
+  .cw-top .cw,.cw-bottom .cw,.cw-left .cw,.cw-right .cw{position:static}
+  .cmain{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;text-align:center}
+  .cmain .rnd{font-family:var(--f-mincho);font-size:12px;color:var(--gold-hi);letter-spacing:.06em}
+  .cmain .rem{display:flex;align-items:baseline;gap:4px}
+  .cmain .rem b{font-size:26px;font-weight:500;color:var(--ink);font-variant-numeric:tabular-nums;line-height:1}
+  .cmain .rem span{font-size:10px;color:var(--muted)}
+  .cmain .hb{font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums}
   .melds{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
   .meldgroup{display:flex;gap:1px;align-items:flex-end}
   /* ===== 牌 ===== */
@@ -92,7 +125,7 @@
     display:flex;align-items:center;justify-content:center;font-weight:700;line-height:1;user-select:none}
   .tile::before{content:"";position:absolute;inset:0;border-radius:5px;pointer-events:none;
     background:linear-gradient(165deg,rgba(255,255,255,.5),transparent 38%)}
-  .tile.sm{width:19px;height:26px;border-radius:3px;
+  .tile.sm{width:var(--smw);height:var(--smh);border-radius:3px;
     box-shadow:inset 0 1px 0 rgba(255,255,255,.85),0 1px 0 #b3ac99,0 2px 4px rgba(0,0,0,.4)}
   .tile .face{position:relative;z-index:1;display:block;width:86%;height:86%}
   .tile.sm .face{width:92%;height:92%}
@@ -102,7 +135,6 @@
   .tile.back::before{background:linear-gradient(165deg,rgba(255,255,255,.2),transparent 42%)}
   .tile.back .bk{position:relative;z-index:1;display:block;width:100%;height:100%;opacity:.75}
   .handrow .tile.drew{margin-left:9px;animation:drewin .22s ease-out}
-  .handcol .tile.drew{margin-top:9px;animation:drewin .22s ease-out}
   @keyframes drewin{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:none}}
   .tile.rot{transform:rotate(90deg);margin:0 6px}
   .tile.rotm{transform:rotate(90deg)}
@@ -247,7 +279,7 @@
   .qfb.ok{color:var(--gold-hi)}.qfb.ng{color:var(--shu)}
   .chap-num{font-family:var(--f-mincho);font-size:13px;color:var(--muted);letter-spacing:.2em;margin-bottom:2px}
   .badge-big svg{width:40px;height:40px}
-  @media (min-width:900px) and (min-height:700px){ .tile.sm{width:21px;height:29px} .qopt .tile.sm{width:29px;height:40px} }
+  @media (min-width:900px) and (min-height:700px){ :root{--smw:21px;--smh:29px;--xsw:10px;--xsh:14px} .seat.top,.seat.left,.seat.right{--smw:19px;--smh:26px} .qopt .tile.sm{width:29px;height:40px} }
   .qopt.qok{outline:1.5px solid var(--gold);outline-offset:2px}
   .qopt.qng{animation:shake .38s}
   @keyframes shake{0%,100%{transform:translateX(0)}25%,75%{transform:translateX(-5px)}50%{transform:translateX(5px)}}
@@ -294,13 +326,17 @@
   .dojo-prog span{display:none}
   .dojo-count{font-size:11px;color:var(--muted);letter-spacing:.02em;margin-bottom:2px}
   @media (max-width:560px){
-    .tile{width:27px;height:37px}
-    .center{width:116px;height:116px}
+    :root{--smw:15px;--smh:21px;--xsw:7px;--xsh:10px}
+    .tile.sm{width:var(--smw);height:var(--smh)}
+    .tile{width:25px;height:34px}
+    #myHand{gap:1px}
+    .hand .tile.drawn{margin-left:8px}
     #gauge{width:84px}
     #skillbar{gap:6px}.skill{padding:6px 8px;font-size:11px}
     #peekStrip{top:calc(100px + env(safe-area-inset-top))}
   }
   @media (max-height:680px){ .tile{height:40px} }
+  @media (min-width:561px){ .seat.top,.seat.left,.seat.right{--smw:17px;--smh:23px} }
 </style>
 
 <div id="bg"></div>
@@ -974,20 +1010,7 @@ function render(){
   document.getElementById('honba').textContent=G.honba||0;
   document.getElementById('wallTop').textContent=G.wall.length;
   const dora=document.getElementById('dora');dora.innerHTML='';G.doraInd.forEach(d=>dora.appendChild(tileEl(d,'sm')));
-  const ctr=document.getElementById('center');
-  const R=64,C=2*Math.PI*R,frac=Math.max(0,Math.min(1,G.wall.length/70)),off=C*(1-frac);
-  ctr.innerHTML=`
-    <svg viewBox="0 0 150 150">
-      <circle cx="75" cy="75" r="${R}" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="2.5"/>
-      <circle cx="75" cy="75" r="${R}" fill="none" stroke="#c9a961" stroke-width="2.5" stroke-linecap="round"
-        stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}"/>
-    </svg>
-    <div class="core"></div>
-    <div class="in">
-      <div class="wallcnt">${G.wall.length}</div>
-      <div class="lb">残り</div>
-      <div class="sticks"><span>${G.honba||0}本場</span><span>供託 ${G.riichiSticks||0}</span></div>
-    </div>`;
+  renderCenter();
   renderSeat('seat0',G.players[0],'bottom');
   renderSeat('seat1',G.players[1],'right');
   renderSeat('seat2',G.players[2],'top');
@@ -1040,38 +1063,64 @@ function meldEl(m){
 }
 function discEl(d){if(typeof d==='object')return {tile:d.t,claimed:true};return{tile:d,claimed:false};}
 function buildDiscards(p,side){
-  const dv=document.createElement('div');dv.className='discards'+(side?' side':'');
+  const dv=document.createElement('div');dv.className='river'+(side?' side '+side:'');
   p.discards.forEach((d,i)=>{const info2=discEl(d);const e=tileEl(info2.tile,'sm');
-    if(i===p.riichiIdx)e.classList.add('rot');
+    const isR=(i===p.riichiIdx);
     if(info2.claimed)e.classList.add('dim');
     if(G.lastDiscard&&G.lastDiscard.pid===p.id&&i===p.discards.length-1&&!info2.claimed)e.classList.add('last');
-    dv.appendChild(e);});
+    if(side){const c=document.createElement('div');c.className='cell'+(isR?' rot':'');c.appendChild(e);dv.appendChild(c);}
+    else{if(isR)e.classList.add('rot');dv.appendChild(e);}
+  });
   return dv;
 }
 function buildMelds(p){const mm=document.createElement('div');mm.className='melds';p.melds.forEach(m=>mm.appendChild(meldEl(m)));return mm;}
+function rstick(vertical){const d=document.createElement('div');d.className='rstick'+(vertical?' v':'');return d;}
 function renderSeat(id,p,pos){
   const el=document.getElementById(id);el.innerHTML='';
   const info=document.createElement('div');info.className='info'+(G.turn===p.id&&!G.over?' turn':'');
   const side=(pos==='left'||pos==='right');
   const fsTenpai=G.skill&&G.skill.foresight&&p.id!==0&&!p.riichi&&!G.over&&shanten(p.hand,p.melds.length)===0;
   info.innerHTML=`<span class="dl">${p.name||POS[p.id]}</span> ${WINDS[p.seatWind]}${p.isDealer?'<b>親</b>':''} <span class="sc">${p.score}</span>`+(p.riichi?' <span class="rii">立</span>':'')+(fsTenpai?' <span class="tenpai">聴</span>':'');
-  el.appendChild(info);
   const drew=(G.turn===p.id&&G.phase==='discard'&&!G.over&&p.drawn>=0);
   if(side){
+    // 手牌（横向きに寝かせた裏牌の列）
     const backs=document.createElement('div');backs.className='handcol';
-    for(let i=0;i<p.hand.length;i++)backs.appendChild(tileEl(-1,'sm'+(drew&&i===p.hand.length-1?' drew':'')));
-    const right=document.createElement('div');
-    if(p.melds.length)right.appendChild(buildMelds(p));
-    right.appendChild(buildDiscards(p,true));
+    for(let i=0;i<p.hand.length;i++){const c=document.createElement('div');c.className='cell'+(drew&&i===p.hand.length-1?' drew':'');c.appendChild(tileEl(-1,'sm'));backs.appendChild(c);}
+    const mid=document.createElement('div');mid.className='sidemid';
+    if(p.melds.length)mid.appendChild(buildMelds(p));
+    mid.appendChild(buildDiscards(p,pos));
     const wrap=document.createElement('div');wrap.className='sidewrap';
-    if(pos==='left'){wrap.appendChild(backs);wrap.appendChild(right);}else{wrap.appendChild(right);wrap.appendChild(backs);}
-    el.appendChild(wrap);
-  }else{
-    if(p.id!==0){const hr=document.createElement('div');hr.className='handrow';
-      for(let i=0;i<p.hand.length;i++)hr.appendChild(tileEl(-1,'sm'+(drew&&i===p.hand.length-1?' drew':'')));el.appendChild(hr);}
+    const stick=p.riichi?rstick(true):null;
+    if(pos==='left'){wrap.appendChild(backs);wrap.appendChild(mid);if(stick)wrap.appendChild(stick);}
+    else{if(stick)wrap.appendChild(stick);wrap.appendChild(mid);wrap.appendChild(backs);}
+    el.appendChild(info);el.appendChild(wrap);
+  }else if(pos==='top'){
+    el.appendChild(info);
+    const hr=document.createElement('div');hr.className='handrow';
+    for(let i=0;i<p.hand.length;i++)hr.appendChild(tileEl(-1,'sm'+(drew&&i===p.hand.length-1?' drew':'')));el.appendChild(hr);
     if(p.melds.length)el.appendChild(buildMelds(p));
     el.appendChild(buildDiscards(p,false));
+    if(p.riichi)el.appendChild(rstick(false));
+  }else{ // bottom（自分）: 中央に近い順＝棒→河→名前
+    if(p.riichi)el.appendChild(rstick(false));
+    el.appendChild(buildDiscards(p,false));
+    el.appendChild(info);
   }
+}
+/* 中央：牌山＋卓中央パネル */
+function renderCenter(){
+  const ctr=document.getElementById('center');
+  const stacks=Math.ceil((G.wall.length+(G.dead?G.dead.length:0))/2),PER=17,TOTAL=68;
+  let k=0;const side=(cls)=>{let h=`<div class="wside ${cls}">`;for(let i=0;i<PER;i++){const on=k<stacks;k++;h+=`<div class="wcell${on?'':' off'}">${on?tileEl(-1,'xs').outerHTML:''}</div>`;}return h+'</div>';};
+  // 上→右→下→左の順に埋め、残りが減ると末尾から消える
+  const top=side('t'),right=side('r'),bottom=side('b'),left=side('l');
+  const me=G.players[0];
+  const wind=(i)=>{const p=G.players[i];return `<span class="cw ${p.isDealer?'dealer':''}">${WINDS[p.seatWind]}</span>`;};
+  ctr.innerHTML=`<div class="wallring">${top}${right}${bottom}${left}
+    <div class="cpanel">
+      <div class="cw-top">${wind(2)}</div><div class="cw-right">${wind(1)}</div><div class="cw-bottom">${wind(0)}</div><div class="cw-left">${wind(3)}</div>
+      <div class="cmain"><div class="rnd">${WINDS[G.roundWind]}${G.dealer+1}局</div><div class="rem"><b>${G.wall.length}</b><span>残り</span></div><div class="hb">${G.honba||0}本場　供託${G.riichiSticks||0}</div></div>
+    </div></div>`;
 }
 function btnIcon(label){
   const I={
