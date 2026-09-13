@@ -84,7 +84,20 @@
   .river.side.right{direction:rtl}
   .river.side .cell.rot{margin:2px 0}
   /* リーチ棒 */
-  .rstick{width:64px;height:6px;border-radius:3px;background:#eeeae0;position:relative;box-shadow:0 1px 2px rgba(0,0,0,.5);margin:3px auto}
+  .rstick{width:64px;height:6px;border-radius:3px;background:#eeeae0;position:relative;box-shadow:0 1px 2px rgba(0,0,0,.5);margin:3px auto;animation:stickin .4s cubic-bezier(.2,.9,.3,1)}
+  @keyframes stickin{from{opacity:0;transform:scaleX(.3)}to{opacity:1;transform:none}}
+  .tile.landing{visibility:hidden}
+  .tile.settle{animation:settle .22s ease-out}
+  @keyframes settle{0%{transform:scale(1.08)}100%{transform:none}}
+  .cell .tile.settle{animation:settleR .22s ease-out}
+  @keyframes settleR{0%{transform:rotate(90deg) scale(1.08)}100%{transform:rotate(90deg)}}
+  .tile.fly{border-radius:3px}
+  .delta{position:fixed;transform:translate(-50%,-100%);font-weight:700;font-size:15px;font-variant-numeric:tabular-nums;pointer-events:none;z-index:48;animation:deltaup 1.5s ease-out forwards;text-shadow:0 1px 3px rgba(0,0,0,.7)}
+  .delta.plus{color:var(--gold-hi)}.delta.minus{color:#e08a83}
+  @keyframes deltaup{0%{opacity:0;transform:translate(-50%,-60%)}15%{opacity:1}75%{opacity:1}100%{opacity:0;transform:translate(-50%,-180%)}}
+  .cpanel .cw.turn{color:var(--gold-hi)}
+  .cpanel .cw.turn::after{content:"";display:block;width:4px;height:4px;border-radius:50%;background:var(--gold);margin:2px auto 0}
+  .wdora{position:absolute;left:calc(100% + 8px);top:0;display:flex;gap:2px}
   .rstick::after{content:"";position:absolute;left:50%;top:50%;width:4px;height:4px;border-radius:50%;background:var(--shu);transform:translate(-50%,-50%)}
   .rstick.v{width:6px;height:64px;margin:auto 0;align-self:center}
   /* 牌山 */
@@ -634,7 +647,7 @@ function beep(freq,dur,type,vol,slide){
     o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+dur);}catch(e){}
 }
 const sfx={
-  tick:()=>beep(220,.05,'square',.08),
+  tick:()=>{try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();const n=AC.sampleRate*0.045|0;const b=AC.createBuffer(1,n,AC.sampleRate);const d=b.getChannelData(0);for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/n,3);const src=AC.createBufferSource();src.buffer=b;const f=AC.createBiquadFilter();f.type='bandpass';f.frequency.value=1500;f.Q.value=1.2;const g=AC.createGain();g.gain.value=.5;src.connect(f);f.connect(g);g.connect(AC.destination);src.start();}catch(e){}},
   draw:()=>beep(500,.06,'sine',.06),
   call:()=>{beep(330,.12,'sawtooth',.14);setTimeout(()=>beep(440,.14,'sawtooth',.14),90);},
   riichi:()=>{beep(660,.15,'sine',.16,880);setTimeout(()=>beep(880,.2,'sine',.16),140);},
@@ -752,19 +765,46 @@ function humanDiscard(idx){
     if(shanten(r,0)!==0){toast('その牌では聴牌しません');return;}
     p.riichi=true;p.pendingRiichi=false;p.riichiIdx=p.discards.length;p.score-=1000;G.riichiSticks++;
     if(p.discards.length===0&&!G.callHappened)p.doubleRiichi=true;
-    G.pendingRiichiDeclarer=0;sfx.riichi();toast('リーチ！');gaugeAdd(20);
+    G.pendingRiichiDeclarer=0;sfx.riichi();flash('リーチ');gaugeAdd(20);
   }
   doDiscard(0,idx);
 }
+function srcRectFor(pid,idx){
+  if(pid===0){const el=document.querySelectorAll('#myHand .tile')[idx];return el?el.getBoundingClientRect():null;}
+  const seat=document.getElementById('seat'+pid);const h=seat&&(seat.querySelector('.handcol .cell.drew, .handrow .tile.drew')||seat.querySelector('.handcol, .handrow'));
+  return h?h.getBoundingClientRect():null;
+}
+function flyTile(pid,tile,src){
+  const seat=document.getElementById('seat'+pid);if(!seat||!src)return;
+  const river=seat.querySelector('.river');if(!river)return;
+  const cells=river.children;const last=cells[cells.length-1];if(!last)return;
+  const real=last.classList.contains('cell')?last.querySelector('.tile'):last;if(!real)return;
+  const dst=real.getBoundingClientRect();
+  const rot=(real.style.transform||getComputedStyle(real).transform);
+  let deg=0;const m=/matrix\(([^)]+)\)/.exec(rot);if(m){const v=m[1].split(',').map(Number);deg=Math.round(Math.atan2(v[1],v[0])*180/Math.PI);}
+  real.classList.add('landing');
+  const c=tileEl(tile,'sm fly');document.body.appendChild(c);
+  const sw=pid===0?src.width:dst.width,sh=pid===0?src.height:dst.height;
+  c.style.cssText=`position:fixed;left:${src.left+src.width/2-sw/2}px;top:${src.top+src.height/2-sh/2}px;width:${sw}px;height:${sh}px;z-index:40;transform:rotate(0deg);transition:left .26s cubic-bezier(.2,.8,.3,1),top .26s cubic-bezier(.2,.8,.3,1),width .26s,height .26s,transform .26s;pointer-events:none;box-shadow:0 8px 14px rgba(0,0,0,.45)`;
+  void c.offsetWidth;
+  const bw=dst.width/Math.abs(Math.cos(deg*Math.PI/180)||1);
+  c.style.left=(dst.left+dst.width/2-(deg%180===0?dst.width:dst.height)/2)+'px';
+  c.style.top=(dst.top+dst.height/2-(deg%180===0?dst.height:dst.width)/2)+'px';
+  c.style.width=(deg%180===0?dst.width:dst.height)+'px';c.style.height=(deg%180===0?dst.height:dst.width)+'px';
+  c.style.transform=`rotate(${deg}deg)`;
+  const done=()=>{c.remove();real.classList.remove('landing');real.classList.add('settle');sfx.tick();};
+  setTimeout(done,270);
+}
 function doDiscard(pid,idx){
   const p=G.players[pid];const tile=p.hand[idx];
+  const src=srcRectFor(pid,idx);
   p.hand.splice(idx,1);p.drawn=-1;p.hand.sort((a,b)=>a-b);p.discards.push(tile);
   G.lastDiscard={pid,tile};
   // フリテン更新（自分の待ちに自分の河があるか）
   const w=waits(p.hand,p.melds.length);if(p.discards.some(d=>w.includes(d)))p.tempFuriten=true;
-  if(pid!==0)sfx.tick();
   if(pid===0)gaugeAdd(8);
   render();renderActions([],false);
+  flyTile(pid,tile,src);
   if(G.tutorial)return tutorialAfterDiscard();
   G.phase='react'; // 反応待ち中は打牌不可（連打防止）
   later(()=>startResolve(pid,tile),sp().react);
@@ -877,7 +917,7 @@ function cpuTurn(){
     const idx=chooseTenpaiDiscard(p);
     if(idx>=0){p.riichi=true;p.riichiIdx=p.discards.length;p.score-=1000;G.riichiSticks++;
       if(p.discards.length===0&&!G.callHappened)p.doubleRiichi=true;
-      G.pendingRiichiDeclarer=pid;sfx.riichi();toast(pname(pid)+' リーチ');
+      G.pendingRiichiDeclarer=pid;sfx.riichi();flash(pname(pid)+'のリーチ');
       return later(()=>doDiscard(pid,idx),sp().call);}
   }
   if(p.riichi){const i=p.hand.indexOf(p.drawn);return doDiscard(pid,i>=0?i:0);}
@@ -972,8 +1012,14 @@ function cpuWantsChi(pid,tile,combos){
 
 /* ===== 和了・流局 ===== */
 function revealKanDora(){const i=G.doraInd.length;if(4+i*2<G.dead.length)G.doraInd.push(G.dead[4+i*2]);if(5+i*2<G.dead.length)G.uraInd.push(G.dead[5+i*2]);}
+function showDeltas(before){
+  G.players.forEach((p,i)=>{const d=p.score-before[i];if(!d)return;const seat=document.getElementById('seat'+i);const pill=seat&&seat.querySelector('.info');if(!pill)return;
+    const r=pill.getBoundingClientRect();const el=document.createElement('div');el.className='delta '+(d>0?'plus':'minus');el.textContent=(d>0?'+':'')+d.toLocaleString();
+    el.style.left=(r.left+r.width/2)+'px';el.style.top=(r.top-6)+'px';document.body.appendChild(el);setTimeout(()=>el.remove(),1600);});
+}
 function win(pid,fromPid,tsumo,winTile){
   if(G.over)return;G.over=true;
+  const before=G.players.map(p=>p.score);
   const p=G.players[pid];
   const hand=tsumo?p.hand.slice():p.hand.concat([winTile]);
   const ctx=buildCtx(pid,tsumo,winTile);
@@ -991,16 +1037,16 @@ function win(pid,fromPid,tsumo,winTile){
   if(G.stats){if(pid===0){G.stats.maxHan=Math.max(G.stats.maxHan,ev.han);if(!tsumo&&fromPid===2)G.stats.ronBoss=true;}else if(!tsumo&&fromPid===0)G.stats.dealIns++;}
   if(pid===0)gaugeAdd(30);
   tsumo?sfx.tsumo():sfx.ron();
-  render();
+  render();showDeltas(before);
   showResult(pid,fromPid,tsumo,hand,winTile,ev,pay,gained,sticks);
 }
 function ryuukyoku(){
-  G.over=true;
+  G.over=true;const before=G.players.map(p=>p.score);
   const tenpai=G.players.map(p=>shanten(p.hand,p.melds.length)===0);
   const tn=tenpai.filter(Boolean).length;
   if(tn>0&&tn<4){const get=3000/tn,give=3000/(4-tn);G.players.forEach((p,i)=>p.score+=tenpai[i]?get:-give);}
   G.advance=!tenpai[G.dealer];G.keepHonba=true;
-  render();showDraw(tenpai);
+  render();showDeltas(before);showDraw(tenpai);
 }
 
 /* ===== 描画 ===== */
@@ -1115,8 +1161,9 @@ function renderCenter(){
   // 上→右→下→左の順に埋め、残りが減ると末尾から消える
   const top=side('t'),right=side('r'),bottom=side('b'),left=side('l');
   const me=G.players[0];
-  const wind=(i)=>{const p=G.players[i];return `<span class="cw ${p.isDealer?'dealer':''}">${WINDS[p.seatWind]}</span>`;};
-  ctr.innerHTML=`<div class="wallring">${top}${right}${bottom}${left}
+  const wind=(i)=>{const p=G.players[i];const t=(G.turn===i&&!G.over)?' turn':'';return `<span class="cw ${p.isDealer?'dealer':''}${t}">${WINDS[p.seatWind]}</span>`;};
+  const dora=`<div class="wdora">${G.doraInd.map(d=>tileEl(d,'sm').outerHTML).join('')}</div>`;
+  ctr.innerHTML=`<div class="wallring">${top}${right}${bottom}${left}${dora}
     <div class="cpanel">
       <div class="cw-top">${wind(2)}</div><div class="cw-right">${wind(1)}</div><div class="cw-bottom">${wind(0)}</div><div class="cw-left">${wind(3)}</div>
       <div class="cmain"><div class="rnd">${WINDS[G.roundWind]}${G.dealer+1}局</div><div class="rem"><b>${G.wall.length}</b><span>残り</span></div><div class="hb">${G.honba||0}本場　供託${G.riichiSticks||0}</div></div>
