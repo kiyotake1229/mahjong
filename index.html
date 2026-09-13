@@ -356,7 +356,7 @@ const WINDS=['東','南','西','北'], POS=['あなた','下家','対面','上�
 const isHonor=t=>t>=27;
 const pname=i=>(G&&G.players[i]&&G.players[i].name)||POS[i];
 const isTermHon=t=>t>=27||t%9===0||t%9===8;
-function tileName(t){return t<27?(t%9+1)+['m','p','s'][(t/9)|0]:HON[t-27];}
+function tileName(t){return t<27?(t%9+1)+['萬','筒','索'][(t/9)|0]:HON[t-27];}
 const KAN_NUM=['一','二','三','四','五','六','七','八','九'];
 const PIP={
   1:[[50,70,0]],
@@ -1007,7 +1007,7 @@ function guideForTurn(){
   const me=G.players[0];
   if(G.over)return setGuide('局が終わりました');
   if(G.turn!==0||G.phase!=='discard')return setGuide('相手の番です…少し待ってね');
-  if(isAgari(me.hand,me.melds.length))return setGuide('🎉 <b>あがれます！</b> 下の<span class="tag">ツモ</span>を押そう');
+  if(isAgari(me.hand,me.melds.length))return setGuide('<b>あがれます。</b> 下の<span class="tag">ツモ</span>を押そう');
   let best=99,seen=new Set();
   for(let i=0;i<me.hand.length;i++){const t=me.hand[i];if(seen.has(t))continue;seen.add(t);const r=me.hand.slice();r.splice(i,1);const s=shanten(r,me.melds.length);if(s<best)best=s;}
   if(me.riichi){const r=me.hand.slice();const w=waits(me.hand.slice(0,13),me.melds.length);
@@ -1326,7 +1326,7 @@ function startTsumo(){
   tut={lesson:'tsumo',mode:'play',phase:'intro'};
   tutIntro([
     `<b>はじめての和了！</b> いらない牌を切って形を作り、最後の1枚を自分で引く<b>ツモ</b>であがります。`,
-    `下があなたの13枚。まずは<b>使いにくい牌</b>を切っていきます。コーチが光る牌を教えるよ。`
+    `下があなたの13枚。まずは<b>使いにくい牌</b>を切っていきます。光る牌を目印に進めよう。`
   ],()=>{tut.phase='play';G.turn=0;G.phase='draw';drawStep();});
 }
 function startRiichiRon(){
@@ -1377,7 +1377,7 @@ function tutGuide(){
   if(me.pendingRiichi){G.tutGate=me.drawn;
     coachShow(`リーチ宣言する牌を選びます。引いてきた<b>${tileName(me.drawn)}</b>を捨てればOK。<br>光ってる牌をタップ！`,[],true);hlTile(me.drawn);return;}
   if(isAgari(me.hand,me.melds.length)){G.tutGate=null;
-    coachShow(`🎉 アガリ牌 <b>${tileName(me.drawn)}</b> が来た！<br>下の<span class="k">ツモ</span>を押してアガリ！`,[],true);hlBtn('ツモ');return;}
+    coachShow(`アガリ牌 <b>${tileName(me.drawn)}</b> が来た！<br>下の<span class="k">ツモ</span>を押してアガリ！`,[],true);hlBtn('ツモ');return;}
   if(me.hand.includes(33)){G.tutGate=33;
     coachShow(`いい牌(<b>${tileName(me.drawn)}</b>)を引きました！でも字牌の<b>中</b>は今バラバラで使えません。<br>光ってる<span class="k">中</span>をタップして捨てよう。`,[],true);hlTile(33);return;}
   let best=99;const seen=new Set();for(let i=0;i<me.hand.length;i++){const t=me.hand[i];if(seen.has(t))continue;seen.add(t);const r=me.hand.slice();r.splice(i,1);best=Math.min(best,shanten(r,0));}
