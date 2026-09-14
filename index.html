@@ -106,6 +106,25 @@
   .tour-hl{outline:2px solid var(--gold-hi) !important;outline-offset:4px;box-shadow:0 0 0 6px rgba(201,169,97,.18),0 0 26px rgba(227,205,151,.55) !important;border-radius:8px;position:relative;z-index:6;animation:breathe 1.6s ease-in-out infinite}
   #coachMsg .tile{display:inline-flex;vertical-align:middle}
   .ex-tiles{display:inline-flex;gap:1px;vertical-align:middle;margin:2px 6px 2px 0}
+  #curtain{position:fixed;inset:0;z-index:56;background:radial-gradient(ellipse at 50% 40%,#1c2c24,#0a100d);display:flex;align-items:center;justify-content:center;padding:24px}
+  #curtain[hidden]{display:none}
+  .cur-box{text-align:center;animation:vnfade .3s ease-out}
+  .cur-sub{font-size:12px;letter-spacing:.3em;color:var(--muted)}
+  .cur-name{font-family:var(--f-mincho);font-size:40px;color:var(--gold-hi);margin:6px 0 14px;letter-spacing:.06em}
+  .cur-msg{font-size:13px;line-height:1.8;color:var(--ink);opacity:.8;margin-bottom:18px}
+  .seg{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin:6px 0}
+  .seg button{background:none;border:1px solid var(--line);color:var(--muted);border-radius:8px;padding:7px 12px;font-size:12.5px;cursor:pointer;font-family:var(--f-ui);transition:all .15s}
+  .seg button.on{border-color:var(--gold);color:var(--gold-hi);background:rgba(201,169,97,.14)}
+  .vs-card{border:1px solid var(--line);border-radius:12px;padding:14px;margin:10px auto;max-width:440px;text-align:left;background:rgba(255,255,255,.03)}
+  .vs-card h3{margin:0 0 6px;font-size:15px;color:var(--gold-hi);font-family:var(--f-mincho);letter-spacing:.06em}
+  .vs-card p{margin:0 0 8px;font-size:12px;color:var(--muted);line-height:1.6}
+  .vs-row{display:flex;gap:8px;align-items:center;margin:6px 0;flex-wrap:wrap}
+  .vs-row label{font-size:12px;color:var(--muted);min-width:64px}
+  .vs-row input{flex:1;min-width:120px;background:rgba(0,0,0,.25);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:8px 10px;font-size:14px;font-family:var(--f-ui)}
+  .room-code{font-family:ui-monospace,Menlo,monospace;font-size:34px;letter-spacing:.24em;color:var(--gold-hi);text-align:center;margin:6px 0}
+  .lobby li{list-style:none;padding:6px 0;border-top:1px solid var(--line);font-size:13px;display:flex;justify-content:space-between}
+  .lobby{padding:0;margin:8px 0}
+  .ask-timer{height:3px;background:var(--gold);border-radius:2px;transition:width .25s linear;margin-top:4px}
   .gbtn{margin-left:8px;background:none;border:1px solid var(--line2);color:var(--gold-hi);border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer;font-family:var(--f-ui);vertical-align:1px}
   .gbtn:hover{background:rgba(201,169,97,.14)}
   .hint-sec{text-align:left;max-width:460px;margin:10px auto 0}
@@ -498,6 +517,10 @@
 </div>
 
 <div id="overlay"><div id="modal"></div></div>
+<div id="curtain" hidden><div class="cur-box">
+  <div class="cur-sub">次は</div><div class="cur-name" id="curName"></div>
+  <div class="cur-msg">この人に端末を渡してください。<br>ほかの人は画面を見ないように。</div>
+  <button class="btn" id="curGo">手牌を見る</button></div></div>
 <div class="toast" id="toast"></div>
 <div class="callflash" id="callflash"></div>
 <div id="cutin"><div class="bar"><div class="sweep"></div><div class="nm" id="cutinNm"></div><div class="tg" id="cutinTg"></div></div></div>
@@ -533,7 +556,7 @@ const isRed=t=>t%1!==0;
 const REDABLE={4:1,13:1,22:1};        // 5萬・5筒・5索
 let RED_ON=lsGet('mjRed')!=='0';
 let ASSIST=lsGet('mjAssist')==='1';   // おたすけ: 相手が少し弱く、ゲージが溜まりやすい
-const pname=i=>(G&&G.players[i]&&G.players[i].name)||POS[i];
+const pname=i=>(G&&G.players[i]&&G.players[i].name)||POS[(i-VIEW+4)%4];
 const isTermHon=t=>t>=27||t%9===0||t%9===8;
 function tileName(t){const r=isRed(t)?'赤':'';t=nt(t);return r+(t<27?(t%9+1)+['萬','筒','索'][(t/9)|0]:HON[t-27]);}
 const KAN_NUM=['一','二','三','四','五','六','七','八','九'];
@@ -871,6 +894,25 @@ const sndIcon=()=>`<svg viewBox="0 0 18 18" fill="none" stroke="currentColor" st
 
 /* ===== ゲーム状態 ===== */
 let G, GEN=0, SKILL={gauge:0};
+/* ===== 対戦モード ===== */
+let MODE=null;          // null=ひとり / 'hot'=この端末で交代 / 'host'=オンラインの部屋主 / 'guest'=オンラインの参加者
+let VIEW=0;             // 画面の下に表示する席
+let HIDE=false;         // 交代プレイで手牌を伏せている
+let HIDE_BY=-1;         // 伏せた直前に操作していた席（その人に戻るだけなら目隠し不要）
+let MP={active:false,seats:null,calls:true,me:0};
+const ctlOf=pid=>(G&&G.ctl)?G.ctl[pid]:(pid===0?'local':'cpu');
+const isHuman=pid=>ctlOf(pid)!=='cpu';
+const localHumans=()=>(G&&G.ctl)?G.ctl.filter(c=>c==='local').length:1;
+const relSeat=pid=>(pid-VIEW+4)%4;
+const seatDomId=pid=>'seat'+relSeat(pid);
+/* ===== CPUの強さ（自由対局・みんなで対戦のCPU） ===== */
+const CPU_LEVELS=[
+  {id:'easy',t:'やさしい',d:'よく迷い、守りもしない。はじめての人向け'},
+  {id:'normal',t:'ふつう',d:'効率よく打ち、危ない時は少し降りる'},
+  {id:'hard',t:'つよい',d:'スジや字牌で守り、押し引きを判断する'},
+  {id:'oni',t:'鬼',d:'ドラや打点も見て、黙って待つこともある'}];
+let CPU_LV=lsGet('mjCpuLv')||'normal';
+const CPU_LV_LEVEL={easy:1,normal:2,hard:2,oni:3};
 function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
 function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
 function later(fn,ms){const g=G.gen;setTimeout(()=>{if(G&&G.gen===g&&!G.over)fn();},ms);}
@@ -882,6 +924,7 @@ function sp(){return SPEEDS[SPEED]||SPEEDS.normal;}
 function think(){const t=sp().think;return t[0]+Math.random()*(t[1]-t[0]);}
 function newHand(keep,restart){
   const prev=G;
+  if(!MP.active){VIEW=0;HIDE=false;}
   let scores=keep&&prev?prev.players.map(p=>p.score):[25000,25000,25000,25000];
   let dealer=keep&&prev?prev.dealer:0, round=keep&&prev?prev.round:0, honba=keep&&prev?prev.honba:0;
   let sticks=keep&&prev?(prev.riichiSticks||0):0;
@@ -895,10 +938,12 @@ function newHand(keep,restart){
   const dead=wall.splice(0,14);
   players.forEach(p=>p.hand.sort((a,b)=>a-b));
   // 相手の打ち方（局をまたいで維持、初回はランダム）
-  const cast=keep&&prev?prev.players.map(p=>({style:p.style,name:p.name,level:p.level,charId:p.charId,cheat:p.cheat,readHand:p.readHand})):null;
-  if(cast){players.forEach((p,i)=>{p.style=cast[i].style;p.name=cast[i].name;p.level=cast[i].level;p.charId=cast[i].charId;p.cheat=cast[i].cheat;p.readHand=cast[i].readHand;});}
+  const cast=keep&&prev?prev.players.map(p=>({style:p.style,name:p.name,level:p.level,charId:p.charId,cheat:p.cheat,readHand:p.readHand,ai:p.ai})):null;
+  if(cast){players.forEach((p,i)=>{p.style=cast[i].style;p.name=cast[i].name;p.level=cast[i].level;p.charId=cast[i].charId;p.cheat=cast[i].cheat;p.readHand=cast[i].readHand;p.ai=cast[i].ai;});}
+  else if(MP.active){const pool=['hayato','shizuka','gen','master','ren','kuroda'].sort(()=>Math.random()-.5);let k=0;
+    players.forEach((p,i)=>{const st=MP.seats[i];if(st.kind==='cpu'){const id=pool[k++];p.charId=id;p.name='CPU '+CHARS[id].n;p.style=CHAR_STYLE[id];p.level=CPU_LV_LEVEL[MP.lv]||1;p.ai=MP.lv;}else{p.name=st.name;p.style='normal';p.level=1;p.ai=null;}});}
   else{const pool=['hayato','shizuka','gen','master'];if(parseInt(lsGet('mjStage')||'0',10)>=4)pool.push('ren','kuroda');
-    pool.sort(()=>Math.random()-.5);for(let i=1;i<4;i++){const id=pool[i-1];players[i].charId=id;players[i].name=CHARS[id].n;players[i].style=CHAR_STYLE[id];players[i].level=1;}}
+    pool.sort(()=>Math.random()-.5);for(let i=1;i<4;i++){const id=pool[i-1];players[i].charId=id;players[i].name=CHARS[id].n;players[i].style=CHAR_STYLE[id];players[i].level=CPU_LV_LEVEL[CPU_LV]||1;players[i].ai=CPU_LV;}}
   const storyFinal=keep&&prev?prev.storyFinal:false;const dark=keep&&prev?!!prev.dark:false;
   const stage=keep&&prev?prev.stage:null;const wager=keep&&prev?!!prev.wager:false;
   const stats=keep&&prev&&prev.stats?prev.stats:{dealIns:0,maxHan:0,ronBoss:false};
@@ -906,8 +951,12 @@ function newHand(keep,restart){
      phase:'draw',over:false,riichiSticks:sticks,ippatsu:[false,false,false,false],callHappened:false,
      rinshanFlag:false,lastDiscard:null,advance:false,keepHonba:false,pendingRiichiDeclarer:-1,offering:false,
      tutorial:false,tutGate:null,gen:++GEN,skill:{foresight:false,peekTiles:null,god:false},storyFinal,stage,wager,stats,practice:null,dark,
-     startScores:scores.slice(),startHonba:honba,startSticks:sticks};
+     startScores:scores.slice(),startHonba:honba,startSticks:sticks,
+     ctl:MP.active?MP.seats.map((st,i)=>st.kind==='cpu'?'cpu':(MODE==='hot'?'local':(i===MP.me?'local':'remote'))):['local','cpu','cpu','cpu']};
   players.forEach(p=>{if(p.cheat)rigHand(p,wall,p.cheat);});
+  if(MODE==='hot'&&localHumans()>1){HIDE=true;HIDE_BY=-1;}
+  document.getElementById('curtain').hidden=true;renderActions([],false);
+  if(typeof netNewHand==='function')netNewHand();
   render();
   bgmPlay(dark?'boss':'match');
   if(!keep)later(()=>banterAll('start'),400);
@@ -955,9 +1004,58 @@ function drawStep(){
   else t=G.wall.pop();
   p.hand.push(t);p.drawn=t;p.tempFuriten=false;
   G.phase='discard';
-  if(G.turn!==0)sfx.draw();
+  if(G.turn!==VIEW)sfx.draw();
   render();
-  if(G.turn===0)humanTurn();else later(cpuTurn,think());
+  if(isHuman(G.turn))seatTurn(G.turn);else later(cpuTurn,think());
+}
+/* 人間の席に手番を渡す（この端末＝画面で操作 / 通信相手＝問い合わせ） */
+function seatTurn(pid){
+  if(ctlOf(pid)==='cpu')return later(()=>G.players[pid].drawn>=0?cpuTurn():cpuDiscardOnly(pid),think());
+  if(ctlOf(pid)==='remote'&&typeof netTurn==='function')return netTurn(pid);
+  handoff(pid,humanTurn);
+}
+/* 交代プレイ：画面を別の人に見せる前に目隠しをはさむ */
+function handoff(pid,fn){
+  const need=MODE==='hot'&&localHumans()>1&&(VIEW!==pid||(HIDE&&HIDE_BY!==pid));
+  if(!need){VIEW=pid;HIDE=false;fn();return;}
+  HIDE=true;render();renderActions([],false);
+  {const t=document.getElementById('toast');t.style.display='none';clearTimeout(toastT);}
+  const c=document.getElementById('curtain');
+  document.getElementById('curName').textContent=pname(pid);
+  c.hidden=false;const g=G.gen;
+  document.getElementById('curGo').onclick=()=>{c.hidden=true;if(!G||G.gen!==g||G.over)return;VIEW=pid;HIDE=false;sfx.select();render();fn();};
+}
+/* 鳴き・ロンの問い合わせ。req.kind = ron / pon / chi */
+function askDecision(pid,req,cb){
+  const g=G.gen;const safe=ch=>{if(!G||G.gen!==g)return;cb(ch);};
+  if(ctlOf(pid)==='cpu'){
+    if(req.kind==='ron')return safe({a:'ron'});
+    if(req.kind==='pon')return safe({a:cpuWantsPon(pid,req.tile)?'pon':'pass'});
+    const cb2=cpuWantsChi(pid,req.tile,req.combos);return safe(cb2?{a:'chi',k:req.combos.indexOf(cb2)}:{a:'pass'});
+  }
+  if(ctlOf(pid)==='remote'&&typeof netAsk==='function')return netAsk(pid,req,safe);
+  handoff(pid,()=>reactionUI(pid,req,ch=>{if(MODE==='hot'&&localHumans()>1&&ch.a==='pass'){HIDE=true;HIDE_BY=pid;render();}safe(ch);}));
+}
+function reactionUI(pid,req,cb){
+  let done=false;const pick=ch=>{if(done)return;done=true;G.offering=false;renderActions([],false);cb(ch);};
+  const pass={label:'スルー',cls:'gray',fn:()=>pick({a:'pass'})};
+  let opts,guide;
+  if(req.kind==='ron'){
+    opts=[{label:'ロン',cls:'red',fn:()=>pick({a:'ron'})},pass];
+    guide=req.chankan?'相手が<b>加槓</b>した牌であがれます（<b>槍槓</b>）！ <span class="tag">ロン</span>を押そう':'相手の捨て牌で<b>あがれます</b>！ <span class="tag">ロン</span>を押そう（見送るなら スルー）';
+  }else if(req.kind==='pon'){
+    opts=[{label:'ポン',cls:'',fn:()=>pick({a:'pon'})}];
+    if(req.canKan)opts.push({label:'カン',cls:'gray',fn:()=>pick({a:'kan'})});
+    opts.push(pass);
+    guide=`同じ<b>${tileName(req.tile)}</b>が2枚あります。<span class="tag">ポン</span>で3枚そろえて手を早くできます（鳴くと役が必要／不要なら スルー）`;
+  }else{
+    opts=req.combos.map((cb2,k)=>({label:'チー'+(req.combos.length>1?tileName(cb2[0]):''),cls:'',fn:()=>pick({a:'chi',k})}));
+    opts.push(pass);
+    guide=`数字がつながる牌です。<span class="tag">チー</span>で順子（連番3枚）が作れます（上家からのみ／不要なら スルー）`;
+  }
+  renderActions(opts,false);G.offering=true;setGuide(guide);
+  if(req.kind==='ron')flash('ロン?',true);
+  return pick;
 }
 
 function buildCtx(pid,tsumo,winTile,chankan){
@@ -971,22 +1069,23 @@ function buildCtx(pid,tsumo,winTile,chankan){
 /* ===== 人間の番 ===== */
 function humanTurn(){
   G.offering=false;
-  const p=G.players[0];const acts=[];let tsumoAct=null;
-  if(isAgari(p.hand,p.melds.length)){
-    const ev=evaluate(p.hand,p.melds,buildCtx(0,true,p.drawn));
-    if(ev){tsumoAct={label:'ツモ',cls:'red',fn:()=>win(0,0,true,p.drawn)};acts.push(tsumoAct);}
+  const pid=VIEW,p=G.players[pid];const acts=[];let tsumoAct=null;
+  if(p.drawn>=0&&isAgari(p.hand,p.melds.length)){
+    const ev=evaluate(p.hand,p.melds,buildCtx(pid,true,p.drawn));
+    if(ev){tsumoAct={label:'ツモ',cls:'red',fn:()=>win(pid,pid,true,G.players[pid].drawn)};acts.push(tsumoAct);}
   }
-  if(tsumoAct&&p.riichi&&!G.tutorial){ // リーチ中は自動ツモ
+  if(tsumoAct&&p.riichi&&!G.tutorial&&MODE!=='guest'){ // リーチ中は自動ツモ
     renderActions(acts,true);setGuide('<b>ツモ！</b> リーチ中なので自動であがります');
-    later(()=>{if(G.turn===0&&G.phase==='discard'&&!G.over)tsumoAct.fn();},900);return;
+    later(()=>{if(G.turn===pid&&G.phase==='discard'&&!G.over)tsumoAct.fn();},900);return;
   }
   if(!p.riichi&&p.melds.every(m=>m.concealed)&&p.score>=1000&&G.wall.length>=4&&!(G.tutorial&&p.hand.includes(33))){
     const seen=new Set();let ok=false;
     for(let i=0;i<p.hand.length;i++){const t=p.hand[i];if(seen.has(t))continue;seen.add(t);const r=p.hand.slice();r.splice(i,1);if(shanten(r,p.melds.length)===0){ok=true;break;}}
-    if(ok)acts.push({label:'立直',cls:'blue',fn:()=>{p.pendingRiichi=true;toast('立直する牌を選ぶ');renderActions([{label:'やめ',cls:'gray',fn:()=>{p.pendingRiichi=false;humanTurn();}}],false);if(G.tutorial)tutGuide();}});
+    // 参加者側では状態の更新でプレイヤーのデータが置き換わるので、押した時点の G.players[pid] を使う
+    if(ok)acts.push({label:'立直',cls:'blue',fn:()=>{G.players[pid].pendingRiichi=true;toast('立直する牌を選ぶ');renderActions([{label:'やめ',cls:'gray',fn:()=>{G.players[pid].pendingRiichi=false;humanTurn();}}],false);if(G.tutorial)tutGuide();}});
   }
-  if(!p.riichi&&G.wall.length>0&&!G.tutorial){const ks=kanOptions(p);
-    ks.forEach(k=>acts.push({label:'カン'+(ks.length>1?tileName(k.tile):''),cls:'gray',fn:()=>doKan(0,k.tile,k.kind)}));}
+  if(!p.riichi&&p.drawn>=0&&G.wall.length>0&&!G.tutorial){const ks=kanOptions(p);
+    ks.forEach(k=>acts.push({label:'カン'+(ks.length>1?tileName(k.tile):''),cls:'gray',fn:()=>doKan(pid,k.tile,k.kind)}));}
   renderActions(acts,true);
   if(G.tutorial)tutGuide();
 }
@@ -998,19 +1097,20 @@ function kanOptions(p){
   return res;
 }
 function doKan(pid,tile,kind){
+  if(MODE==='guest'){netAct({a:'kan',tile,kind});return;}
   const p=G.players[pid];
   if(kind==='an'){
     const reds=p.hand.filter(t=>nt(t)===tile&&isRed(t)).map(nt);
     p.hand=p.hand.filter(t=>nt(t)!==tile);
     p.melds.push({t:'trip',tile,k:4,concealed:true,kan:true,reds});
-    flash(pname(pid)+'の暗槓');sfx.call();render();
+    G.phase='kan';renderActions([],false);flash(pname(pid)+'の暗槓');sfx.call();render();
     return finishKan(pid);
   }
   // 加槓
   let i=p.hand.findIndex(t=>t===tile);if(i<0)i=p.hand.findIndex(t=>nt(t)===tile);
   const taken=p.hand[i];p.hand.splice(i,1);
   const m=p.melds.find(m=>m.t==='trip'&&!m.kan&&m.tile===tile);m.k=4;m.kan=true;if(isRed(taken))m.reds=(m.reds||[]).concat([tile]);
-  flash(pname(pid)+'の加槓');sfx.call();render();
+  G.phase='kan';renderActions([],false);flash(pname(pid)+'の加槓');sfx.call();render();
   // 槍槓: 他家がこの牌でロンできる
   ronPhase(pid,tile,()=>finishKan(pid),true);
 }
@@ -1020,30 +1120,48 @@ function finishKan(pid){
   const rt=G.wall.shift();p.hand.push(rt);p.drawn=rt;
   G.rinshanFlag=true;clearIppatsu();G.callHappened=true;G.turn=pid;G.phase='discard';G.offering=false;
   render();
-  if(pid===0)humanTurn();else later(()=>cpuDiscardOnly(pid),think());
+  if(isHuman(pid))seatTurn(pid);else later(()=>cpuDiscardOnly(pid),think());
 }
 function humanDiscard(idx){
-  const p=G.players[0];if(G.phase!=='discard'||G.turn!==0||G.over)return;
+  if(HIDE)return;
+  if(MODE==='guest'&&(!NET.ask||NET.ask.req.kind!=='turn'))return;
+  const pid=VIEW,p=G.players[pid];if(G.phase!=='discard'||G.turn!==pid||G.over)return;
   const tile=p.hand[idx];
   if(G.tutorial&&G.tutGate!=null&&tile!==G.tutGate){flash('光ってる牌をタップ');return;}
   if(p.riichi&&tile!==p.drawn)return;
+  let riichi=false;
   if(p.pendingRiichi){
     const r=p.hand.slice();r.splice(idx,1);
     if(shanten(r,p.melds.length)!==0){toast('その牌では聴牌しません');return;}
-    p.riichi=true;p.pendingRiichi=false;p.riichiIdx=p.discards.length;p.score-=1000;G.riichiSticks++;
-    if(p.discards.length===0&&!G.callHappened)p.doubleRiichi=true;
-    G.pendingRiichiDeclarer=0;sfx.riichi();flash('リーチ');gaugeAdd(20);banterOne('myRiichi',900);
-    if(isFuriten(p,waits(r,p.melds.length)))setTimeout(()=>toast('フリテンリーチ：ロンはできません。ツモを待とう'),700);
+    riichi=true;p.pendingRiichi=false;
+    if(isFuriten(p,waits(r,p.melds.length))){if(MODE==='hot')toast('フリテンリーチ：ロンはできません。ツモを待とう',1200);else setTimeout(()=>{if(!HIDE&&VIEW===pid)toast('フリテンリーチ：ロンはできません。ツモを待とう');},700);}
   }
-  doDiscard(0,idx);
+  if(MODE==='guest'){netAct({a:'discard',idx,riichi,tile});G.phase='react';renderActions([],false);render();return;}
+  seatDiscard(pid,idx,riichi);
+}
+/* 打牌の実行（画面の人・通信相手の共通）。受け付けたら true */
+function seatDiscard(pid,idx,riichi){
+  const p=G.players[pid];if(G.phase!=='discard'||G.turn!==pid||G.over)return false;
+  if(!(idx>=0&&idx<p.hand.length))return false;
+  const tile=p.hand[idx];
+  if(p.riichi&&tile!==p.drawn)return false;
+  if(riichi){
+    if(p.riichi||!p.melds.every(m=>m.concealed)||p.score<1000||G.wall.length<4)return false;
+    const r=p.hand.slice();r.splice(idx,1);if(shanten(r,p.melds.length)!==0)return false;
+    p.riichi=true;p.pendingRiichi=false;p.riichiIdx=p.discards.length;p.riichiAt=(G.discN||0)+1;p.score-=1000;G.riichiSticks++;
+    if(p.discards.length===0&&!G.callHappened)p.doubleRiichi=true;
+    G.pendingRiichiDeclarer=pid;sfx.riichi();flash(MP.active?pname(pid)+'のリーチ':'リーチ');
+    if(!MP.active){gaugeAdd(20);banterOne('myRiichi',900);}
+  }
+  doDiscard(pid,idx);return true;
 }
 function srcRectFor(pid,idx){
-  if(pid===0){const el=document.querySelectorAll('#myHand .tile')[idx];return el?el.getBoundingClientRect():null;}
-  const seat=document.getElementById('seat'+pid);const h=seat&&(seat.querySelector('.handcol .cell.drew, .handrow .tile.drew')||seat.querySelector('.handcol, .handrow'));
+  if(pid===VIEW){const els=document.querySelectorAll('#myHand .tile');const el=els[idx]||els[els.length-1];return el?el.getBoundingClientRect():null;}
+  const seat=document.getElementById(seatDomId(pid));const h=seat&&(seat.querySelector('.handcol .cell.drew, .handrow .tile.drew')||seat.querySelector('.handcol, .handrow'));
   return h?h.getBoundingClientRect():null;
 }
 function flyTile(pid,tile,src){
-  const seat=document.getElementById('seat'+pid);if(!seat||!src)return;
+  const seat=document.getElementById(seatDomId(pid));if(!seat||!src)return;
   const river=seat.querySelector('.river');if(!river)return;
   const cells=river.children;const last=cells[cells.length-1];if(!last)return;
   const real=last.classList.contains('cell')?last.querySelector('.tile'):last;if(!real)return;
@@ -1052,7 +1170,7 @@ function flyTile(pid,tile,src){
   let deg=0;const m=/matrix\(([^)]+)\)/.exec(rot);if(m){const v=m[1].split(',').map(Number);deg=Math.round(Math.atan2(v[1],v[0])*180/Math.PI);}
   real.classList.add('landing');
   const c=tileEl(tile,'sm fly');document.body.appendChild(c);
-  const sw=pid===0?src.width:dst.width,sh=pid===0?src.height:dst.height;
+  const sw=pid===VIEW?src.width:dst.width,sh=pid===VIEW?src.height:dst.height;
   c.style.cssText=`position:fixed;left:${src.left+src.width/2-sw/2}px;top:${src.top+src.height/2-sh/2}px;width:${sw}px;height:${sh}px;z-index:40;transform:rotate(0deg);transition:left .26s cubic-bezier(.2,.8,.3,1),top .26s cubic-bezier(.2,.8,.3,1),width .26s,height .26s,transform .26s;pointer-events:none;box-shadow:0 8px 14px rgba(0,0,0,.45)`;
   void c.offsetWidth;
   const bw=dst.width/Math.abs(Math.cos(deg*Math.PI/180)||1);
@@ -1065,14 +1183,18 @@ function flyTile(pid,tile,src){
 }
 function doDiscard(pid,idx){
   const p=G.players[pid];const tile=p.hand[idx];
+  if(G.pendingRiichiDeclarer!==pid)G.ippatsu[pid]=false; // 自分の次の打牌で一発は終わり
+  G.discN=(G.discN||0)+1;(G.discLog||(G.discLog=[])).push({pid,t:nt(tile),n:G.discN});
   const src=srcRectFor(pid,idx);
   p.hand.splice(idx,1);p.drawn=-1;p.hand.sort((a,b)=>a-b);p.discards.push(tile);
   G.lastDiscard={pid,tile};
   // フリテン更新（自分の待ちに自分の河があるか）
   const w=waits(p.hand,p.melds.length);if(isFuriten(p,w))p.tempFuriten=true;
-  if(pid===0)gaugeAdd(8);
+  if(pid===0&&!MP.active)gaugeAdd(8);
+  if(MODE==='hot'&&isHuman(pid)&&localHumans()>1){HIDE=true;HIDE_BY=pid;}
   render();renderActions([],false);
   flyTile(pid,tile,src);
+  if(typeof netFx==='function')netFx('fly',{pid,tile});
   if(G.tutorial)return tutorialAfterDiscard();
   G.phase='react'; // 反応待ち中は打牌不可（連打防止）
   later(()=>startResolve(pid,tile),sp().react);
@@ -1094,31 +1216,43 @@ function canRon(pid,tile,chankan){
 function ronPhase(fromPid,tile,onNone,chankan){
   onNone=onNone||(()=>ponPhase(fromPid,tile));
   const order=(a,b)=>((a-fromPid+4)%4)-((b-fromPid+4)%4);
-  const claim=[];for(let i=0;i<4;i++)if(i!==fromPid&&canRon(i,tile,chankan))claim.push(i);
+  const claim=[];for(let i=0;i<4;i++)if(i!==fromPid&&canRon(i,tile,chankan)&&!aiMissesRon(i,tile,chankan))claim.push(i);
   claim.sort(order);
-  if(claim.includes(0)){
-    const cpus=claim.filter(x=>x!==0);
-    renderActions([
-      {label:'ロン',cls:'red',fn:()=>winMulti(claim,fromPid,tile,chankan)},
-      {label:'スルー',cls:'gray',fn:()=>{const p=G.players[0];if(p.riichi)p.riichiFuriten=true;p.tempFuriten=true;
-        if(cpus.length)return winMulti(cpus,fromPid,tile,chankan);G.offering=false;onNone();}}
-    ],false);
-    G.offering=true;setGuide(chankan?'相手が<b>加槓</b>した牌であがれます（<b>槍槓</b>）！ <span class="tag">ロン</span>を押そう':'相手の捨て牌で<b>あがれます</b>！ <span class="tag">ロン</span>を押そう（見送るなら スルー）');
-    flash('ロン?');return;
+  const autoRon=MODE==='hot'&&!MP.calls;
+  const humans=autoRon?[]:claim.filter(isHuman);
+  if(!humans.length){
+    if(claim.length){flash(claim.map(pname).join('と')+'のロン');return later(()=>winMulti(claim,fromPid,tile,chankan),sp().call);}
+    return onNone();
   }
-  if(claim.length){flash(claim.map(pname).join('と')+'のロン');return later(()=>winMulti(claim,fromPid,tile,chankan),sp().call);}
-  onNone();
+  // 人間には順番に聞く（ダブロンもあり）
+  const yes=[];let k=0;
+  const next=()=>{
+    if(G.over)return;
+    if(k>=humans.length){
+      const winners=claim.filter(x=>!humans.includes(x)||yes.includes(x)); // 聞き始めた時点の人間の集合で判定
+      if(winners.length)return winMulti(winners,fromPid,tile,chankan);
+      G.offering=false;return onNone();
+    }
+    const pid=humans[k++];
+    if(!isHuman(pid)){yes.push(pid);return next();} // 途中で抜けた人の席はCPUとしてあがる
+    askDecision(pid,{kind:'ron',tile,fromPid,chankan:!!chankan},ch=>{
+      if(ch.a==='ron')yes.push(pid);
+      else{const p=G.players[pid];if(p.riichi)p.riichiFuriten=true;p.tempFuriten=true;}
+      next();});
+  };
+  next();
 }
 function ponPhase(fromPid,tile){
   let pid=null,canKan=false;
   for(let d=1;d<4;d++){const i=(fromPid+d)%4;const p=G.players[i];if(p.riichi)continue;const c=toCounts(p.hand)[tile];if(c>=2){pid=i;canKan=c>=3;break;}}
-  if(pid===0){
-    const opts=[{label:'ポン',cls:'',fn:()=>doPon(0,fromPid,tile,false)}];
-    if(canKan&&G.wall.length>0)opts.push({label:'カン',cls:'gray',fn:()=>doPon(0,fromPid,tile,true)});
-    opts.push({label:'スルー',cls:'gray',fn:()=>{G.offering=false;chiPhase(fromPid,tile);}});
-    renderActions(opts,false);
-    G.offering=true;setGuide(`同じ<b>${tileName(tile)}</b>が2枚あります。<span class="tag">ポン</span>で3枚そろえて手を早くできます（鳴くと役が必要／不要なら スルー）`);return;
-  }else if(pid!==null){
+  if(pid!==null&&isHuman(pid)&&!(MODE==='hot'&&!MP.calls)){
+    const kanOk=canKan&&G.wall.length>0;
+    askDecision(pid,{kind:'pon',tile,fromPid,canKan:kanOk},ch=>{
+      if(ch.a==='pon')return doPon(pid,fromPid,tile,false);
+      if(ch.a==='kan'&&kanOk)return doPon(pid,fromPid,tile,true);
+      chiPhase(fromPid,tile);});
+    return;
+  }else if(pid!==null&&!isHuman(pid)){
     if(cpuWantsPon(pid,tile)){return doPon(pid,fromPid,tile,false);}
   }
   chiPhase(fromPid,tile);
@@ -1134,11 +1268,12 @@ function chiPhase(fromPid,tile){
   const pid=(fromPid+1)%4;const p=G.players[pid];
   const combos=p.riichi?[]:chiCombos(p.hand,tile);
   if(combos.length){
-    if(pid===0){
-      const opts=combos.map(cb=>({label:'チー'+(combos.length>1?tileName(cb[0]):''),cls:'',fn:()=>doChi(0,fromPid,tile,cb)}));
-      opts.push({label:'スルー',cls:'gray',fn:()=>{G.offering=false;advanceTurn(fromPid);}});
-      renderActions(opts,false);
-      G.offering=true;setGuide(`数字がつながる牌です。<span class="tag">チー</span>で順子（連番3枚）が作れます（上家からのみ／不要なら スルー）`);return;
+    if(isHuman(pid)){
+      if(MODE==='hot'&&!MP.calls)return advanceTurn(fromPid);
+      askDecision(pid,{kind:'chi',tile,fromPid,combos},ch=>{
+        if(ch.a==='chi'&&combos[ch.k])return doChi(pid,fromPid,tile,combos[ch.k]);
+        advanceTurn(fromPid);});
+      return;
     }else{
       const cb=cpuWantsChi(pid,tile,combos);if(cb)return doChi(pid,fromPid,tile,cb);
     }
@@ -1152,11 +1287,11 @@ function doPon(pid,fromPid,tile,kan){
   const rt=takeDiscard(src);const reds=isRed(rt)?[tile]:[];
   let need=kan?3:2,rm=0;p.hand=p.hand.filter(t=>{if(nt(t)===tile&&rm<need){rm++;if(isRed(t))reds.push(tile);return false;}return true;});
   p.melds.push({t:'trip',tile,k:kan?4:3,concealed:false,kan,from:fromPid,called:tile,reds});
-  clearIppatsu();G.callHappened=true;G.offering=false;flash(pname(pid)+(kan?'のカン':'のポン'));sfx.call();if(pid!==0)banterOne('call',500,pid);
+  clearIppatsu();G.pendingRiichiDeclarer=-1;G.callHappened=true;G.offering=false;flash(pname(pid)+(kan?'のカン':'のポン'));sfx.call();if(!isHuman(pid))banterOne('call',500,pid);
   if(kan){revealKanDora();const rt2=G.wall.shift();p.hand.push(rt2);p.drawn=rt2;p.hand.sort((a,b)=>a-b);G.rinshanFlag=true;}
   G.turn=pid;G.phase='discard';p.drawn=kan?p.drawn:-1;
   render();
-  if(pid===0)humanTurn();else later(()=>cpuDiscardOnly(pid),think());
+  if(isHuman(pid))seatTurn(pid);else later(()=>cpuDiscardOnly(pid),think());
 }
 function doChi(pid,fromPid,tile,combo){
   const p=G.players[pid],src=G.players[fromPid];
@@ -1164,10 +1299,10 @@ function doChi(pid,fromPid,tile,combo){
   for(const t of combo){let i=p.hand.findIndex(x=>x===t);if(i<0){i=p.hand.findIndex(x=>nt(x)===t);reds.push(t);}p.hand.splice(i,1);}
   const low=Math.min(tile,...combo);
   p.melds.push({t:'seq',tile:low,k:3,concealed:false,from:fromPid,called:tile,reds});
-  clearIppatsu();G.callHappened=true;G.offering=false;flash(pname(pid)+'のチー');sfx.call();if(pid!==0)banterOne('call',500,pid);
+  clearIppatsu();G.pendingRiichiDeclarer=-1;G.callHappened=true;G.offering=false;flash(pname(pid)+'のチー');sfx.call();if(!isHuman(pid))banterOne('call',500,pid);
   G.turn=pid;G.phase='discard';p.drawn=-1;p.hand.sort((a,b)=>a-b);
   render();
-  if(pid===0)humanTurn();else later(()=>cpuDiscardOnly(pid),think());
+  if(isHuman(pid))seatTurn(pid);else later(()=>cpuDiscardOnly(pid),think());
 }
 function advanceTurn(fromPid){
   G.offering=false;
@@ -1186,7 +1321,7 @@ function cpuTurn(){
   // ツモ評価に使う一発は今のフラグ。引いた後に消す。
   if(isAgari(p.hand,p.melds.length)){
     const ev=evaluate(p.hand,p.melds,buildCtx(pid,true,p.drawn));
-    if(ev){G.ippatsu[pid]=false;flash(pname(pid)+'のツモ');return later(()=>win(pid,pid,true,p.drawn),sp().call);}
+    if(ev){flash(pname(pid)+'のツモ');return later(()=>win(pid,pid,true,p.drawn),sp().call);}
   }
   G.ippatsu[pid]=false; // 自分のツモ番を過ぎたので一発消滅
   if(!p.riichi&&G.wall.length>1&&!riichiOpponents(p).length){
@@ -1197,10 +1332,17 @@ function cpuTurn(){
       if(shanten(r,p.melds.length+(k.kind==='an'?1:0))<=cur)return later(()=>doKan(pid,k.tile,k.kind),sp().call);
     }
   }
+  if((p.ai==='hard'||p.ai==='oni')&&!p.riichi&&riichiOpponents(p).length&&shanten(p.hand,p.melds.length)===0){
+    const fi=aiDiscard(p);const fr=p.hand.slice();fr.splice(fi,1);
+    if(shanten(fr,p.melds.length)!==0)return doDiscard(pid,fi); // 降りる
+  }
   if(!p.riichi&&p.melds.every(m=>m.concealed)&&p.score>=1000&&G.wall.length>=4&&shanten(p.hand,p.melds.length)===0){
-    const idx=chooseTenpaiDiscard(p);
+    let idx=chooseTenpaiDiscard(p);
+    if(p.ai==='hard'||p.ai==='oni'){const ch=aiTenpaiChoice(p);if(ch.idx>=0){idx=ch.idx;
+      if(aiPrefersDama(p,idx)||(ch.left===0&&G.wall.length<12))return doDiscard(pid,idx);}}
+    if(p.ai==='easy'&&idx>=0&&Math.random()<.5)return doDiscard(pid,idx);
     const rr=idx>=0?p.hand.slice():null;if(rr)rr.splice(idx,1);
-    if(idx>=0&&!isFuriten(p,waits(rr,p.melds.length))){p.riichi=true;p.riichiIdx=p.discards.length;p.score-=1000;G.riichiSticks++;
+    if(idx>=0&&!isFuriten(p,waits(rr,p.melds.length))){p.riichi=true;p.riichiIdx=p.discards.length;p.riichiAt=(G.discN||0)+1;p.score-=1000;G.riichiSticks++;
       if(p.discards.length===0&&!G.callHappened)p.doubleRiichi=true;
       G.pendingRiichiDeclarer=pid;sfx.riichi();flash(pname(pid)+'のリーチ');banterOne('riichi',300,pid,true);
       return later(()=>doDiscard(pid,idx),sp().call);}
@@ -1211,7 +1353,7 @@ function cpuTurn(){
 function cpuDiscardOnly(pid){
   if(G.tutorial)return;
   const p=G.players[pid];
-  if(isAgari(p.hand,p.melds.length)){const ev=evaluate(p.hand,p.melds,buildCtx(pid,true,p.drawn));if(ev)return win(pid,pid,true,p.drawn);}
+  if(p.drawn>=0&&isAgari(p.hand,p.melds.length)){const ev=evaluate(p.hand,p.melds,buildCtx(pid,true,p.drawn));if(ev)return win(pid,pid,true,p.drawn);}
   doDiscard(pid,chooseBestDiscard(p));
 }
 let REC={reason:''};
@@ -1263,6 +1405,7 @@ function safeDiscardIdx(p){
   return best;
 }
 function chooseBestDiscard(p){
+  if(p.ai&&p.ai!=='normal'&&!p.readHand)return aiDiscard(p);
   const st=p.style||'normal';
   // 鷲尾: こちらの待ちを読み、テンパイ中の人間には振り込まない（自分がリーチ中は除く）
   if(p.readHand&&!p.riichi){const me=G.players[0];
@@ -1291,8 +1434,111 @@ function chooseBestDiscardCore(p,avoid){
   }
   return bi;
 }
+/* ---- 難易度つきの打牌 ---- */
+function visibleCounts(p){ // 自分から見えている枚数（河・鳴き・自分の手・ドラ表示）
+  const c=new Array(34).fill(0);
+  G.players.forEach(o=>{o.discards.forEach(d=>{if(typeof d!=='object')c[nt(d)]++;});o.melds.forEach(m=>expandMeld(m).forEach(t=>c[nt(t)]++));});
+  p.hand.forEach(t=>c[nt(t)]++);G.doraInd.forEach(t=>c[nt(t)]++);
+  return c;
+}
+function dangerOf(t,opp,vis,lv){ // 0=安全 … 大きいほど危険
+  const d=discTiles(opp);if(d.includes(t))return 0;
+  if(opp.riichiAt&&G.discLog&&G.discLog.some(e=>e.n>opp.riichiAt&&e.t===t))return 0; // リーチ後に通った牌
+  if(t>=27)return vis[t]>=3?0.5:vis[t]===2?1.5:vis[t]===1?3.5:4.5;
+  const n=t%9,s=t-n,has=x=>d.includes(s+x);
+  let suji;if(n<=2)suji=has(n+3);else if(n>=6)suji=has(n-3);else suji=has(n-3)&&has(n+3);
+  const term=n===0||n===8;
+  // 壁: 隣の牌が4枚見えていれば、その向こうは両面で当たりにくい
+  const wall=(n>=1&&vis[t-1]>=4)||(n<=7&&vis[t+1]>=4);
+  let v=term?5:(n===1||n===7)?6:7;
+  if(suji)v=term?1.5:3;
+  if(wall)v-=1.5;
+  if(lv==='oni'&&liveDora().includes(t))v+=0.7;
+  return Math.max(0.8,v);
+}
+function openHasYaku(p){ // 鳴いた手に役の見込みがあるか（役牌・断么九・一色・対々）
+  const all=p.hand.concat(p.melds.flatMap(expandMeld)).map(nt),c=toCounts(all),ctx={roundWind:G.roundWind,seatWind:p.seatWind};
+  for(let t=27;t<34;t++)if(c[t]>=3&&isYakuhaiTile(t,ctx))return true;
+  if(all.every(t=>!isTermHon(t)))return true;
+  if(new Set(all.filter(t=>t<27).map(t=>(t/9)|0)).size<=1)return true;
+  if(p.melds.every(m=>m.t==='trip')&&c.filter(x=>x>=2).length>=4)return true;
+  return false;
+}
+function handValueEst(p){ // 大まかな翻の見込み
+  const all=p.hand.concat(p.melds.flatMap(expandMeld));const dora=liveDora();
+  let h=all.filter(t=>dora.includes(nt(t))).length+all.filter(isRed).length;
+  const c=toCounts(all);for(let t=27;t<34;t++)if(c[t]>=3&&isYakuhaiTile(t,{roundWind:G.roundWind,seatWind:p.seatWind}))h++;
+  if(all.every(t=>!isTermHon(nt(t))))h++;
+  if(p.melds.every(m=>m.concealed))h++;
+  return h;
+}
+function aiDiscard(p){
+  const lv=p.ai,mc=p.melds.length,cur=shanten(p.hand,mc);
+  const opps=riichiOpponents(p);
+  // やさしい：守らない。ときどき最善でない牌を切る
+  if(lv==='easy'){
+    const cands=[];const seen=new Set();let best=99;
+    for(let i=0;i<p.hand.length;i++){const t=nt(p.hand[i]);if(seen.has(t))continue;seen.add(t);const r=p.hand.slice();r.splice(i,1);const sh=shanten(r,mc);cands.push({i,sh});best=Math.min(best,sh);}
+    if(Math.random()<0.35){const loose=cands.filter(c=>c.sh<=best+1);return loose[(Math.random()*loose.length)|0].i;}
+    const good=cands.filter(c=>c.sh===best);return good[(Math.random()*good.length)|0].i;
+  }
+  // つよい・鬼：押し引き
+  if(opps.length){
+    const val=handValueEst(p);
+    let push=cur===0?!(lv==='hard'&&val<=1&&opps.length>=2):(lv==='oni'&&cur===1&&val>=4&&G.wall.length>20);
+    if(!p.melds.every(m=>m.concealed)&&!openHasYaku(p))push=false;
+    if(!push){
+      const vis=visibleCounts(p);let bi=-1,bd=1e9,bs=99;const seen=new Set();
+      for(let i=0;i<p.hand.length;i++){const t=nt(p.hand[i]);if(seen.has(t))continue;seen.add(t);
+        const dg=Math.max(...opps.map(o=>dangerOf(t,o,vis,lv)));const r=p.hand.slice();r.splice(i,1);const sh=shanten(r,mc);
+        if(dg<bd-1e-9||(Math.abs(dg-bd)<1e-9&&sh<bs)){bd=dg;bs=sh;bi=i;}}
+      if(bi>=0)return bi;
+    }
+  }
+  // 手を進める（受け入れ枚数。鬼はドラ・赤・役牌の対子を残す）
+  const dora=liveDora(),vis=visibleCounts(p),hc=toCounts(p.hand);
+  let bi=0,bscore=-1e9;const seen=new Set();
+  for(let i=0;i<p.hand.length;i++){const raw=p.hand[i],t=nt(raw);if(seen.has(raw))continue;seen.add(raw);
+    const r=p.hand.slice();r.splice(i,1);const sh=shanten(r,mc);
+    let uke=0;
+    for(let d=0;d<34;d++){const left=4-vis[d];if(left<=0)continue;if(shanten(r.concat([d]),mc)<sh)uke+=left;}
+    let score=-sh*1000+uke;
+    if(lv==='oni'){
+      if(dora.includes(t))score-=6;if(isRed(raw))score-=5;
+      if(t>=27&&isYakuhaiTile(t,{roundWind:G.roundWind,seatWind:p.seatWind})&&hc[t]>=2)score-=8;
+      if(t>=27&&!isYakuhaiTile(t,{roundWind:G.roundWind,seatWind:p.seatWind}))score+=1;
+    }
+    if(score>bscore){bscore=score;bi=i;}
+  }
+  return bi;
+}
+function aiMissesRon(pid,tile,chankan){ // やさしい: 安いロンをたまに見逃す
+  const p=G.players[pid];if(isHuman(pid)||p.ai!=='easy'||p.riichi||Math.random()>=.15)return false;
+  const ev=evaluate(p.hand.concat([tile]),p.melds,buildCtx(pid,false,tile,chankan));if(!ev||ev.han>2)return false;
+  p.tempFuriten=true;return true;
+}
+/* 聴牌の打牌選び：つよい以上は残り枚数が多い待ちを選ぶ */
+function aiTenpaiChoice(p){
+  const vis=visibleCounts(p);let bi=-1,bl=-1;const seen=new Set();
+  for(let i=0;i<p.hand.length;i++){const t=p.hand[i];if(seen.has(t))continue;seen.add(t);const r=p.hand.slice();r.splice(i,1);
+    if(shanten(r,p.melds.length)!==0)continue;const w=waits(r,p.melds.length);if(isFuriten(p,w))continue;
+    const left=w.reduce((a,x)=>a+Math.max(0,4-vis[x]),0);
+    if(left>bl){bl=left;bi=i;}}
+  return {idx:bi,left:bl};
+}
+/* 黙って待つ（鬼）：リーチしなくても役があり、十分高い */
+function aiPrefersDama(p,idx){
+  if(p.ai!=='oni'&&p.ai!=='hard')return false;
+  const r=p.hand.slice();r.splice(idx,1);const w=waits(r,p.melds.length);
+  if(!w.length)return false;
+  let worst=99;for(const x of w){const ev=evaluate(r.concat([x]),p.melds,Object.assign(buildCtx(p.id,false,x),{riichi:false,ippatsu:false,uraTiles:null}));if(!ev)return false;worst=Math.min(worst,ev.han);}
+  return worst>=(p.ai==='oni'?4:5);
+}
 function cpuWantsPon(pid,tile){
   const p=G.players[pid];if(p.riichi)return false;
+  if((p.ai==='hard'||p.ai==='oni')&&riichiOpponents(p).length&&shanten(p.hand,p.melds.length)>=1)return false;
+  if(p.ai==='easy'){const yk=tile>=31||(tile>=27&&(tile-27===p.seatWind||tile-27===G.roundWind));if(!yk)return false;
+    let rm=0;const rest=p.hand.filter(t=>{if(nt(t)===tile&&rm<2){rm++;return false;}return true;});return Math.random()<.5&&shanten(rest,p.melds.length+1)<=shanten(p.hand,p.melds.length);}
   const st=p.style||'normal';if(st==='riichi')return false;
   let rm=0;const rest=p.hand.filter(t=>{if(nt(t)===tile&&rm<2){rm++;return false;}return true;});
   const before=shanten(p.hand,p.melds.length),after=shanten(rest,p.melds.length+1);
@@ -1306,6 +1552,8 @@ function cpuWantsPon(pid,tile){
 }
 function cpuWantsChi(pid,tile,combos){
   const p=G.players[pid];if(p.riichi)return null;
+  if(p.ai==='easy')return null;
+  if((p.ai==='hard'||p.ai==='oni')&&riichiOpponents(p).length&&shanten(p.hand,p.melds.length)>=1)return null;
   const st=p.style||'normal';if(st==='riichi'||st==='defense')return null;
   const before=shanten(p.hand,p.melds.length);
   let best=null,bestSh=st==='call'?before+1:before;
@@ -1325,7 +1573,8 @@ function cpuWantsChi(pid,tile,combos){
 /* ===== 和了・流局 ===== */
 function revealKanDora(){const i=G.doraInd.length;if(4+i*2<G.dead.length)G.doraInd.push(G.dead[4+i*2]);if(5+i*2<G.dead.length)G.uraInd.push(G.dead[5+i*2]);}
 function showDeltas(before){
-  G.players.forEach((p,i)=>{const d=p.score-before[i];if(!d)return;const seat=document.getElementById('seat'+i);const pill=seat&&seat.querySelector('.info');if(!pill)return;
+  if(typeof netFx==='function')netFx('deltas',before);
+  G.players.forEach((p,i)=>{const d=p.score-before[i];if(!d)return;const seat=document.getElementById(seatDomId(i));const pill=seat&&seat.querySelector('.info');if(!pill)return;
     const r=pill.getBoundingClientRect();const el=document.createElement('div');el.className='delta '+(d>0?'plus':'minus');el.textContent=(d>0?'+':'')+d.toLocaleString();
     el.style.left=(r.left+r.width/2)+'px';el.style.top=(r.top-6)+'px';document.body.appendChild(el);setTimeout(()=>el.remove(),1600);});
 }
@@ -1340,24 +1589,25 @@ function applyWin(pid,fromPid,tsumo,ev,takeSticks){
   }else{G.players[fromPid].score-=pay.total+G.honba*300;gained=pay.total+G.honba*300;}
   const sticks=takeSticks?G.riichiSticks*1000:0;p.score+=gained+sticks;if(takeSticks)G.riichiSticks=0;
   if(G.stats){if(pid===0){G.stats.maxHan=Math.max(G.stats.maxHan,ev.han);if(!tsumo&&fromPid===2)G.stats.ronBoss=true;}else if(!tsumo&&fromPid===0)G.stats.dealIns++;}
-  if(pid===0)gaugeAdd(30);
+  if(pid===0&&!MP.active)gaugeAdd(30);
   return {pay,gained,sticks};
 }
 function afterWinners(winners){
   G.advance=!winners.includes(G.dealer);G.keepHonba=!G.advance;endCheck();
 }
 function win(pid,fromPid,tsumo,winTile){
+  if(MODE==='guest'){if(tsumo)netAct({a:'tsumo'});return;}
   if(!tsumo)return winMulti([pid],fromPid,winTile,false);
   if(G.over)return;
   const p=G.players[pid];const hand=p.hand.slice();
   const ev=evaluate(hand,p.melds,buildCtx(pid,true,winTile));
-  if(!ev){if(pid===0){toast('役がありません');renderActions([],true);}return;}
+  if(!ev){if(ctlOf(pid)==='local'){toast('役がありません');renderActions([],true);}return;}
   G.over=true;const before=G.players.map(q=>q.score);
   const r=applyWin(pid,pid,true,ev,true);
   sfx.tsumo();render();showDeltas(before);
   if(pid===0){banterOne('heroTsumo',600);}else banterOne('win',400,pid,true);
   const show=()=>showResult(pid,pid,true,hand,winTile,ev,r.pay,r.gained,r.sticks);
-  if(pid===0){flash('ツモ');setTimeout(show,520);}else show();
+  if(isHuman(pid)){flash(MP.active?pname(pid)+'のツモ':'ツモ');setTimeout(show,520);}else show();
 }
 /* ロン（複数ならダブロン/トリプルロン。供託は上家取り、本場は全員に付く） */
 function winMulti(winners,fromPid,tile,chankan){
@@ -1365,18 +1615,22 @@ function winMulti(winners,fromPid,tile,chankan){
   const list=[];
   for(const pid of winners){const p=G.players[pid];const hand=p.hand.concat([tile]);
     const ev=evaluate(hand,p.melds,buildCtx(pid,false,tile,chankan));if(ev)list.push({pid,hand,ev});}
-  if(!list.length){if(winners.includes(0))toast('役がありません');return;}
-  G.over=true;const before=G.players.map(q=>q.score);
+  if(!list.length){if(winners.some(x=>ctlOf(x)==='local'))toast('役がありません');return;}
+  const before=G.players.map(q=>q.score);
+  if(!chankan&&G.pendingRiichiDeclarer===fromPid){const d=G.players[fromPid];
+    if(d.riichi){d.riichi=false;d.doubleRiichi=false;d.riichiIdx=-1;d.score+=1000;G.riichiSticks=Math.max(0,G.riichiSticks-1);}
+    G.pendingRiichiDeclarer=-1;}
+  G.over=true;
   list.forEach((w,k)=>{Object.assign(w,applyWin(w.pid,fromPid,false,w.ev,k===0));});
   sfx.ron();render();showDeltas(before);
-  const heroWon=list.some(w=>w.pid===0);
+  const heroWon=list.some(w=>isHuman(w.pid));
   if(heroWon)banterOne('lose',600,fromPid,true);
   else{const w=list.find(w=>w.pid!==0);banterOne(fromPid===0?'winHero':'win',400,w.pid,true);}
   const n=list.length;
   const showK=(k)=>{const w=list[k];const after=k<n-1?()=>showK(k+1):null;
     showResult(w.pid,fromPid,false,w.hand,tile,w.ev,w.pay,w.gained,w.sticks,after,n>1?`${k+1}/${n}`:'');};
   const start=()=>showK(0);
-  if(heroWon){flash(n>1?'ダブロン':'ロン');setTimeout(start,520);}else start();
+  if(heroWon){flash(n>1?'ダブロン':(MP.active?pname(list[0].pid)+'のロン':'ロン'));setTimeout(start,520);}else start();
   // 最後の結果画面のボタンで afterWinners が呼ばれる（showResult 側）
   G._winners=list.map(w=>w.pid);
 }
@@ -1397,17 +1651,22 @@ function render(){
   document.getElementById('wallTop').textContent=G.wall.length;
   const dora=document.getElementById('dora');dora.innerHTML='';G.doraInd.forEach(d=>dora.appendChild(tileEl(d,'sm')));
   renderCenter();
-  renderSeat('seat0',G.players[0],'bottom');
-  renderSeat('seat1',G.players[1],'right');
-  renderSeat('seat2',G.players[2],'top');
-  renderSeat('seat3',G.players[3],'left');
-  // 自分の手牌
-  const mh=document.getElementById('myHand');mh.innerHTML='';const me=G.players[0];
+  for(let pid=0;pid<4;pid++){const r=relSeat(pid);renderSeat('seat'+r,G.players[pid],['bottom','right','top','left'][r]);}
+  // 画面の席の手牌
+  const mh=document.getElementById('myHand');mh.innerHTML='';const me=G.players[VIEW];
   const beg=document.getElementById('begChk').checked;
-  document.getElementById('guide').style.display=(beg&&!G.tutorial)?'block':'none';
-  const myTurn=G.turn===0&&G.phase==='discard'&&!G.over;
+  document.getElementById('guide').style.display=((beg||HIDE)&&!G.tutorial)?'block':'none';
+  if(HIDE){
+    me.hand.forEach(()=>mh.appendChild(tileEl(-1)));
+    const mm=document.getElementById('myMelds');mm.innerHTML='';
+    renderPeek();updateSkillbar();
+    setGuide('手牌は伏せています。次の人の番になると、名前が表示されます');
+    if(typeof netAfterRender==='function')netAfterRender();
+    return;
+  }
+  const myTurn=G.turn===VIEW&&G.phase==='discard'&&!G.over;
   let recIdx=-1;
-  if(beg&&myTurn&&!G.tutorial&&!me.riichi&&!isAgari(me.hand,me.melds.length))recIdx=recommendDiscard(me);
+  if(beg&&myTurn&&!G.tutorial&&!me.riichi&&!(me.drawn>=0&&isAgari(me.hand,me.melds.length)))recIdx=recommendDiscard(me);
   me.hand.forEach((t,i)=>{const el=tileEl(t);
     if(t===me.drawn&&myTurn)el.classList.add('drawn');
     if(me.riichi&&t!==me.drawn)el.classList.add('dim');
@@ -1416,6 +1675,7 @@ function render(){
   const mm=document.getElementById('myMelds');mm.innerHTML='';me.melds.forEach(m=>mm.appendChild(meldEl(m)));
   renderPeek();updateSkillbar();
   if(beg&&!G.offering)guideForTurn();
+  if(typeof netAfterRender==='function')netAfterRender();
 }
 function renderPeek(){
   const ps=document.getElementById('peekStrip');
@@ -1423,7 +1683,7 @@ function renderPeek(){
   ps.hidden=false;ps.innerHTML='<span class="pl">次に来る牌</span>';
   G.skill.peekTiles.forEach(t=>ps.appendChild(tileEl(t,'sm peek')));
 }
-function setGuide(h){const showBtn=G&&!G.tutorial&&!G.over&&G.turn===0&&G.phase==='discard'&&!G.offering;
+function setGuide(h){const showBtn=G&&!G.tutorial&&!G.over&&!HIDE&&G.turn===VIEW&&G.phase==='discard'&&!G.offering;
   document.getElementById('guide').innerHTML=h+(showBtn?' <button class="gbtn" id="handBtn">いまの手を見る</button>':'');
   const b=document.getElementById('handBtn');if(b)b.onclick=(e)=>{e.stopPropagation();showHandModal();};}
 /* 手牌の解説：形・待ち・狙える役・おすすめの理由 */
@@ -1463,7 +1723,7 @@ function analyzeHand(p){
   return {sh,state,shape,yaku,rec,idx};
 }
 function showHandModal(){
-  if(!G||G.over)return;const p=G.players[0];const A=analyzeHand(p);
+  if(!G||G.over||HIDE)return;const p=G.players[VIEW];const A=analyzeHand(p);
   {const _m=document.getElementById('modal');_m.classList.remove('done');_m.onclick=null;}
   const ov=document.getElementById('overlay');ov.style.display='flex';const m=document.getElementById('modal');
   const hs=p.hand.map((t,i)=>{const e=tileEl(t,'sm'+(A.rec&&i===A.idx?' last':''));return e.outerHTML;}).join('');
@@ -1477,10 +1737,10 @@ function showHandModal(){
   document.getElementById('handClose').onclick=()=>{ov.style.display='none';};
 }
 function guideForTurn(){
-  const me=G.players[0];
+  const me=G.players[VIEW];
   if(G.over)return setGuide('局が終わりました');
-  if(G.turn!==0||G.phase!=='discard')return setGuide('相手の番です…少し待ってね');
-  if(isAgari(me.hand,me.melds.length))return setGuide('<b>あがれます。</b> 下の<span class="tag">ツモ</span>を押そう');
+  if(G.turn!==VIEW||G.phase!=='discard')return setGuide(MP.active&&isHuman(G.turn)&&G.turn!==VIEW?esc(pname(G.turn))+'の番です…':'相手の番です…少し待ってね');
+  if(me.drawn>=0&&isAgari(me.hand,me.melds.length))return setGuide('<b>あがれます。</b> 下の<span class="tag">ツモ</span>を押そう');
   let best=99,seen=new Set();
   for(let i=0;i<me.hand.length;i++){const t=me.hand[i];if(seen.has(t))continue;seen.add(t);const r=me.hand.slice();r.splice(i,1);const s=shanten(r,me.melds.length);if(s<best)best=s;}
   if(me.riichi){const r=me.hand.slice();const w=waits(me.hand.slice(0,13),me.melds.length);
@@ -1526,8 +1786,8 @@ function renderSeat(id,p,pos){
   const el=document.getElementById(id);el.innerHTML='';
   const info=document.createElement('div');info.className='info'+(G.turn===p.id&&!G.over?' turn':'');
   const side=(pos==='left'||pos==='right');
-  const fsTenpai=G.skill&&G.skill.foresight&&p.id!==0&&!p.riichi&&!G.over&&shanten(p.hand,p.melds.length)===0;
-  info.innerHTML=`<span class="dl">${p.name||POS[p.id]}</span> ${WINDS[p.seatWind]}${p.isDealer?'<b>親</b>':''} <span class="sc">${p.score}</span>`+(p.riichi?' <span class="rii">立</span>':'')+(fsTenpai?' <span class="tenpai">聴</span>':'');
+  const fsTenpai=G.skill&&G.skill.foresight&&p.id!==VIEW&&!p.riichi&&!G.over&&shanten(p.hand,p.melds.length)===0;
+  info.innerHTML=`<span class="dl">${esc(p.name||POS[relSeat(p.id)])}</span> ${WINDS[p.seatWind]}${p.isDealer?'<b>親</b>':''} <span class="sc">${p.score}</span>`+(p.riichi?' <span class="rii">立</span>':'')+(fsTenpai?' <span class="tenpai">聴</span>':'');
   const drew=(G.turn===p.id&&G.phase==='discard'&&!G.over&&p.drawn>=0);
   if(side){
     // 手牌（横向きに寝かせた裏牌の列）
@@ -1561,12 +1821,12 @@ function renderCenter(){
   let k=0;const side=(cls)=>{let h=`<div class="wside ${cls}">`;for(let i=0;i<PER;i++){const on=k<stacks;k++;h+=`<div class="wcell${on?'':' off'}">${on?tileEl(-1,'xs').outerHTML:''}</div>`;}return h+'</div>';};
   // 上→右→下→左の順に埋め、残りが減ると末尾から消える
   const top=side('t'),right=side('r'),bottom=side('b'),left=side('l');
-  const me=G.players[0];
+  const at=r=>(VIEW+r)%4;
   const wind=(i)=>{const p=G.players[i];const t=(G.turn===i&&!G.over)?' turn':'';return `<span class="cw ${p.isDealer?'dealer':''}${t}">${WINDS[p.seatWind]}</span>`;};
   const dora=`<div class="wdora">${G.doraInd.map(d=>tileEl(d,'sm').outerHTML).join('')}</div>`;
   ctr.innerHTML=`<div class="wallring">${top}${right}${bottom}${left}${dora}
     <div class="cpanel">
-      <div class="cw-top">${wind(2)}</div><div class="cw-right">${wind(1)}</div><div class="cw-bottom">${wind(0)}</div><div class="cw-left">${wind(3)}</div>
+      <div class="cw-top">${wind(at(2))}</div><div class="cw-right">${wind(at(1))}</div><div class="cw-bottom">${wind(at(0))}</div><div class="cw-left">${wind(at(3))}</div>
       <div class="cmain"><div class="rnd">${WINDS[G.roundWind]}${G.dealer+1}局</div><div class="rem"><b>${G.wall.length}</b><span>残り</span></div><div class="hb">${G.honba||0}本場　供託${G.riichiSticks||0}</div></div>
     </div></div>`;
 }
@@ -1590,9 +1850,10 @@ function renderActions(acts,showTurn){
   if(showTurn&&!acts.some(a=>a.label==='ツモ')){const s=document.createElement('span');s.textContent=acts.length?'':'牌を選んで捨てる';s.style.opacity=.6;el.appendChild(s);}
 }
 let toastT;function toast(m,ms){const e=document.getElementById('toast');e.textContent=m;e.style.display='block';clearTimeout(toastT);toastT=setTimeout(()=>e.style.display='none',ms||1500);}
-let flashT;function flash(m){const e=document.getElementById('callflash');e.textContent=m;e.style.display='block';e.style.animation='none';e.offsetHeight;e.style.animation='flash .6s';clearTimeout(flashT);flashT=setTimeout(()=>e.style.display='none',900);}
+let flashT;function flash(m,localOnly){if(!localOnly&&typeof netFx==='function')netFx('flash',m);const e=document.getElementById('callflash');e.textContent=m;e.style.display='block';e.style.animation='none';e.offsetHeight;e.style.animation='flash .6s';clearTimeout(flashT);flashT=setTimeout(()=>e.style.display='none',900);}
 
 function showResult(pid,fromPid,tsumo,hand,winTile,ev,pay,gained,sticks,after,multi){
+  if(MODE==='host')netSendAll({t:'result',a:[pid,fromPid,tsumo,hand,winTile,ev,pay,gained,sticks,null,multi],ura:G.uraInd},true);
   const ov=document.getElementById('overlay');ov.style.display='flex';
   const m=document.getElementById('modal');const p=G.players[pid];
   const sorted=hand.slice().sort((a,b)=>a-b);
@@ -1601,10 +1862,10 @@ function showResult(pid,fromPid,tsumo,hand,winTile,ev,pay,gained,sticks,after,mu
     +(p.melds.length?' <span style="opacity:.5">／</span> '+p.melds.map(md=>meldEl(md).outerHTML).join(''):'');
   const rank=rankName(ev.fu,ev.han);
   let payStr;
-  const nm=i=>G.players[i].name||POS[i];
+  const nm=i=>esc(G.players[i].name||POS[(i-VIEW+4)%4]);
   if(tsumo){payStr=pay.dealer?`${pay.each}オール`:`子${pay.nd}/親${pay.d}`;}else payStr=`${nm(fromPid)}から`;
   const T0=sorted.length*55+380;               // 手牌が出そろう時刻
-  const yl=ev.yaku.map((v,i)=>`<div class="yl" data-y="${v.n}" style="animation-delay:${T0+i*150}ms;cursor:help">${v.n}<span class="h">${v.dora?v.h:v.h+'翻'}</span></div>`).join('');
+  const yl=ev.yaku.map((v,i)=>`<div class="yl" data-y="${esc(v.n)}" style="animation-delay:${T0+i*150}ms;cursor:help">${esc(v.n)}<span class="h">${v.dora?(v.h|0):(v.h|0)+'翻'}</span></div>`).join('');
   const T1=T0+ev.yaku.length*150+250;          // 役が出そろう時刻
   const total=gained+sticks,handPts=pay.total,extra=total-handPts;
   const exParts=[];if(G.honba)exParts.push(`本場 +${(G.honba*300).toLocaleString()}`);if(sticks)exParts.push(`供託 +${sticks.toLocaleString()}`);
@@ -1630,7 +1891,7 @@ function showResult(pid,fromPid,tsumo,hand,winTile,ev,pay,gained,sticks,after,mu
   timers.push(setTimeout(()=>{if(finished)return;sc.classList.remove('hidden');sc.classList.add('pop');
     const t0=performance.now(),dur=650;
     const step=(now)=>{if(finished)return;const k=Math.min(1,(now-t0)/dur);const e=1-Math.pow(1-k,3);pts.textContent=Math.round(handPts*e).toLocaleString();
-      if(k<1)requestAnimationFrame(step);else{if(ex)ex.classList.remove('hidden');if(rk){rk.classList.remove('hidden');rk.classList.add('pop');if(pid===0&&ev.han>=6)confetti();}setTimeout(()=>{if(!finished){nb.classList.remove('hidden');finished=true;m.classList.add('done');}},260);}};
+      if(k<1)requestAnimationFrame(step);else{if(ex)ex.classList.remove('hidden');if(rk){rk.classList.remove('hidden');rk.classList.add('pop');if((MP.active?pid===VIEW:pid===0)&&ev.han>=6)confetti();}setTimeout(()=>{if(!finished){nb.classList.remove('hidden');finished=true;m.classList.add('done');}},260);}};
     requestAnimationFrame(step);},T1));
   m.onclick=(e)=>{if(e.target===nb)return;const y=e.target.closest('.yl');if(y&&finished){const d=yakuDesc(y.dataset.y);if(d)toast(y.dataset.y+'：'+d,3800);return;}finish();};
   if(document.getElementById('begChk').checked)m.querySelector('.yaku').insertAdjacentHTML('afterend','<div class="sub" style="font-size:11px;opacity:.6">役の名前をタップすると説明が出ます</div>');
@@ -1643,10 +1904,11 @@ function showResult(pid,fromPid,tsumo,hand,winTile,ev,pay,gained,sticks,after,mu
     afterWinners(G._winners||[pid]);G._winners=null;};
 }
 function showDraw(tenpai){
+  if(MODE==='host')netSendAll({t:'draw',tenpai},true);
   {const _m=document.getElementById('modal');_m.classList.remove('done');_m.onclick=null;}
   const ov=document.getElementById('overlay');ov.style.display='flex';const m=document.getElementById('modal');
   m.innerHTML=`<h2>流局</h2>
-    <div class="yaku">${G.players.map((p,i)=>`${p.name||POS[i]} ${WINDS[p.seatWind]}${p.isDealer?'親':''}<span class="h">${tenpai[i]?'聴牌':'不聴'} ${p.score}</span>`).join('<br>')}</div>
+    <div class="yaku">${G.players.map((p,i)=>`${esc(p.name||POS[(i-VIEW+4)%4])} ${WINDS[p.seatWind]}${p.isDealer?'親':''}<span class="h">${tenpai[i]?'聴牌':'不聴'} ${p.score}</span>`).join('<br>')}</div>
     <button class="btn" id="nextBtn">${G.storyFinal||G.practice!=null?'つづける':'次の局へ'}</button>`;
   const wasFinal=G.storyFinal,meTen=tenpai[0],wasPrac=G.practice;
   document.getElementById('nextBtn').onclick=()=>{ov.style.display='none';if(wasFinal){storyFinalEnd(meTen);return;}if(wasPrac!=null){practiceEnd(wasPrac,meTen);return;}endCheck();};
@@ -1660,6 +1922,7 @@ function endCheck(){
 function showFinal(){
   {const _m=document.getElementById('modal');_m.classList.remove('done');_m.onclick=null;}
   if(G.stage!=null){return showStageResult();}
+  if(MP.active)return mpFinal();
   const ov=document.getElementById('overlay');ov.style.display='flex';const m=document.getElementById('modal');
   const rank=G.players.map((p,i)=>({name:p.name||POS[i],score:p.score})).sort((a,b)=>b.score-a.score);
   m.innerHTML=`<h2>終局</h2>
@@ -1668,7 +1931,7 @@ function showFinal(){
   document.getElementById('nextBtn').onclick=()=>{ov.style.display='none';G=null;newHand(false);};
 }
 
-document.getElementById('newGame').onclick=()=>{if(!G||G.tutorial){showChooser();return;}if(confirm('この局を配り直しますか？（点数・本場は局の開始時に戻ります）'))newHand(true,true);};
+document.getElementById('newGame').onclick=()=>{if(MP.active){mpMenu();return;}if(!G||G.tutorial){showChooser();return;}if(confirm('この局を配り直しますか？（点数・本場は局の開始時に戻ります）'))newHand(true,true);};
 document.getElementById('begChk').onchange=()=>render();
 function updateSpeedBtn(){document.getElementById('speedBtn').textContent='速度 '+sp().label;}
 document.getElementById('speedBtn').onclick=()=>{
@@ -1776,10 +2039,10 @@ const SKILLS=[
   {id:'foresight',cost:45,name:'千里眼'},
   {id:'god',cost:80,name:'神引き'}
 ];
-function gaugeAdd(n){if(!G||G.tutorial)return;if(G.stage!=null){const o=typeof HERO!=='undefined'?HERO.origin:'';n=Math.round(n*(o==='clerk'?2:o==='gambler'?0.5:1)*(G.dark?1.5:1));}if(ASSIST)n=Math.round(n*1.5);SKILL.gauge=Math.min(100,SKILL.gauge+n);updateSkillbar();}
+function gaugeAdd(n){if(!G||G.tutorial||MP.active)return;if(G.stage!=null){const o=typeof HERO!=='undefined'?HERO.origin:'';n=Math.round(n*(o==='clerk'?2:o==='gambler'?0.5:1)*(G.dark?1.5:1));}if(ASSIST)n=Math.round(n*1.5);SKILL.gauge=Math.min(100,SKILL.gauge+n);updateSkillbar();}
 function updateSkillbar(){
   const bar=document.getElementById('skillbar');if(!bar)return;
-  const inTut=G&&G.tutorial;bar.style.display=inTut?'none':'flex';
+  const inTut=G&&G.tutorial;bar.style.display=(inTut||MP.active)?'none':'flex';
   const fill=document.getElementById('gaugeFill');fill.style.width=SKILL.gauge+'%';
   document.getElementById('gaugeLbl').textContent='SKILL '+SKILL.gauge;
   const usableTurn=G&&!G.over&&!inTut&&G.turn===0&&G.phase==='discard';
@@ -1844,6 +2107,469 @@ function tourFromMenu(){
   screenTour(()=>{document.getElementById('coach').hidden=true;G=null;newHand(false);});
 }
 
+/* ===== みんなで対戦 ===== */
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+const cleanName=v=>String(v||'').replace(/[\u0000-\u001f<>]/g,'').trim().slice(0,10);
+function showVersus(pre){
+  {const _m=document.getElementById('modal');_m.classList.remove('done');_m.onclick=null;}
+  hideTalk();
+  const ov=document.getElementById('overlay');ov.style.display='flex';const m=document.getElementById('modal');
+  let n=parseInt(lsGet('mjHotN')||'2',10),calls=lsGet('mjHotCalls')!=='ron',lv=lsGet('mjVsLv')||CPU_LV;
+  const saved=(()=>{try{return JSON.parse(lsGet('mjHotNames')||'[]')}catch(e){return []}})();
+  let codeV=pre||'';
+  const draw=()=>{
+    const myName=lsGet('mjNetName')||(HERO&&HERO.name)||'';
+    const names=[0,1,2,3].slice(0,n).map(i=>`<div class="vs-row"><label>${i+1}人目</label><input data-ni="${i}" maxlength="10" value="${esc(saved[i]||('プレイヤー'+(i+1)))}"></div>`).join('');
+    const hotCard=`<div class="vs-card"><h3>この端末で交代して遊ぶ</h3>
+      <p>1台を順番に回して打つ。自分の番が来ると名前が大きく出るので、その人に端末を渡してからタップ。空いた席にはCPUが入る。</p>
+      <div class="vs-row"><label>人数</label><div class="seg" id="hotN">${[2,3,4].map(k=>`<button data-n="${k}" class="${k===n?'on':''}">${k}人</button>`).join('')}</div></div>
+      ${names}
+      <div class="vs-row"><label>鳴きの確認</label><div class="seg" id="hotCalls"><button data-c="1" class="${calls?'on':''}">ポン・チー・ロンを聞く</button><button data-c="0" class="${calls?'':'on'}">聞かない（ロンは自動）</button></div></div>
+      <p style="font-size:11px">「聞かない」にすると、鳴けるたびに端末を回さずに済み、手牌や待ちを周りに推測されにくくなる。ロンできる時は自動であがる。</p>
+      ${n<4?`<div class="vs-row"><label>CPUの強さ</label><div class="seg" id="hotLv">${CPU_LEVELS.map(L=>`<button data-lv="${L.id}" class="${lv===L.id?'on':''}">${L.t}</button>`).join('')}</div></div>`:''}
+      <div style="text-align:center;margin-top:8px"><button class="btn ${pre?'gray':''}" id="hotGo">はじめる</button></div></div>`;
+    const netCard=`<div class="vs-card" id="netCard"><h3>オンラインで遊ぶ</h3>
+      <p>それぞれのスマホやPCから同じ部屋に入って打つ。部屋を作った人の端末がゲームを進める。足りない席にはCPUが入る。</p>
+      <div class="vs-row"><label>あなたの名前</label><input id="netName" maxlength="10" value="${esc(myName)}" placeholder="10文字まで"></div>
+      <div style="text-align:center;margin:8px 0"><button class="btn" id="netHost">部屋を作る</button></div>
+      <div class="vs-row"><label>部屋コード</label><input id="netCode" maxlength="6" value="${esc(codeV)}" placeholder="6文字" autocapitalize="off" autocomplete="off" style="text-transform:uppercase;letter-spacing:.2em"><button class="btn ${pre?'':'gray'}" id="netJoin">部屋に入る</button></div>
+      <p style="font-size:11px">インターネットを使います（接続の仲介に無料の公開サーバーを使い、対局の中身は端末どうしで直接やりとりします。仲介サーバーと相手の端末には、あなたの端末のIPアドレスなど接続に必要な情報が伝わります）。会社や学校のネットワーク、一部のモバイル回線ではつながらないことがあります。</p></div>`;
+    m.innerHTML=`<h2>みんなで対戦</h2>${pre?`<div class="sub" style="margin-bottom:6px">招待された部屋に入るには、名前を入れて「部屋に入る」</div>${netCard}${hotCard}`:hotCard+netCard}
+    <div style="text-align:center"><button class="btn gray" id="vsBack">もどる</button></div>`;
+    if(pre){const nc=document.getElementById('netCard');if(nc&&nc.scrollIntoView)nc.scrollIntoView({block:'start'});}
+    m.querySelectorAll('#hotN button').forEach(b=>b.onclick=()=>{keep();n=+b.dataset.n;lsSet('mjHotN',String(n));draw();});
+    m.querySelectorAll('#hotCalls button').forEach(b=>b.onclick=()=>{keep();calls=b.dataset.c==='1';lsSet('mjHotCalls',calls?'all':'ron');draw();});
+    m.querySelectorAll('#hotLv button').forEach(b=>b.onclick=()=>{keep();lv=b.dataset.lv;lsSet('mjVsLv',lv);draw();});
+    document.getElementById('hotGo').onclick=()=>{keep();const nm=[0,1,2,3].slice(0,n).map(i=>cleanName(saved[i])||('プレイヤー'+(i+1)));startHot(n,nm,calls,lv);};
+    document.getElementById('netHost').onclick=()=>{const nm=cleanName(document.getElementById('netName').value)||'部屋主';lsSet('mjNetName',nm);hostRoom(nm);};
+    document.getElementById('netJoin').onclick=()=>{const nm=cleanName(document.getElementById('netName').value)||'参加者';lsSet('mjNetName',nm);
+      const code=String(document.getElementById('netCode').value||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+      if(code.length!==6){toast('部屋コードは6文字です');return;}NET_LAST_CODE=code;joinRoom(code,nm);};
+    document.getElementById('vsBack').onclick=()=>{ov.style.display='none';showStory();};
+  };
+  const keep=()=>{m.querySelectorAll('input[data-ni]').forEach(i=>{saved[+i.dataset.ni]=cleanName(i.value);});lsSet('mjHotNames',JSON.stringify(saved));
+    const ni=document.getElementById('netName');if(ni)lsSet('mjNetName',cleanName(ni.value));
+    const ci=document.getElementById('netCode');if(ci)codeV=ci.value;};
+  draw();
+}
+function startHot(n,names,calls,lv){
+  const at={2:[0,2],3:[0,1,2],4:[0,1,2,3]}[n];
+  MP={active:true,seats:[0,1,2,3].map(i=>at.includes(i)?{kind:'human',name:names[at.indexOf(i)]}:{kind:'cpu'}),calls,me:0,lv};
+  MODE='hot';VIEW=0;HIDE=true;
+  document.getElementById('overlay').style.display='none';
+  G=null;newHand(false);
+}
+function mpMenu(){
+  {const _m=document.getElementById('modal');_m.classList.remove('done');_m.onclick=null;}
+  const ov=document.getElementById('overlay');ov.style.display='flex';const m=document.getElementById('modal');
+  const label=MODE==='hot'?'この端末で交代プレイ中':MODE==='host'?`オンライン対戦中（部屋コード ${NET.code.toUpperCase()}）`:'オンライン対戦に参加中';
+  m.innerHTML=`<h2>メニュー</h2><div class="sub">${label}</div>
+    <div style="display:flex;flex-direction:column;gap:8px;align-items:center;margin-top:12px">
+      <button class="btn blue" id="mpBack" style="min-width:220px">対戦にもどる</button>
+      <button class="btn gray" id="mpRules" style="min-width:220px">ルールブック</button>
+      <button class="btn gray" id="mpSound" style="min-width:220px">音楽・効果音：${SOUND_ON?'あり':'なし'}</button>
+      <button class="btn gray" id="mpQuit" style="min-width:220px">${MODE==='guest'?'部屋から抜ける':'対戦をやめる'}</button></div>
+    ${MODE==='host'?'<div class="sub" style="font-size:11px;margin-top:8px">やめると、参加している全員の対戦が終わります</div>':''}`;
+  document.getElementById('mpBack').onclick=()=>{ov.style.display='none';};
+  document.getElementById('mpRules').onclick=()=>showHelp(mpMenu);
+  document.getElementById('mpSound').onclick=()=>{setSound(!SOUND_ON);mpMenu();};
+  document.getElementById('mpQuit').onclick=(e)=>{const b=e.currentTarget;
+    if(!b.dataset.sure){b.dataset.sure='1';b.classList.remove('gray');b.classList.add('red');b.textContent=MODE==='guest'?'本当に抜ける（席はCPUが引き継ぐ）':'本当にやめる';return;}
+    mpLeave();showStory();};
+}
+function mpFinal(){
+  const ov=document.getElementById('overlay');ov.style.display='flex';const m=document.getElementById('modal');
+  const rank=G.players.map((p,i)=>({i,name:p.name||POS[i],score:p.score})).sort((a,b)=>b.score-a.score);
+  if(MODE==='host')netSendAll({t:'final'},true);
+  m.innerHTML=`<h2>終局</h2>
+    <div class="yaku">${rank.map((r,k)=>`${k+1}位 ${esc(r.name)}${r.i===VIEW&&MODE!=='hot'?'（あなた）':''}<span class="h">${r.score}</span>`).join('<br>')}</div>
+    ${MODE==='guest'?'<div class="sub">部屋主が次のゲームを始めるのを待っています</div>':''}
+    <div style="display:flex;gap:8px;justify-content:center;margin-top:10px">
+      ${MODE==='guest'?'':'<button class="btn" id="mpAgain">同じメンバーでもう一度</button>'}
+      <button class="btn gray" id="mpEnd">${MODE==='guest'?'部屋から抜ける':'やめる'}</button></div>`;
+  if(rank[0].i===VIEW||MODE==='hot')confetti();
+  const ag=document.getElementById('mpAgain');if(ag)ag.onclick=()=>{ov.style.display='none';G=null;newHand(false);};
+  document.getElementById('mpEnd').onclick=()=>{mpLeave();showStory();};
+}
+function mpLeave(){
+  const wasMatch=MP.active||MODE==='hot';
+  if(MODE==='host')netSendAll({t:'bye'});
+  if(MODE==='guest'&&NET.host&&NET.host.open){try{NET.host.send({t:'leave'});}catch(e){}}
+  netShutdown();mpResetGlobals();
+  if(wasMatch){if(G){G.over=true;G.gen++;}G=null;renderActions([],false);clearTableDom();}
+}
+function mpResetGlobals(){
+  MODE=null;MP={active:false,seats:null,calls:true,me:0};VIEW=0;HIDE=false;HIDE_BY=-1;
+  RED_ON=lsGet('mjRed')!=='0';
+  document.getElementById('curtain').hidden=true;stopAskBar();
+}
+function clearTableDom(){['seat0','seat1','seat2','seat3','center','myHand','myMelds'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML='';});
+  const g=document.getElementById('guide');if(g)g.style.display='none';}
+
+/* ===== オンライン通信（PeerJS。部屋主の端末がゲームを進め、参加者は操作だけ送る） ===== */
+const PEER_URL='https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.5/peerjs.min.js';
+const PEER_SRI='sha512-XEKeWX+mI3Ov+tg2evDlVQFzVOIp4T8J3cNcCEPaEUGpxJV3eZaN8rHuvnFPvQpGJBHPmrozJDMpm2xcDvtmyQ==';
+const ROOM_PREFIX='suimj-room-';
+const NET_PROTO=1;
+let NET=netBlank();
+let NET_TRY=0;          // 部屋を作る／入る試行の世代。やめたら古い続きを捨てる
+let NET_LAST_CODE='';
+const BROKER_SOFT=['network','disconnected'];   // 仲介サーバーだけが切れた（端末どうしの接続は生きている）
+function netBlank(){return {peer:null,conns:[null,null,null,null],host:null,code:'',seats:null,started:false,askId:0,pending:null,ask:null,syncT:null,timerT:null,seat:0,lv:'normal',closing:false,hb:null,seen:[0,0,0,0],hostSeen:0,tokens:[null,null,null,null],srvOpen:false};}
+function rejoinKey(code){return 'mjRejoin_'+code;}
+function newToken(){const r=new Uint32Array(2);crypto.getRandomValues(r);return r[0].toString(36)+r[1].toString(36);}
+/* 画面が裏に回っていた間は、戻った時点で猶予をやり直す（止まっていただけで切断扱いにしない） */
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState!=='visible')return;const now=Date.now();
+  if(MODE==='host')NET.seen=NET.seen.map((v,i)=>NET.conns[i]?now:v);else if(MODE==='guest'&&NET.hostSeen)NET.hostSeen=now;});
+function netHeartbeat(){
+  clearInterval(NET.hb);
+  NET.hb=setInterval(()=>{
+    const now=Date.now();
+    if(MODE==='host'){NET.conns.forEach((c,i)=>{if(!c)return;if(NET.seen[i]&&now-NET.seen[i]>45000){try{c.close();}catch(e){}hostOnClose(c);return;}if(c.open){try{c.send({t:'ping'});}catch(e){}}});}
+    else if(MODE==='guest'){if(NET.hostSeen&&now-NET.hostSeen>45000)guestOnClose();}
+  },5000);
+}
+function loadPeer(){
+  return new Promise((res,rej)=>{if(window.Peer)return res();
+    const sc=document.createElement('script');sc.src=PEER_URL;sc.async=true;sc.integrity=PEER_SRI;sc.crossOrigin='anonymous';sc.referrerPolicy='no-referrer';
+    sc.onload=()=>window.Peer?res():rej(new Error('noPeer'));sc.onerror=()=>rej(new Error('load'));document.head.appendChild(sc);});
+}
+function genCode(){const A='abcdefghjkmnpqrstuvwxyz23456789';let c='';const r=new Uint32Array(6);(crypto.getRandomValues?crypto.getRandomValues(r):r.forEach((_,i)=>r[i]=Math.random()*1e9));for(let i=0;i<6;i++)c+=A[r[i]%A.length];return c;}
+function netShutdown(){
+  NET_TRY++;
+  NET.closing=true;clearTimeout(NET.timerT);clearTimeout(NET.syncT);clearInterval(NET.hb);
+  try{NET.conns.forEach(c=>c&&c.close());}catch(e){}
+  try{NET.host&&NET.host.close();}catch(e){}
+  try{NET.peer&&NET.peer.destroy();}catch(e){}
+  unwrapSfx();NET=netBlank();
+}
+function netStatus(html){const el=document.getElementById('netStatus');if(el)el.innerHTML=html;}
+function netFail(msg){
+  const wasMatch=MP.active;
+  netShutdown();mpResetGlobals();
+  if(wasMatch){if(G){G.over=true;G.gen++;}G=null;renderActions([],false);clearTableDom();}
+  const ov=document.getElementById('overlay');ov.style.display='flex';const m=document.getElementById('modal');
+  m.innerHTML=`<h2>つながりませんでした</h2><div class="sub" style="font-size:13px;line-height:1.8">${msg}</div>
+    <div style="display:flex;gap:8px;justify-content:center;margin-top:12px"><button class="btn" id="nfBack">みんなで対戦へ</button><button class="btn gray" id="nfMenu">メニュー</button></div>`;
+  document.getElementById('nfBack').onclick=()=>showVersus(NET_LAST_CODE||undefined);document.getElementById('nfMenu').onclick=()=>{if(G){G.over=true;G.gen++;}G=null;showStory();};
+}
+const PEER_ERR={
+  'browser-incompatible':'このブラウザはオンライン対戦に対応していません。',
+  'network':'公開の仲介サーバーにつながりません。インターネット接続を確認してください。',
+  'server-error':'仲介サーバーが混み合っているか停止しています。時間をおいて試してください。',
+  'socket-error':'仲介サーバーとの通信が切れました。',
+  'socket-closed':'仲介サーバーとの通信が切れました。',
+  'ssl-unavailable':'安全な接続が使えませんでした。',
+  'webrtc':'端末どうしの直接接続に失敗しました。同じWi-Fiに入るか、別のネットワークで試してください。',
+  'peer-unavailable':'その部屋は見つかりませんでした。部屋コードを確かめてください。'
+};
+/* ---- 部屋主 ---- */
+async function hostRoom(name){
+  netShutdown();
+  const ov=document.getElementById('overlay');ov.style.display='flex';
+  document.getElementById('modal').innerHTML=`<h2>部屋を作っています</h2><div class="sub" id="netStatus">接続の準備中…</div>
+    <div style="text-align:center;margin-top:10px"><button class="btn gray" id="hrCancel">やめる</button></div>`;
+  document.getElementById('hrCancel').onclick=()=>{mpLeave();showVersus();};
+  const tok=NET_TRY;
+  try{await loadPeer();}catch(e){if(tok!==NET_TRY)return;return netFail('通信用の部品を読み込めませんでした。インターネットにつながっているか確認してください。');}
+  if(tok!==NET_TRY)return;
+  NET=netBlank();MODE='host';NET.lv=lsGet('mjVsLv')||CPU_LV;
+  NET.code=genCode();NET.seats=[{kind:'host',name},{kind:'open'},{kind:'open'},{kind:'open'}];
+  let peer;try{peer=new Peer(ROOM_PREFIX+NET.code,{debug:0});}catch(e){return netFail(PEER_ERR['browser-incompatible']);}
+  NET.peer=peer;
+  const openTo=setTimeout(()=>{if(NET.peer===peer&&!NET.srvOpen)netFail('仲介サーバーにつながりませんでした。インターネット接続を確認するか、時間をおいて試してください。');},20000);
+  peer.on('open',()=>{if(NET.peer!==peer)return;clearTimeout(openTo);
+    if(NET.srvOpen){netStatus('仲介サーバーに再接続しました');return;}
+    NET.srvOpen=true;netHeartbeat();renderLobby();});
+  peer.on('error',e=>{if(NET.peer!==peer)return;
+    if(e.type==='unavailable-id'&&!NET.srvOpen){clearTimeout(openTo);NET.code=genCode();try{peer.destroy();}catch(_){}return hostRoom(name);}
+    if(e.type==='peer-unavailable'||e.type==='unavailable-id')return;
+    if(NET.srvOpen&&BROKER_SOFT.includes(e.type)){netStatus('仲介サーバーに再接続しています…（部屋に入っている人はそのまま）');return;}
+    if(!NET.started&&!NET.conns.some(c=>c&&c.open)){clearTimeout(openTo);return netFail(PEER_ERR[e.type]||('接続でエラーが起きました（'+esc(e.type)+'）'));}
+    if(!NET.started)netStatus('仲介サーバーとの接続が切れました。新しい人は入れませんが、部屋に入っている人とは続けられます');});
+  peer.on('disconnected',()=>{if(NET.peer!==peer||NET.closing)return;setTimeout(()=>{try{if(NET.peer===peer&&!peer.destroyed&&peer.disconnected)peer.reconnect();}catch(_){}},3000);});
+  peer.on('connection',conn=>{
+    conn.on('data',msg=>hostOnData(conn,msg));
+    conn.on('close',()=>hostOnClose(conn));
+    conn.on('error',()=>hostOnClose(conn));
+  });
+}
+function roomLink(){return location.origin+location.pathname+'#room='+NET.code;}
+function renderLobby(){
+  if(MODE!=='host'||NET.started)return;
+  const ov=document.getElementById('overlay');ov.style.display='flex';const m=document.getElementById('modal');
+  const W=['東','南','西','北'];
+  const rows=NET.seats.map((st,i)=>`<li><span>${W[i]}の席　${st.kind==='open'?'<span style="opacity:.55">空き（CPUが入る）</span>':esc(st.name)}</span><span>${st.kind==='host'?'部屋主（あなた）':st.kind==='remote'?'参加者':''}</span></li>`).join('');
+  const humans=NET.seats.filter(st=>st.kind!=='open').length;
+  m.innerHTML=`<h2>部屋を作りました</h2>
+    <div class="sub">この部屋コードを、一緒に遊ぶ人に伝えてください</div>
+    <div class="room-code">${NET.code.toUpperCase()}</div>
+    <div class="seg"><button id="lbCopy">コードをコピー</button><button id="lbLink">招待リンクをコピー</button>${navigator.share?'<button id="lbShare">共有する</button>':''}</div>
+    <ul class="lobby">${rows}</ul>
+    <div class="vs-row" style="justify-content:center"><label style="min-width:auto">CPUの強さ</label><div class="seg" id="lbLv">${CPU_LEVELS.map(L=>`<button data-lv="${L.id}" class="${NET.lv===L.id?'on':''}">${L.t}</button>`).join('')}</div></div>
+    <div class="sub" id="netStatus" style="font-size:11px">${humans<2?'参加者を待っています…（ひとりでも始められます）':'準備ができたら始めましょう'}</div>
+    <div style="display:flex;gap:8px;justify-content:center;margin-top:10px"><button class="btn" id="lbStart">この人数で始める</button><button class="btn gray" id="lbClose">部屋を閉じる</button></div>`;
+  const copy=t=>{(navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast('コピーしました')).catch(()=>prompt('コピーしてください',t));};
+  document.getElementById('lbCopy').onclick=()=>copy(NET.code.toUpperCase());
+  document.getElementById('lbLink').onclick=()=>copy(roomLink());
+  const sh=document.getElementById('lbShare');if(sh)sh.onclick=()=>navigator.share({title:'麻雀「翠」で対戦',text:'部屋コード '+NET.code.toUpperCase(),url:roomLink()}).catch(()=>{});
+  m.querySelectorAll('#lbLv button').forEach(b=>b.onclick=()=>{NET.lv=b.dataset.lv;lsSet('mjVsLv',NET.lv);renderLobby();});
+  document.getElementById('lbStart').onclick=hostStart;
+  document.getElementById('lbClose').onclick=()=>{mpLeave();showVersus();};
+}
+function lobbyBroadcast(){netSendAll({t:'lobby',seats:NET.seats.map(st=>({kind:st.kind,name:st.name||''}))});}
+function hostOnData(conn,msg){
+  if(!msg||typeof msg!=='object'||MODE!=='host')return;
+  if(conn._seat!=null)NET.seen[conn._seat]=Date.now();
+  if(msg.t==='pong')return;
+  if(msg.t==='hello'){
+    if(conn._seat!=null)return;
+    if(msg.v!==NET_PROTO){conn.send({t:'reject',why:'version'});setTimeout(()=>conn.close(),400);return;}
+    // 抜けた人が同じ端末から戻ってきた（合言葉が一致）→ 元の席に戻す
+    const back=(NET.started&&typeof msg.token==='string')?NET.tokens.findIndex((t,k)=>k>0&&t===msg.token):-1;
+    if(back>0){
+      const old=NET.conns[back];if(old&&old!==conn){old._seat=null;try{old.close();}catch(e){}}
+      const nm=cleanName(msg.name)||(NET.seats[back]&&NET.seats[back].name)||('プレイヤー'+(back+1));
+      NET.conns[back]=conn;conn._seat=back;NET.seen[back]=Date.now();NET.seats[back]={kind:'remote',name:nm};
+      conn.send({t:'welcome',seat:back,code:NET.code,token:msg.token});
+      MP.seats[back]={kind:'human',name:nm};
+      if(G&&G.ctl){G.ctl[back]='remote';const p=G.players[back];p.name=nm;p.ai=null;p.level=1;}
+      conn.send({t:'start',seat:back,seats:MP.seats,red:RED_ON,rejoin:true});
+      const t=nm+'が戻りました';toast(t,2500);netSendAll({t:'toast',v:t});
+      if(G){render();netFlush();}
+      const P=NET.pending;if(P&&P.pid===back){try{conn.send({t:'ask',id:P.id,req:P.req,ms:15000});}catch(e){}}
+      return;
+    }
+    if(NET.started){conn.send({t:'reject',why:'started'});setTimeout(()=>conn.close(),400);return;}
+    const i=NET.seats.findIndex(st=>st.kind==='open');
+    if(i<0){conn.send({t:'reject',why:'full'});setTimeout(()=>conn.close(),400);return;}
+    const token=newToken();NET.tokens[i]=token;
+    NET.seats[i]={kind:'remote',name:cleanName(msg.name)||('プレイヤー'+(i+1))};NET.conns[i]=conn;conn._seat=i;NET.seen[i]=Date.now();
+    conn.send({t:'welcome',seat:i,code:NET.code,token});
+    lobbyBroadcast();renderLobby();sfx.select();return;
+  }
+  const seat=conn._seat;if(seat==null||NET.conns[seat]!==conn)return;
+  if(msg.t==='act')return hostOnAct(seat,msg);
+  if(msg.t==='leave')return hostOnClose(conn);
+}
+function hostOnClose(conn){
+  const seat=conn._seat;if(seat==null||NET.conns[seat]!==conn||MODE!=='host')return;
+  conn._seat=null;
+  if(!NET.started)NET.tokens[seat]=null;
+  NET.conns[seat]=null;const nm=NET.seats[seat]&&NET.seats[seat].name;
+  if(!NET.started){NET.seats[seat]={kind:'open'};lobbyBroadcast();renderLobby();return;}
+  NET.seats[seat]={kind:'cpu',name:nm};
+  if(MP.seats)MP.seats[seat]={kind:'cpu'};
+  if(G&&G.ctl){G.ctl[seat]='cpu';const p=G.players[seat];p.name=(nm||'参加者')+'（CPU）';p.ai=NET.lv;p.level=CPU_LV_LEVEL[NET.lv]||1;p.style='normal';}
+  const t=(nm||'参加者')+'が抜けました。CPUが引き継ぎます';toast(t,3000);netSendAll({t:'toast',v:t});
+  const P=NET.pending;if(P&&P.pid===seat){NET.pending=null;clearTimeout(NET.timerT);P.timeout();}
+  if(G)render();
+}
+function hostStart(){
+  if(NET.started)return;
+  NET.started=true;
+  MP={active:true,seats:NET.seats.map(st=>st.kind==='open'?{kind:'cpu'}:{kind:'human',name:st.name}),calls:true,me:0,lv:NET.lv};
+  NET.seats=NET.seats.map(st=>st.kind==='open'?{kind:'cpu'}:st);
+  wrapSfx();
+  document.getElementById('overlay').style.display='none';
+  for(let i=1;i<4;i++){const c=NET.conns[i];if(c&&c.open)c.send({t:'start',seat:i,seats:MP.seats,red:RED_ON});}
+  VIEW=0;G=null;newHand(false);
+}
+function netSendAll(msg,flush){
+  if(MODE!=='host')return;
+  if(flush)netFlush();
+  NET.conns.forEach((c,i)=>{if(c&&c.open){try{c.send(msg);}catch(e){}}});
+}
+function netNewHand(){if(MODE==='host'&&NET.started){NET.pending=null;clearTimeout(NET.timerT);netSendAll({t:'newhand'});}}
+function netAfterRender(){if(MODE!=='host'||!NET.started||NET.syncT)return;NET.syncT=setTimeout(netFlush,25);}
+function netFlush(){
+  clearTimeout(NET.syncT);NET.syncT=null;
+  if(MODE!=='host'||!G||!G.ctl)return;
+  for(let i=0;i<4;i++){const c=NET.conns[i];if(c&&c.open&&G.ctl[i]==='remote'){try{c.send({t:'state',g:projectFor(i)});}catch(e){}}}
+}
+function projectFor(s){
+  return {players:G.players.map(p=>({id:p.id,name:p.name,score:p.score,seatWind:p.seatWind,isDealer:p.isDealer,riichi:p.riichi,doubleRiichi:p.doubleRiichi,riichiIdx:p.riichiIdx,
+      discards:p.discards,melds:p.melds,hand:p.id===s?p.hand:p.hand.length,drawn:p.id===s?p.drawn:(p.drawn>=0?0:-1),
+      riichiFuriten:p.id===s&&p.riichiFuriten,tempFuriten:p.id===s&&p.tempFuriten})),
+    wallLen:G.wall.length,deadLen:G.dead.length,doraInd:G.doraInd,roundWind:G.roundWind,round:G.round,dealer:G.dealer,honba:G.honba,riichiSticks:G.riichiSticks,
+    turn:G.turn,phase:G.phase,over:G.over,lastDiscard:G.lastDiscard,ippatsu:G.ippatsu,rinshanFlag:G.rinshanFlag,callHappened:G.callHappened,gen:G.gen,
+    ask:(NET.pending&&NET.pending.pid===s)?NET.pending.id:0,
+    ctl:G.ctl.map((c,i)=>i===s?'local':(c==='cpu'?'cpu':'remote'))};
+}
+function netFx(k,v){if(MODE!=='host'||!NET.started)return;netSendAll({t:'fx',k,v},true);}
+const NET_SFX=['call','riichi','ron','tsumo'];
+function wrapSfx(){NET_SFX.forEach(k=>{const f=sfx[k];if(!f||f._net)return;const w=()=>{f();netFx('sfx',k);};w._net=true;w._orig=f;sfx[k]=w;});}
+function unwrapSfx(){NET_SFX.forEach(k=>{if(sfx[k]&&sfx[k]._orig)sfx[k]=sfx[k]._orig;});}
+/* 問い合わせ（部屋主→参加者） */
+function netAskSend(pid,req,ms,accept,timeout){
+  const id=++NET.askId,gen=G.gen;
+  const P={id,pid,req,gen,accept,timeout,resend:()=>netAskSend(pid,req,ms,accept,timeout)};
+  NET.pending=P;netFlush();
+  const c=NET.conns[pid];
+  if(!c||!c.open){NET.pending=null;return timeout();}
+  try{c.send({t:'ask',id,req,ms});}catch(e){}
+  clearTimeout(NET.timerT);
+  NET.timerT=setTimeout(()=>{if(NET.pending===P&&G&&G.gen===gen){NET.pending=null;timeout();if(!NET.pending)netFlush();}},ms+1000);
+  render();
+}
+function hostOnAct(seat,msg){
+  const P=NET.pending;if(!P||P.pid!==seat||msg.id!==P.id||!G||G.gen!==P.gen)return;
+  NET.pending=null;clearTimeout(NET.timerT);
+  let ok=false;try{ok=P.accept(msg);}catch(e){ok=false;}
+  if(!NET.pending)netAfterRender();
+  if(ok===false&&!NET.pending&&G&&G.gen===P.gen)P.resend();
+}
+function netTurn(pid){
+  const p=G.players[pid];
+  if(p.riichi&&isAgari(p.hand,p.melds.length)&&evaluate(p.hand,p.melds,buildCtx(pid,true,p.drawn))){
+    return later(()=>{if(G.turn===pid&&G.phase==='discard')win(pid,pid,true,p.drawn);},900);
+  }
+  netAskSend(pid,{kind:'turn'},p.riichi?12000:40000,msg=>{
+    if(G.turn!==pid||G.phase!=='discard')return true;
+    if(msg.a==='discard'){const i=msg.idx|0;if(msg.tile!==undefined&&p.hand[i]!==msg.tile)return false;return seatDiscard(pid,i,!!msg.riichi);}
+    if(msg.a==='tsumo'){if(p.drawn<0||!isAgari(p.hand,p.melds.length)||!evaluate(p.hand,p.melds,buildCtx(pid,true,p.drawn)))return false;win(pid,pid,true,p.drawn);return true;}
+    if(msg.a==='kan'){if(p.riichi||p.drawn<0||G.wall.length===0)return false;const k=kanOptions(p).find(o=>o.tile===msg.tile&&o.kind===msg.kind);if(!k)return false;doKan(pid,k.tile,k.kind);return true;}
+    return false;
+  },()=>{ // 時間切れ：ツモ切り
+    if(!G||G.over||G.turn!==pid||G.phase!=='discard')return;
+    let i=p.hand.indexOf(p.drawn);if(i<0)i=recommendDiscard(p);
+    seatDiscard(pid,i,false);
+  });
+}
+function netAsk(pid,req,cb){
+  netAskSend(pid,req,15000,msg=>{
+    const a=msg.a;
+    if(a==='pass')return cb({a:'pass'}),true;
+    if(req.kind==='ron'&&a==='ron')return cb({a:'ron'}),true;
+    if(req.kind==='pon'&&(a==='pon'||(a==='kan'&&req.canKan)))return cb({a}),true;
+    if(req.kind==='chi'&&a==='chi'&&req.combos[msg.k|0])return cb({a:'chi',k:msg.k|0}),true;
+    return false;
+  },()=>cb({a:'pass'}));
+}
+/* ---- 参加者 ---- */
+async function joinRoom(code,name){
+  netShutdown();
+  const ov=document.getElementById('overlay');ov.style.display='flex';
+  document.getElementById('modal').innerHTML=`<h2>部屋に入っています</h2><div class="room-code">${code.toUpperCase()}</div><div class="sub" id="netStatus">接続の準備中…</div>
+    <div style="text-align:center;margin-top:10px"><button class="btn gray" id="jnCancel">やめる</button></div>`;
+  document.getElementById('jnCancel').onclick=()=>{mpLeave();showVersus(code);};
+  const tok=NET_TRY;
+  try{await loadPeer();}catch(e){if(tok!==NET_TRY)return;return netFail('通信用の部品を読み込めませんでした。インターネットにつながっているか確認してください。');}
+  if(tok!==NET_TRY)return;
+  NET=netBlank();MODE='guest';NET.code=code;NET_LAST_CODE=code;
+  let saved=null;try{saved=JSON.parse(lsGet(rejoinKey(code))||'null');}catch(e){}
+  let peer;try{peer=new Peer({debug:0});}catch(e){return netFail(PEER_ERR['browser-incompatible']);}
+  NET.peer=peer;
+  const giveUp=setTimeout(()=>{if(NET.peer===peer&&!NET.seats)netFail('部屋主の端末に届きませんでした。部屋コードを確かめるか、同じWi-Fiで試してください。');},20000);
+  peer.on('open',()=>{if(NET.peer!==peer||NET.host)return; // 仲介サーバーに再接続した時は、つなぎ直さない
+    netStatus('部屋主の端末を探しています…');
+    const conn=peer.connect(ROOM_PREFIX+code,{reliable:true,serialization:'json'});NET.host=conn;
+    conn.on('open',()=>{netStatus('あいさつを送っています…');conn.send({t:'hello',name,v:NET_PROTO,token:saved&&saved.token});});
+    conn.on('data',m=>{if(NET.host===conn)guestOnData(m,giveUp);});
+    conn.on('close',()=>{if(NET.host===conn)guestOnClose();});
+    conn.on('error',()=>{if(NET.host===conn)guestOnClose();});});
+  peer.on('error',e=>{if(NET.peer!==peer)return;
+    const linked=!!(NET.host&&NET.host.open&&NET.seats);
+    const ty=String(e.type||'');
+    if(linked&&(BROKER_SOFT.includes(ty)||ty.startsWith('socket')||ty==='server-error'))return; // 部屋主とはつながったまま
+    clearTimeout(giveUp);
+    if(!MP.active)return netFail(PEER_ERR[e.type]||('接続でエラーが起きました（'+esc(e.type)+'）'));});
+  peer.on('disconnected',()=>{if(NET.peer!==peer||NET.closing)return;
+    if(NET.host&&NET.host.open)return; // 対局の通信は端末どうしなので、仲介サーバーにつなぎ直す必要はない
+    setTimeout(()=>{try{if(NET.peer===peer&&!peer.destroyed&&peer.disconnected)peer.reconnect();}catch(_){}},3000);});
+}
+function guestLobby(seats){
+  if(MP.active)return;
+  const ov=document.getElementById('overlay');ov.style.display='flex';const m=document.getElementById('modal');
+  const W=['東','南','西','北'];
+  m.innerHTML=`<h2>部屋に入りました</h2><div class="room-code">${NET.code.toUpperCase()}</div>
+    <ul class="lobby">${seats.map((st,i)=>`<li><span>${W[i]}の席　${st.kind==='open'?'<span style="opacity:.55">空き（CPUが入る）</span>':esc(st.name)}</span><span>${i===NET.seat?'あなた':st.kind==='host'?'部屋主':''}</span></li>`).join('')}</ul>
+    <div class="sub">部屋主が始めるのを待っています…</div>
+    <div style="text-align:center;margin-top:10px"><button class="btn gray" id="jnLeave">部屋から抜ける</button></div>`;
+  document.getElementById('jnLeave').onclick=()=>{mpLeave();showVersus();};
+}
+function guestOnData(m,giveUp){
+  if(!m||typeof m!=='object'||MODE!=='guest')return;
+  NET.hostSeen=Date.now();
+  if(m.t==='ping'){try{NET.host.send({t:'pong'});}catch(e){}return;}
+  switch(m.t){
+    case 'welcome':clearTimeout(giveUp);NET.seat=m.seat|0;NET.seats=[];VIEW=NET.seat;netHeartbeat();sfx.select();
+      if(m.token)lsSet(rejoinKey(NET.code),JSON.stringify({token:m.token,seat:NET.seat,at:Date.now()}));
+      guestLobby([]);break;
+    case 'reject':clearTimeout(giveUp);netFail(m.why==='full'?'部屋が満員でした。':m.why==='started'?'この部屋はもう対局を始めています。':'アプリの版が違います。どちらも画面を再読み込みしてから試してください。');break;
+    case 'lobby':NET.seats=m.seats;guestLobby(m.seats);break;
+    case 'start':
+      MP={active:true,seats:m.seats,calls:true,me:m.seat|0,lv:'normal'};NET.started=true;VIEW=m.seat|0;HIDE=false;
+      if(typeof m.red==='boolean')RED_ON=m.red;
+      document.getElementById('overlay').style.display='none';hideTalk();bgmPlay('match');toast(m.rejoin?'対局にもどりました':'対局開始',1600);break;
+    case 'state':guestApply(m.g);break;
+    case 'ask':guestOnAsk(m);break;
+    case 'fx':
+      if(m.k==='flash')flash(m.v,true);
+      else if(m.k==='sfx'){const f=sfx[m.v];if(f)f();}
+      else if(m.k==='deltas'&&G)showDeltas(m.v);
+      else if(m.k==='fly'&&G&&m.v){flyTile(m.v.pid,m.v.tile,srcRectFor(m.v.pid,-1));}
+      break;
+    case 'result':
+      if(!G)break;NET.ask=null;stopAskBar();renderActions([],false);G.uraInd=m.ura||[];
+      showResult.apply(null,m.a);guestWaitButton();break;
+    case 'draw':if(!G)break;NET.ask=null;stopAskBar();renderActions([],false);showDraw(m.tenpai);guestWaitButton();break;
+    case 'final':if(!G)break;NET.ask=null;stopAskBar();mpFinal();break;
+    case 'newhand':NET.ask=null;stopAskBar();renderActions([],false);document.getElementById('overlay').style.display='none';break;
+    case 'toast':toast(String(m.v||''),3000);break;
+    case 'bye':try{localStorage.removeItem(rejoinKey(NET.code));}catch(e){}guestOnClose(true);break;
+  }
+}
+function guestWaitButton(){
+  const nb=document.getElementById('nextBtn');if(!nb)return;
+  nb.textContent='とじる（部屋主が次へ進めます）';
+  nb.onclick=()=>{const md=document.getElementById('modal');md.onclick=null;document.getElementById('overlay').style.display='none';};
+}
+function guestApply(g){
+  if(!g||!Array.isArray(g.players))return;
+  const keepRiichi=!!(G&&G.players&&G.players[VIEW]&&G.players[VIEW].pendingRiichi&&NET.ask&&NET.ask.req.kind==='turn');
+  const players=g.players.map(q=>Object.assign({},q,{hand:Array.isArray(q.hand)?q.hand:new Array(q.hand|0).fill(-1),pendingRiichi:false}));
+  G=Object.assign({},g,{players,wall:new Array(g.wallLen|0).fill(-1),dead:new Array(g.deadLen|0).fill(-1),uraInd:(G&&G.uraInd)||[],
+    tutorial:false,tutGate:null,skill:{foresight:false,peekTiles:null,god:false},stage:null,storyFinal:false,practice:null,dark:false,stats:null,
+    offering:!!(NET.ask&&NET.ask.req.kind!=='turn'),pendingRiichiDeclarer:-1});
+  if(keepRiichi)G.players[VIEW].pendingRiichi=true;
+  // 部屋主側で問い合わせが終わっていたら（時間切れ・切断など）、ボタンを消す
+  if(NET.ask&&g.ask!==NET.ask.id){NET.ask=null;G.offering=false;stopAskBar();renderActions([],false);}
+  if(NET.ask&&NET.ask.req.kind==='turn'&&(G.turn!==VIEW||G.phase!=='discard')){NET.ask=null;stopAskBar();renderActions([],false);}
+  render();
+}
+function guestOnAsk(m){
+  if(!G)return;NET.ask=m;
+  if(m.req.kind==='turn'){G.turn=VIEW;G.phase='discard';render();humanTurn();sfx.draw();}
+  else reactionUI(VIEW,m.req,ch=>netAct(ch));
+  startAskBar(m.ms);
+}
+function netAct(ch){
+  if(MODE!=='guest'||!NET.ask||!NET.host||!NET.host.open)return;
+  try{NET.host.send(Object.assign({t:'act',id:NET.ask.id},ch));}catch(e){}
+  NET.ask=null;stopAskBar();renderActions([],false);
+}
+function guestOnClose(bye){
+  if(MODE!=='guest'||NET.closing)return;
+  const wasStarted=MP.active,code=NET.code,canBack=!bye&&!!lsGet(rejoinKey(code));
+  netShutdown();mpResetGlobals();
+  if(wasStarted){if(G){G.over=true;G.gen++;}G=null;renderActions([],false);clearTableDom();}
+  const ov=document.getElementById('overlay');ov.style.display='flex';const m=document.getElementById('modal');
+  m.innerHTML=`<h2>${bye?'部屋が閉じられました':'接続が切れました'}</h2><div class="sub">${bye?'部屋主が対戦を終了しました。':wasStarted?'部屋主の端末との接続が切れました。':'部屋主の端末とつながりませんでした。'}</div>
+    ${canBack?'<div class="sub" style="font-size:12px">部屋主の画面が開いたままなら、同じ席に戻れます</div>':''}
+    <div style="display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap">${canBack?'<button class="btn" id="gcRejoin">もう一度入る</button>':''}<button class="btn ${canBack?'gray':''}" id="gcBack">みんなで対戦へ</button><button class="btn gray" id="gcMenu">メニュー</button></div>`;
+  const rj=document.getElementById('gcRejoin');if(rj)rj.onclick=()=>joinRoom(code,lsGet('mjNetName')||'参加者');
+  document.getElementById('gcBack').onclick=()=>{G=null;showVersus(code);};document.getElementById('gcMenu').onclick=()=>{G=null;showStory();};
+}
+/* 残り時間のバー */
+function startAskBar(ms){
+  let bar=document.getElementById('askBar');
+  if(!bar){bar=document.createElement('div');bar.id='askBar';bar.className='ask-timer';bar.style.cssText='position:absolute;left:0;top:0;height:3px;width:100%;margin:0';document.getElementById('bottomHand').appendChild(bar);}
+  bar.style.transition='none';bar.style.width='100%';bar.hidden=false;void bar.offsetWidth;
+  bar.style.transition=`width ${Math.max(1,(ms||15000)/1000)}s linear`;bar.style.width='0%';
+}
+function stopAskBar(){const bar=document.getElementById('askBar');if(bar){bar.hidden=true;bar.style.transition='none';bar.style.width='100%';}}
+
 /* ===== 対話式チュートリアル ===== */
 let tut={lesson:'',mode:'',phase:'',i:0};
 function coachShow(html,btns,showSkip){
@@ -1860,6 +2586,7 @@ function hlTile(val){const me=G.players[0];const els=document.querySelectorAll('
 function hlBtn(label){document.querySelectorAll('#actions .btn').forEach(b=>{if(b.textContent.startsWith(label))b.classList.add('pulse');});}
 /* 共通：レッスン用に場を仕込む */
 function rigGame(hand0,draws){
+  VIEW=0;HIDE=false;
   let wall=[];for(let t=0;t<34;t++)for(let k=0;k<4;k++)wall.push(t);
   const rm=t=>{const i=wall.indexOf(t);if(i>=0)wall.splice(i,1);};
   hand0.forEach(rm);draws.forEach(rm);
@@ -2198,7 +2925,7 @@ const BANTER={
 };
 let BANT_T=[0,0,0,0];
 function banterOne(ev,delay,pid,force){
-  if(!G||G.tutorial)return;
+  if(!G||G.tutorial||MP.active)return;
   if(pid==null){const c=[1,2,3].filter(i=>G.players[i].charId&&BANTER[G.players[i].charId]);if(!c.length)return;pid=c[(Math.random()*c.length)|0];}
   const id=G.players[pid].charId;const L=BANTER[id]&&BANTER[id][ev];if(!L||!L.length)return;
   if(!force&&Math.random()>0.55)return;
@@ -2317,7 +3044,7 @@ function setSpeaker(id,pose){
   else{pt.hidden=true;pt.dataset.key='';w.style.background='';w.style.color='';w.style.borderColor='';w.querySelector('.av').style.background='';w.querySelector('.av').style.color='';}
 }
 const SEATIDS={1:'hayato',2:'gen',3:'shizuka'};
-function castSeats(){for(let i=1;i<4;i++){G.players[i].name=SEATNAMES[i];G.players[i].style=SEATSTYLES[i];G.players[i].charId=SEATIDS[i];}render();}
+function castSeats(){for(let i=1;i<4;i++){G.players[i].name=SEATNAMES[i];G.players[i].style=SEATSTYLES[i];G.players[i].charId=SEATIDS[i];G.players[i].ai=null;G.players[i].level=1;}render();}
 
 /* ===== 主人公 ===== */
 const ORIGINS=[
@@ -2603,10 +3330,10 @@ function zeroStep(){
 function zeroNext(){clearTour();tut.i++;if(tut.i<tut.steps.length)zeroStep();else zeroDone();}
 function zeroDraw(){const p=G.players[0];const t=G.wall.pop();p.hand.push(t);p.drawn=t;G.turn=0;G.phase='discard';sfx.draw();render();renderActions([],false);}
 function zeroCpuTurns(done){
-  tut.cpuBusy=true;let k=1;
-  const one=()=>{if(k>3){tut.cpuBusy=false;G.turn=0;G.phase='draw';render();done();return;}
+  tut.cpuBusy=true;let k=1;const g=G.gen;
+  const one=()=>{if(!G||G.gen!==g)return;if(k>3){tut.cpuBusy=false;G.turn=0;G.phase='draw';render();done();return;}
     const pid=k,p=G.players[pid];const t=G.wall.pop();p.hand.push(t);p.drawn=t;G.turn=pid;G.phase='discard';render();sfx.draw();
-    setTimeout(()=>{doDiscard(pid,chooseBestDiscard(p));k++;setTimeout(one,900);},900);};
+    setTimeout(()=>{if(!G||G.gen!==g)return;doDiscard(pid,chooseBestDiscard(p));k++;setTimeout(one,900);},900);};
   setTimeout(one,500);
 }
 function zeroDone(){
@@ -3040,7 +3767,7 @@ function castStage(st,idx,wager){
   let lv=bossLevel(st,wager),sub=HERO.origin==='gambler'?2:1;
   if(ASSIST){lv=Math.max(1,lv-1);sub=1;}
   for(const seat in st.cast){const id=st.cast[seat];const p=G.players[+seat];
-    p.name=CHARS[id].n;p.style=CHAR_STYLE[id];p.level=(id===st.boss)?lv:sub;p.charId=id;}
+    p.name=CHARS[id].n;p.style=CHAR_STYLE[id];p.level=(id===st.boss)?lv:sub;p.charId=id;p.ai=null;}
   if(HERO.origin==='gambler')G.players[0].score=20000;
   G.stage=idx;G.wager=!!wager||!!st.forceWager;G.dark=!!st.dark;if(G.dark)bgmPlay('boss');
   if(st.cheat){const b=G.players[2];b.cheat=st.cheat;rigHand(b,G.wall,st.cheat);}
@@ -3228,7 +3955,11 @@ function showStory(){
     <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px">
       <button class="btn gray" id="stNotes">翠ノート ${HERO.notes.length}/${NOTES.length}</button>
       <button class="btn gray" id="stDojo">道場（復習）</button>
-      <button class="btn" id="stPlay">${inGame?'自由対局（新しく始める）':'自由対局'}</button></div>
+      <button class="btn" id="stPlay">${inGame?'自由対局（新しく始める）':'自由対局'}</button>
+      <button class="btn blue" id="stVs">みんなで対戦</button></div>
+    <div class="dojo-sec" style="margin-top:12px">自由対局のCPUの強さ</div>
+    <div class="seg" id="stLv">${CPU_LEVELS.map(L=>`<button data-lv="${L.id}" class="${CPU_LV===L.id?'on':''}">${L.t}</button>`).join('')}</div>
+    <div style="font-size:11px;color:var(--muted)">${(CPU_LEVELS.find(L=>L.id===CPU_LV)||CPU_LEVELS[1]).d}（物語の相手には影響しません）</div>
     ${inGame?'<button class="btn blue" id="stBack" style="margin-top:12px;min-width:200px">対局にもどる</button>':''}
     <div style="margin-top:10px"><button class="btn ${ASSIST?'':'gray'} sm" id="stAssist">おたすけモード：${ASSIST?'ON':'OFF'}</button>　<button class="btn gray sm" id="stTour">画面の見方</button></div>
     <div style="font-size:11px;color:var(--muted);margin-top:4px">おたすけ＝物語の相手が少し弱くなり、スキルゲージが1.5倍溜まる。慣れるまでONがおすすめ</div>
@@ -3236,6 +3967,10 @@ function showStory(){
   bgmPlay(inGame?(G.dark?'boss':'match'):'store');
   if(inGame)document.getElementById('stBack').onclick=()=>{ov.style.display='none';};
   document.getElementById('stRules').onclick=()=>showHelp(showStory);
+  document.getElementById('stVs').onclick=()=>showVersus();
+  m.querySelectorAll('#stLv button').forEach(b=>b.onclick=()=>{CPU_LV=b.dataset.lv;lsSet('mjCpuLv',CPU_LV);
+    if(G&&!G.tutorial&&G.stage==null&&!G.storyFinal&&G.practice==null)G.players.forEach((q,i)=>{if(i&&q.ai!==undefined&&q.ai!==null){q.ai=CPU_LV;q.level=CPU_LV_LEVEL[CPU_LV];}});
+    showStory();});
   document.getElementById('stAssist').onclick=()=>{ASSIST=!ASSIST;lsSet('mjAssist',ASSIST?'1':'0');if(G&&G.stage!=null&&!G.over){G.players.forEach((p,i)=>{if(i&&p.level)p.level=ASSIST?Math.max(1,p.level-1):p.level+1;});}showStory();};
   document.getElementById('stTour').onclick=()=>{ov.style.display='none';tourFromMenu();};
   document.getElementById('stSound').onclick=()=>{setSound(!SOUND_ON);showStory();};
@@ -3370,10 +4105,12 @@ function showDojo(){
   document.getElementById('dojoPlay').onclick=()=>{ov.style.display='none';lsSet('mjHelpSeen','1');G=null;newHand(false);};
   document.getElementById('dojoRead').onclick=()=>showHelp();
 }
-function showChooser(){showStory();}
+function showChooser(){if(MP.active)return mpMenu();showStory();}
 
-if(lsGet('mjHelpSeen'))newHand(false);
-else setTimeout(showChooser,300);
+{const mm=/#room=([a-z0-9]{6})/i.exec(location.hash||'');
+  if(mm){history.replaceState(null,'',location.pathname+location.search);setTimeout(()=>showVersus(mm[1].toLowerCase()),300);}
+  else if(lsGet('mjHelpSeen'))newHand(false);
+  else setTimeout(showChooser,300);}
 
 if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 </script>
