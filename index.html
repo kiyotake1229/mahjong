@@ -262,7 +262,7 @@
   #coachWho.story .av{background:var(--gold);color:#1b2520}
   #coachBubble.story{border-color:var(--line2)}
   #coachBubble.hasport{display:grid;grid-template-columns:auto 1fr;column-gap:14px;align-items:start}
-  #coachPortrait{grid-row:1/3;width:92px;height:107px;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.45);margin-top:4px}
+  #coachPortrait{grid-row:1/3;width:104px;height:121px;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.45);margin-top:4px}
   #coachPortrait[hidden]{display:none}
   #coachPortrait .pt{width:100%;height:100%;display:block}
   #coachPortrait.in{animation:portin .28s ease-out}
@@ -1658,20 +1658,41 @@ const CHARS={
 /* 影絵ポートレート（墨＋朱、金の灯り） */
 let PGN=0;
 const PORTRAITS={
- master:{body:'<path d="M16,140 C16,110 34,98 50,94 L54,86 L66,86 L70,94 C86,98 104,110 104,140 Z"/>',head:'<ellipse cx="60" cy="54" rx="24" ry="28"/><ellipse cx="60" cy="84" rx="9" ry="7"/>',hair:'<path d="M33,42 C34,22 86,22 87,42 L88,47 L32,47 Z"/><path d="M84,44 L101,49 L86,53 Z"/>',acc:'<path d="M50,97 L60,113 L70,97"/><path d="M36,45 L84,45"/>'},
- hayato:{body:'<path d="M14,140 C14,108 32,96 50,92 L54,84 L66,84 L70,92 C88,96 106,108 106,140 Z"/>',head:'<ellipse cx="60" cy="54" rx="24" ry="27"/>',hair:'<path d="M35,46 L37,20 L47,35 L54,9 L61,32 L71,11 L76,34 L86,17 L86,46 Z"/>',lean:-6,acc:'<path d="M46,93 L54,105 L60,99 L66,105 L74,93"/><path d="M56,101 L55,118 M64,101 L65,118"/>'},
- shizuka:{body:'<path d="M22,140 C22,112 38,100 52,96 L55,84 L65,84 L68,96 C82,100 98,112 98,140 Z"/>',head:'<ellipse cx="60" cy="53" rx="22" ry="27"/>',hair:'<path d="M37,54 C35,24 85,24 83,54 L84,60 C78,50 42,50 36,60 Z"/><circle cx="80" cy="30" r="11"/>',acc:'<path d="M81,29 L103,14"/><circle cx="104" cy="13" r="2.8" fill="#b8524a" stroke="none"/><path d="M46,99 L60,119 L74,99"/><path d="M50,96 L60,111 L70,96"/>'},
- gen:{body:'<path d="M6,140 C6,104 28,92 48,90 L52,84 L68,84 L72,90 C92,92 114,104 114,140 Z"/>',head:'<ellipse cx="60" cy="55" rx="25" ry="27"/>',hair:'<path d="M33,45 L33,27 L87,27 L87,45 Z"/>',acc:'<rect x="37" y="49" width="19" height="11" rx="3"/><rect x="64" y="49" width="19" height="11" rx="3"/><path d="M56,53 L64,53"/><path d="M48,92 L60,105 L72,92"/>'},
- ren:{body:'<path d="M18,140 C18,110 36,98 51,94 L54,86 L66,86 L69,94 C84,98 102,110 102,140 Z"/>',head:'<ellipse cx="60" cy="54" rx="23" ry="28"/>',hair:'<path d="M37,50 C36,26 84,26 83,50 L84,44 C76,36 44,36 36,44 Z"/>',acc:'<circle cx="49" cy="55" r="6"/><circle cx="71" cy="55" r="6"/><path d="M55,55 L65,55"/><path d="M52,94 C56,100 64,100 68,94"/>'}
+ master:{bg:['#f4ecd4','#c9a961'],acc:'#b8524a',
+  body:'<path d="M10,140 C10,118 20,108 34,102 L50,96 L54,88 L66,88 L70,96 L86,102 C100,108 110,118 110,140 Z"/>',
+  head:'<ellipse cx="60" cy="56" rx="24" ry="27"/><path d="M47,76 C49,94 71,94 73,76 L67,92 L60,99 L53,92 Z"/>',
+  hair:'<path d="M32,44 C34,18 86,18 88,44 L92,48 L28,48 Z"/><path d="M24,47 L100,47 L104,53 L20,53 Z"/>',
+  acc:'<path d="M50,99 L60,116 L70,99"/><path d="M34,44 L86,44"/>'},
+ hayato:{bg:['#f3e4c6','#d99d3e'],acc:'#e0762a',lean:-7,
+  under:'<path d="M26,140 C22,92 34,66 60,62 C86,66 98,92 94,140 Z"/>',
+  body:'<path d="M12,140 C12,108 32,96 50,92 L54,84 L66,84 L70,92 C88,96 108,108 108,140 Z"/>',
+  head:'<ellipse cx="60" cy="54" rx="23" ry="26"/>',
+  hair:'<path d="M34,48 L36,22 L45,36 L50,8 L58,32 L66,6 L72,32 L80,14 L84,36 L92,24 L88,50 Z"/>',
+  acc:'<path d="M40,86 C40,104 80,104 80,86"/><circle cx="40" cy="88" r="5.5" fill="#e0762a" stroke="none"/><circle cx="80" cy="88" r="5.5" fill="#e0762a" stroke="none"/><path d="M56,106 L55,122 M64,106 L65,122"/>'},
+ shizuka:{bg:['#e6e9f5','#8d9dd6'],acc:'#5b6bbd',
+  body:'<path d="M24,140 C24,112 38,100 52,96 L55,84 L65,84 L68,96 C82,100 96,112 96,140 Z"/>',
+  head:'<ellipse cx="60" cy="53" rx="21" ry="26"/>',
+  hair:'<path d="M38,56 C34,22 86,22 82,56 L84,62 C76,48 44,48 36,62 Z"/><circle cx="80" cy="28" r="12"/><path d="M40,52 C36,62 38,72 42,80 L46,78 C43,70 42,60 44,54 Z"/>',
+  acc:'<path d="M82,26 L106,10"/><circle cx="107" cy="9" r="3.2" fill="#b8524a" stroke="none"/><path d="M104,12 L101,21"/><path d="M46,99 L60,120 L74,99"/><path d="M50,96 L60,111 L70,96"/>'},
+ gen:{bg:['#f1dcd3','#c26f5e'],acc:'#a8362a',
+  body:'<path d="M4,140 C4,104 26,92 46,90 L52,84 L68,84 L74,90 C94,92 116,104 116,140 Z"/>',
+  head:'<ellipse cx="60" cy="55" rx="25" ry="27"/><path d="M46,90 L60,118 L74,90 L70,88 L60,106 L50,88 Z"/>',
+  hair:'<path d="M31,46 L33,26 L87,26 L89,46 Z"/>',
+  acc:'<rect x="36" y="48" width="20" height="12" rx="3" fill="#454c49" stroke="#d9b56a"/><rect x="64" y="48" width="20" height="12" rx="3" fill="#454c49" stroke="#d9b56a"/><path d="M56,53 L64,53 M36,52 L29,49 M84,52 L91,49" stroke="#d9b56a"/><path d="M52,104 C56,111 64,111 68,104"/>'},
+ ren:{bg:['#e2efe9','#7cbaa5'],acc:'#2f8d78',
+  body:'<path d="M18,140 C18,110 36,98 51,94 L54,86 L66,86 L69,94 C84,98 102,110 102,140 Z"/>',
+  head:'<ellipse cx="60" cy="54" rx="22" ry="27"/>',
+  hair:'<path d="M36,62 C34,24 86,24 84,62 L84,74 C80,68 76,66 74,66 L74,49 L46,49 L46,66 C44,66 40,68 36,74 Z"/>',
+  acc:'<circle cx="49" cy="57" r="7" fill="rgba(226,239,233,.88)"/><circle cx="71" cy="57" r="7" fill="rgba(226,239,233,.88)"/><path d="M56,57 L64,57"/><path d="M48,92 C53,99 67,99 72,92"/>'}
 };
 const POSES={
  point:'<path d="M97,140 C97,112 100,94 104,80 L104,64 L113,64 L113,82 C112,96 110,112 110,140 Z"/><rect x="105" y="46" width="6" height="20" rx="3"/>',
  cross:'<path d="M8,128 C8,116 16,110 30,108 L34,118 C22,120 16,124 14,140 L8,140 Z"/><path d="M112,128 C112,116 104,110 90,108 L86,118 C98,120 104,124 106,140 L112,140 Z"/>'
 };
 function portraitSVG(id,pose){
-  const P=PORTRAITS[id];if(!P)return '';const gid='pg_'+id+'_'+(++PGN),INK='#1a1f1c',ACC='#b8524a';
+  const P=PORTRAITS[id];if(!P)return '';const gid='pg_'+id+'_'+(++PGN),INK='#161a18',INK2='#2c332f';
   const tf=P.lean?`transform="rotate(${P.lean} 60 140)"`:'';
-  return `<svg class="pt" viewBox="0 0 120 140" xmlns="http://www.w3.org/2000/svg"><defs><radialGradient id="${gid}" cx="50%" cy="36%" r="72%"><stop offset="0" stop-color="#f4ecd4"/><stop offset="1" stop-color="#c9a961"/></radialGradient></defs><rect x="0" y="0" width="120" height="140" rx="14" fill="url(#${gid})"/><g fill="${INK}" ${tf}>${P.body}${P.head}${P.hair||''}${pose==='point'?POSES.point:''}${pose==='cross'?POSES.cross:''}</g><g fill="none" stroke="${ACC}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" ${tf}>${P.acc||''}${pose==='cross'?'<path d="M30,112 C50,104 70,104 90,112"/>':''}</g></svg>`;
+  return `<svg class="pt" viewBox="0 0 120 140" xmlns="http://www.w3.org/2000/svg"><defs><radialGradient id="${gid}" cx="50%" cy="36%" r="72%"><stop offset="0" stop-color="${P.bg[0]}"/><stop offset="1" stop-color="${P.bg[1]}"/></radialGradient></defs><rect x="0" y="0" width="120" height="140" rx="14" fill="url(#${gid})"/><g fill="${INK2}" ${tf}>${P.under||''}${P.body}${pose==='point'?POSES.point:''}${pose==='cross'?POSES.cross:''}</g><g fill="${INK}" ${tf}>${P.head}${P.hair||''}</g><g fill="none" stroke="${P.acc}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" ${tf}>${P.acc||''}${pose==='cross'?'<path d="M30,112 C50,104 70,104 90,112"/>':''}</g></svg>`;
 }
 const SEATNAMES={1:'ハヤト',2:'ゲン',3:'シズカ'};
 const SEATSTYLES={1:'call',2:'riichi',3:'defense'};
@@ -1682,8 +1703,9 @@ function setSpeaker(id,pose){
   const c=CHARS[id]||CHARS.coach;const story=!!(id&&id!=='coach');
   w.querySelector('.nm').textContent=c.n;w.querySelector('.av').innerHTML=avSVG(id);
   w.classList.toggle('story',story);b.classList.toggle('story',story);b.classList.toggle('hasport',story);
-  if(story){const key=id+'/'+(pose||'calm');if(pt.dataset.key!==key){pt.innerHTML=portraitSVG(id,pose||'calm');pt.dataset.key=key;pt.classList.remove('in');void pt.offsetWidth;pt.classList.add('in');}pt.hidden=false;}
-  else{pt.hidden=true;pt.dataset.key='';}
+  if(story){const key=id+'/'+(pose||'calm');if(pt.dataset.key!==key){pt.innerHTML=portraitSVG(id,pose||'calm');pt.dataset.key=key;pt.classList.remove('in');void pt.offsetWidth;pt.classList.add('in');}pt.hidden=false;
+    const P=PORTRAITS[id];if(P){w.style.background=P.bg[1];w.style.color='#1b2520';w.style.borderColor='transparent';w.querySelector('.av').style.background='#1b2520';w.querySelector('.av').style.color=P.bg[0];}}
+  else{pt.hidden=true;pt.dataset.key='';w.style.background='';w.style.color='';w.style.borderColor='';w.querySelector('.av').style.background='';w.querySelector('.av').style.color='';}
 }
 function castSeats(){for(let i=1;i<4;i++){G.players[i].name=SEATNAMES[i];G.players[i].style=SEATSTYLES[i];}render();}
 /* セリフを順に表示 */
