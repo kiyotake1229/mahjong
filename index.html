@@ -2065,7 +2065,7 @@ function choose(who,pose,text,opts){
 }
 const N=(t,cond)=>({who:'nar',t,if:cond});
 
-/* ===== 第一部「翠の教え」 ===== */
+/* ===== 第一章「翠の教え」 ===== */
 const STORY=[
   {id:0,t:'入店',sub:'雀荘「翠」の扉を開ける',who:'master',
    intro:[N('駅裏の路地。看板の灯りは半分消えている。雀荘「翠」。'),
@@ -2196,7 +2196,7 @@ function showNotes(){
   document.getElementById('noteBack').onclick=()=>showStory();
 }
 
-/* ===== 第二部・第三部・終章 ===== */
+/* ===== 第二章・第三章・第四章 ===== */
 const CHAR_STYLE={hayato:'call',shizuka:'defense',gen:'riichi',ren:'normal',master:'normal',kuroda:'normal',domoto:'riichi',karasu:'call',washio:'normal',minato:'defense'};
 const ST={
  hayato:{id:'hayato',boss:'hayato',t:'ハヤト',sub:'鳴き速攻',cast:{2:'hayato',1:'gen',3:'shizuka'},title:'ハヤト超え',skill:'peek',
@@ -2332,7 +2332,7 @@ Object.assign(ST.kuroda,{after:[N('クロダは契約書を鞄にしまい、初
   {who:'kuroda',t:'一つだけ。この店の打ち方、本部の教材に使わせてください。効率では教えられないものがある。'},
   {who:'master',t:'好きにしろ。ただし、監修料は取る。'},
   N('二人が笑うのを、初めて見た。')]});
-/* ===== 第四部「黒い手」: 地上げ屋・堂本との戦い ===== */
+/* ===== 第五章「黒い手」: 地上げ屋・堂本との戦い ===== */
 ST.karasu={id:'karasu',dark:true,boss:'karasu',t:'カラス',sub:'借金取りの前触れ',cast:{2:'karasu',1:'hayato',3:'gen'},title:'黒い手を払う',level3:true,cheat:1,forceWager:true,
   badTitle:'証文が奪われた',badText:'負ければ証文は堂本のもの。だが月はまだ変わっていない。',
   cond:{text:'カラスから直撃（ロン）で黙らせる',test:(s,r)=>!!s.ronBoss},
@@ -2413,9 +2413,9 @@ const DARK_END=[
   {who:'gen',t:'……ああ。いい夜だ。'},
   {who:'karasu',t:'……なあ。堂本さんは、ただの使いっ走りだ。上に、もっとでかいのがいる。名前は……言えねえ。'},
   N('黒い手は払われた。だが、その手を動かしていた腕は、まだ見えない。')];
-ST.domoto2.ending={num:'第四部　完',h2:'黒い手、払う',title:'翠の守り手',sub:'堂本は二度と牌を握れない。だが、その上にいる者は……。',endKey:'dark',narrowSub:'堂本より上には立った。だが土地を取り戻すには<b>1位</b>が要る。'};
+ST.domoto2.ending={num:'第五章　完',h2:'黒い手、払う',title:'翠の守り手',sub:'堂本は二度と牌を握れない。だが、その上にいる者は……。',endKey:'dark',narrowSub:'堂本より上には立った。だが土地を取り戻すには<b>1位</b>が要る。'};
 
-/* ===== 第五部「白い塔」: 堂本の上にいた男・鷲尾 ===== */
+/* ===== 第六章「白い塔」: 堂本の上にいた男・鷲尾 ===== */
 ST.tower0={id:'tower0',dark:true,scene:true,t:'白い車',sub:'鷲尾、来店',who:'washio',
   lines:[N('堂本が消えて、ひと月。翠には客が戻っていた。'),
     N('その日、店の前に白い車が止まった。運転手が降り、後部座席の扉を開けた。'),
@@ -2487,7 +2487,7 @@ ST.washio={id:'washio',dark:true,part:'白い塔',stake:'翠の指定を賭け�
   lose:[{who:'washio',t:'これが街の答えです。お疲れさまでした。'}],
   badEnd:[N('翠は再開発指定のまま。春に、更地になった。'),N('……その春を、来させなくていい。もう一度だ。')],
   secret:[],
-  ending:{num:'第五部　完',h2:'白い塔、崩れる',title:'翠の灯',sub:'再開発は一夜で崩れた。翠の灯りは、全部ついている。',endKey:'tower',narrowSub:'鷲尾より上には立った。だが投資家が見るのは<b>1位</b>だけだ。',
+  ending:{num:'第六章　完',h2:'白い塔、崩れる',title:'翠の灯',sub:'再開発は一夜で崩れた。翠の灯りは、全部ついている。',endKey:'tower',narrowSub:'鷲尾より上には立った。だが投資家が見るのは<b>1位</b>だけだ。',
     lines:[{who:'washio',pose:'cross',t:'……投資家の皆さん、これは余興で——'},
       N('誰も答えなかった。ガラスの向こうで、街の灯が一つずつ増えていく。'),
       {who:'minato',t:'鷲尾さん。卓の鏡、投資家の方々にはもう見えています。私が角度を変えました。'},
@@ -2629,7 +2629,7 @@ function showStageResult(){
   const head=outcome==='win'?'完全勝利':(outcome==='narrow'?'辛勝':'敗北');
   const title=outcome==='win'?st.title:null;
   const note=outcome==='win'?'':(outcome==='narrow'?`${st.t}より上の順位で突破。称号は1位の時だけ。`:'1位（またはボスより上）で突破。もう一度挑戦できます。');
-  document.getElementById('modal').innerHTML=`<div class="chap-num">${st.dark?(st.part||'黒い手')+'　'+(st.stake||'証文を賭けた一戦'):(idx<3?'腕試し':'岐路')+'　'+(wager?'本気の賭け':'通常')}</div>
+  document.getElementById('modal').innerHTML=`<div class="chap-num">${st.dark?(st.part||'黒い手')+'　'+(st.stake||'証文を賭けた一戦'):(idx<3?'第二章　腕試し':'第三章　岐路')+'　'+(wager?'本気の賭け':'通常')}</div>
     <h2>${head}</h2>
     <div class="port-big">${portraitSVG(st.boss,outcome==='lose'?'point':'calm')}</div>
     <div class="yaku">${rows}</div>
@@ -2652,7 +2652,7 @@ function showDarkEnding(outcome,rows,idx){
   const hide=()=>{document.getElementById('coach').hidden=true;setSpeaker(null);};
   if(outcome!=='win'){
     hide();say(st.narrow,()=>{hide();ov.style.display='flex';
-      document.getElementById('modal').innerHTML=`<div class="chap-num">決戦</div><h2>まだ、終わらない</h2>
+      document.getElementById('modal').innerHTML=`<div class="chap-num">${st.part||'黒い手'}　決戦</div><h2>まだ、終わらない</h2>
         <div class="port-big">${portraitSVG(st.boss,'point')}</div><div class="yaku">${rows}</div>
         <div class="sub">${E.narrowSub}</div>
         <div style="display:flex;gap:8px;justify-content:center;margin-top:10px"><button class="btn" id="dkRetry">もう一度</button><button class="btn gray" id="dkBack">雀荘へ</button></div>`;
@@ -2682,7 +2682,7 @@ function showEnding(outcome,rows,idx){
   hide();
   say(E.lines.concat(EPILOGUE[E.id]||[]),()=>{hide();ov.style.display='flex';
     const hint=E.id==='top'?'（賭けを受けて常連の流儀を制し、秘密を3つ以上聞くと結末が変わる）':E.id==='neo'?'（岐路をやり直せば、別の結末が見られる）':E.id==='close'?'':'';
-    document.getElementById('modal').innerHTML=`<div class="chap-num">終章</div><h2>${E.t}</h2>
+    document.getElementById('modal').innerHTML=`<div class="chap-num">第四章　最後の一局</div><h2>${E.t}</h2>
       <div class="port-big">${portraitSVG('master',E.id==='close'?'point':(E.id==='true'?'point':'calm'))}</div>
       <div class="yaku">${rows}</div>
       ${E.id==='true'?'<div class="title-earn">称号「翠の主」を獲得</div>':''}
@@ -2699,13 +2699,14 @@ function showStory(){
   if(!HERO.origin)return showPrologue();
   const ov=document.getElementById('overlay');ov.style.display='flex';const m=document.getElementById('modal');
   const prog=storyProgress(),sprog=stageProgress(),p1=part1Done(),path=storyPath(),o=originOf();
-  const rows1=STORY.map(c=>{const done=c.id<prog,lock=c.id>prog;
+  const rows1=STORY.filter(c=>c.id<=prog).map(c=>{const done=c.id<prog,lock=c.id>prog;
     return `<button class="st-ch ${lock?'lock':''}" data-id="${c.id}" ${lock?'disabled':''}>
-      <span class="num">${c.final?'終章':'第'+['一','二','三','四','五','六','七'][c.id]+'章'}</span>
+      <span class="num">${c.final?'終節':'第'+['一','二','三','四','五','六','七'][c.id]+'節'}</span>
       <span class="ttl"><b>${c.t}</b><small>${c.sub}</small></span>
       <span class="who">${portraitSVG(c.who,'calm')}</span>
       <span class="st ${done?'on':''}">${done?'✓':(lock?'—':'▶')}</span></button>`;}).join('');
   const row=(st,i,label)=>{
+    if(i>sprog)return '';   // まだ見せない
     if(!st)return `<button class="st-ch lock" disabled><span class="num">${label}</span><span class="ttl"><b>？？？</b><small>岐路の選択で決まる</small></span><span class="who"></span><span class="st">—</span></button>`;
     const done=i<sprog,lock=!p1||i>sprog;const fk=st.flagKey||st.boss;const flag=fk&&lsGet('mjFlag_'+fk)==='1';
     return `<button class="st-ch ${lock?'lock':''}" data-stage="${i}" ${lock?'disabled':''}>
@@ -2720,14 +2721,18 @@ function showStory(){
   const rows6=[row(path[9],9,'序'),row(path[10],10,'第一戦'),row(path[11],11,'第二戦'),row(path[12],12,'決戦')].join('');
   const title=currentTitle();const ended=sprog>=path.length;
   const inGame=!!(G&&!G.over&&!G.tutorial&&(G.wall.length<70||G.players.some(p=>p.discards.length)));
+  // 章は解放されたものだけ。次の章は「？？？」として1行だけ予告
+  const CH=[
+    {n:'第二章　腕試し',open:p1,rows:rows2,hint:'第一章をクリアすると開く'},
+    {n:'第三章　岐路',open:sprog>=3,rows:rows3,hint:'第三戦を突破すると開く'},
+    {n:'第四章　最後の一局',open:sprog>=5,rows:rows4,hint:'第四戦を突破すると開く'},
+    {n:'第五章　黒い手',open:sprog>=6,rows:rows5,hint:'第四章をクリアすると開く'},
+    {n:'第六章　白い塔',open:sprog>=9,rows:rows6,hint:'第五章をクリアすると開く'}];
+  let secs='';for(const c of CH){if(c.open){secs+=`<div class="dojo-sec">${c.n}</div><div id="dojo2">${c.rows}</div>`;}else{secs+=`<div class="dojo-sec">${c.n.split('　')[0]}　？？？<span style="opacity:.6;font-weight:400">　（${c.hint}）</span></div>`;break;}}
   m.innerHTML=`<h2>雀荘「翠」</h2>
     <div class="hero-card"><span class="hn">${heroName()}</span><span class="ho">${o?o.t:''}　<em>難易度 ${o?o.diff:''}</em></span>${title?`<span class="ttl-now">称号：${title}</span>`:''}${HERO.route?`<span class="ttl-now">${HERO.route==='neo'?'新しい翠の道':'翠を守る道'}</span>`:''}</div>
-    <div class="dojo-sec">第一部　翠の教え</div><div id="dojo">${rows1}</div>
-    <div class="dojo-sec">第二部　腕試し${p1?'':'　（終章クリアで解放）'}</div><div id="dojo2">${rows2}</div>
-    <div class="dojo-sec">第三部　岐路${sprog>=3?'':'　（第三戦クリアで解放）'}</div><div id="dojo2">${rows3}</div>
-    <div class="dojo-sec">終章${sprog>=5?'':'　（第四戦クリアで解放）'}</div><div id="dojo2">${rows4}</div>
-    <div class="dojo-sec">第四部　黒い手${sprog>=6?'':'　（終章クリアで解放）'}</div><div id="dojo2">${rows5}</div>
-    <div class="dojo-sec">第五部　白い塔${sprog>=9?'':'　（黒い手クリアで解放）'}</div><div id="dojo2">${rows6}</div>
+    <div class="dojo-sec">第一章　翠の教え</div><div id="dojo">${rows1}</div>
+    ${secs}
     <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px">
       <button class="btn gray" id="stNotes">翠ノート ${HERO.notes.length}/${NOTES.length}</button>
       <button class="btn gray" id="stDojo">道場（復習）</button>
@@ -2794,10 +2799,10 @@ function storyOutro(ch){
     confetti();
     if(!c.final){showChapterClear(ch);return;}
     const ov=document.getElementById('overlay');ov.style.display='flex';
-    document.getElementById('modal').innerHTML=`<h2>第一部 完</h2>
+    document.getElementById('modal').innerHTML=`<h2>第一章 完</h2>
       <div class="badge-big grand"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8l4 4 4-7 4 7 4-4-1.5 10H5.5z"/></svg></div>
       <div class="title-earn">称号「翠の一員」を獲得</div>
-      <div class="sub">店主と三人に認められた。<br>だが翠には、閉店の噂がある。第二部「腕試し」が開いた。</div>
+      <div class="sub">店主と三人に認められた。<br>だが翠には、閉店の噂がある。第二章「腕試し」が開いた。</div>
       <button class="btn" id="celBtn">雀荘へ</button>`;
     document.getElementById('celBtn').onclick=()=>showStory();};
   document.getElementById('coach').hidden=false;
@@ -2806,7 +2811,7 @@ function storyOutro(ch){
 function showChapterClear(ch){
   {const _m=document.getElementById('modal');_m.classList.remove('done');_m.onclick=null;}
   const c=STORY[ch];const ov=document.getElementById('overlay');ov.style.display='flex';
-  document.getElementById('modal').innerHTML=`<div class="chap-num">第${['一','二','三','四','五','六','七'][ch]}章</div>
+  document.getElementById('modal').innerHTML=`<div class="chap-num">第一章　第${['一','二','三','四','五','六','七'][ch]}節</div>
     <h2>${c.t}</h2>
     <div class="port-big">${portraitSVG(c.who,'point')}</div>
     <div class="title-earn">クリア</div>
@@ -2814,7 +2819,7 @@ function showChapterClear(ch){
     <button class="btn" id="chapNext">つづける</button>`;
   document.getElementById('chapNext').onclick=()=>showStory();
 }
-/* 最終章：三人と本気の一局（配牌だけ少し良くする） */
+/* 第一章の終節：三人と本気の一局（配牌だけ少し良くする） */
 function storyFinalStart(){
   document.getElementById('coach').hidden=true;setSpeaker(null);
   G=null;newHand(false);
