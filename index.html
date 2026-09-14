@@ -104,6 +104,8 @@
   .sb.sb3::before{left:-5px;top:50%;margin-top:-4px;transform:rotate(-45deg)}
   .tile.red{box-shadow:inset 0 1px 0 rgba(255,255,255,.9),inset 0 0 0 1px rgba(184,57,46,.25),0 2px 0 #b3ac99,0 3px 3px rgba(0,0,0,.4),0 7px 12px rgba(0,0,0,.3)}
   .tour-hl{outline:2px solid var(--gold-hi) !important;outline-offset:4px;box-shadow:0 0 0 6px rgba(201,169,97,.18),0 0 26px rgba(227,205,151,.55) !important;border-radius:8px;position:relative;z-index:6;animation:breathe 1.6s ease-in-out infinite}
+  #coachMsg .tile{display:inline-flex;vertical-align:middle}
+  .ex-tiles{display:inline-flex;gap:1px;vertical-align:middle;margin:2px 6px 2px 0}
   .gbtn{margin-left:8px;background:none;border:1px solid var(--line2);color:var(--gold-hi);border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer;font-family:var(--f-ui);vertical-align:1px}
   .gbtn:hover{background:rgba(201,169,97,.14)}
   .hint-sec{text-align:left;max-width:460px;margin:10px auto 0}
@@ -1987,6 +1989,7 @@ function triggerRon(opp){
 }
 function tutorialAfterDiscard(){
   if(G.over)return;
+  if(tut.mode==='zero'){if(!tut.cpuBusy)zeroNext();return;}
   if(tut.mode==='info'){return;}
   if(G.pendingRiichiDeclarer===0){G.ippatsu[0]=true;G.pendingRiichiDeclarer=-1;}
   if(tut.lesson==='naki'){nakiDefense();return;}
@@ -2121,6 +2124,7 @@ function lessonComplete(id){
   document.getElementById('coachBtns').innerHTML='';document.getElementById('coachBtns').classList.remove('quizrow');
   document.getElementById('actions').innerHTML='';
   clearHL();if(G)G.tutGate=null;
+  if(tut.mode==='zero'){zeroDone();return;}
   if(tut.story!=null){storyChapterDone(id);return;}
   setSpeaker(null);
   if(!id){showDojo();return;}
@@ -2453,14 +2457,9 @@ const N=(t,cond)=>({who:'nar',t,if:cond});
 /* ===== 第一章「翠の教え」 ===== */
 const STORY=[
   {id:0,t:'入店',sub:'雀荘「翠」の扉を開ける',who:'master',
-   intro:[Object.assign(N('駅裏の路地。看板の灯りは半分消えている。雀荘「翠」。'),{bg:'alley'}),
-     N('財布には千円札が二枚。ここで増やすつもりで来た。',isO('gambler')),
-     N('祖父の日記にあった店名。本当に、まだあった。',isO('student')),
-     N('本社の指示は「翠の内情を探れ」。レン先輩が先に通っているらしい。',isO('clerk')),
-     {who:'master',t:'いらっしゃい。……初めての顔だね。名前は？',bg:'store'},
-     {who:'master',t:'{n}か。いい名だ。麻雀は初めてかい？'},
-     {who:'master',pose:'point',t:'経験者の目だね。それでも一度、ここの流儀でおさらいしてもらう。まずは牌からだ。',if:isO('gambler')},
-     {who:'master',pose:'point',t:'初めてなら、まず牌を見よう。種類が分かれば、あとは並べるだけだ。',if:H=>H.origin!=='gambler'}],
+   intro:[{who:'master',t:'遊び方は分かった。ここからは「勝つため」の話だ。まず、牌をきちんと見分けられるようになろう。'},
+     {who:'master',pose:'point',t:'経験者の目だね。それでも一度、ここの流儀でおさらいしてもらう。',if:isO('gambler')},
+     {who:'master',pose:'point',t:'種類が分かれば、あとは並べるだけだ。',if:H=>H.origin!=='gambler'}],
    run:()=>{startKihon();setSpeaker('master');},
    outro:[{who:'master',t:'筋がいいね。次は実際に一局、あがってみようか。'},
      N('店の奥に古い写真があった。若い男が二人、笑っている。片方は、祖父に似ていた。',isO('student'))]},
@@ -2523,6 +2522,105 @@ const STORY_EXTRA={
  7:{intro:[{who:'master',t:'本気で打つのは、三人が君を仲間と認めるかどうかを見るためだ。'}],
     outro:[{who:'master',t:'……咳が出るね。年かな。'},N('三人が目を見合わせた。誰も、何も言わなかった。')]}
 };
+/* ===== 第0章「はじめの一歩」: 何も知らない人のための、いちばん最初 ===== */
+const ZERO=[
+ {id:0,t:'麻雀って、何をするゲーム？',sub:'4人で牌を集めて、そろえた人が点をもらう',
+  intro:[Object.assign(N('駅裏の路地。看板の灯りは半分消えている。雀荘「翠」。'),{bg:'alley'}),
+    N('財布には千円札が二枚。ここで増やすつもりで来た。',isO('gambler')),
+    N('祖父の日記にあった店名。本当に、まだあった。',isO('student')),
+    N('本社の指示は「翠の内情を探れ」。レン先輩が先に通っているらしい。',isO('clerk')),
+    {who:'master',t:'いらっしゃい。……初めての顔だね。名前は？',bg:'store'},
+    {who:'master',t:'{n}か。いい名だ。麻雀は初めてかい？'},
+    {who:'master',t:'なら、麻雀が「何をするゲームか」から話そう。難しいことは何もない。'},
+    {who:'master',pose:'point',t:'卓に着きなさい。見ながらのほうが早い。'}],
+  steps:[
+    {el:'#table',t:'麻雀は<b>4人</b>で遊ぶ。君と、向かい、左右の3人。全員が同じ「牌（パイ）」という札を使う。'},
+    {el:'#center',t:'牌は全部で<b>136枚</b>（34種類×4枚）。真ん中に積んであるのが<b>山</b>。ここから順番に1枚ずつ引いていく。'},
+    {el:'#myHand',t:'最初に全員が<b>13枚</b>ずつ配られる。これが<b>配牌（はいぱい）</b>。運の勝負はここから始まる。'},
+    {el:'#seat0',t:'自分の番が来たら、山から<b>1枚引いて</b>、いらない牌を<b>1枚捨てる</b>。手牌はいつも13枚のまま。これを4人でぐるぐる繰り返す。'},
+    {el:'#seat1 .info',t:'順番は<b>反時計回り</b>。君の次は右の人（下家）、次に向かい（対面）、最後に左の人（上家）、そしてまた君だ。'},
+    {t:'目標は、手牌を<b>「3枚の組×4」＋「同じ牌2枚」</b>の14枚にそろえること。そろったら<b>「あがり」</b>だ。<br>例：<span class="ex-tiles">'+thtml(1,2,3)+'</span><span class="ex-tiles">'+thtml(10,11,12)+'</span><span class="ex-tiles">'+thtml(19,20,21)+'</span><span class="ex-tiles">'+thtml(5,6,7)+'</span><span class="ex-tiles">'+thtml(22,22)+'</span>'},
+    {t:'あがった人は<b>点数</b>をもらう。最初はみんな25000点。あがりの「高さ」で、もらえる点が変わる。'},
+    {el:'#center .cmain',t:'これを<b>8回</b>（東1局〜南4局）くり返して、最後に点数が一番多い人が勝ち。1回ごとの勝ち負けより、<b>合計</b>が大事だ。'},
+    {el:'#seat0 .info',t:'名札に「親」と付いている人が、その局のリーダー役。あがると点が<b>1.5倍</b>。親は順番に回ってくる。'},
+    {t:'今日はこれだけ覚えれば十分。<br>「<b>4人で、1枚引いて1枚捨てて、先にそろえた人が点をもらう</b>」。'}],
+  outro:[{who:'master',t:'難しく聞こえたかい？ 大丈夫。次は実際に牌を触ってみよう。'}]},
+ {id:1,t:'配牌、山、ツモ',sub:'引いて、捨てる。それだけを体で覚える',
+  intro:[{who:'master',t:'さっき話した「引いて捨てる」を、実際にやってみよう。'},{who:'master',t:'まだ、あがりも点数も考えなくていい。手の動きだけだ。'}],
+  steps:[
+    {el:'#myHand',t:'これが君の<b>配牌</b>、13枚。左から、萬子（漢数字）・筒子（丸）・索子（竹）・字牌の順に並んでいる。'},
+    {need:'draw',t:'自分の番だ。まず山から1枚引く。下の<b>「山から引く」</b>を押してごらん。'},
+    {el:'#myHand .tile.drawn',t:'引いた牌は右端に少し離れて出る。これで手牌は<b>14枚</b>。ここから1枚捨てて13枚に戻す。'},
+    {need:'discard',t:'どれでもいい。<b>いらないと思う牌を1枚タップ</b>して捨ててみよう。'},
+    {el:'#seat0',t:'捨てた牌は、自分の前の<b>河（ホー）</b>に並ぶ。捨てた牌は二度と戻らない。'},
+    {need:'cpu',t:'次は右の人の番。同じように引いて、捨てる。3人が打つのを見ていよう。'},
+    {el:'#seat1',t:'3人が捨てた牌も、それぞれの河に並んだ。<b>相手が何を捨てたか</b>は、あとでとても大事になる。'},
+    {need:'draw',t:'また君の番だ。もう一度、山から引いてみよう。'},
+    {need:'discard',t:'そして1枚捨てる。この「引く→捨てる」が麻雀の基本動作。あとは<b>何を残して何を捨てるか</b>を考えるだけだ。'},
+    {el:'#center .rem',t:'山の「残り」が減っているね。全員が引き続けて残りが0になったら<b>流局</b>。誰もあがれずに、その局は終わる。'},
+    {el:'#center .wdora',t:'山の横に1枚だけ表になっている牌が<b>ドラ表示牌</b>。この牌の<b>次の牌</b>がドラで、持っているだけで点が上がる。今は「そういう牌がある」で十分だ。'}],
+  outro:[{who:'master',t:'これで「打つ」ことはできるようになった。次は「あがる」だ。'}]},
+ {id:2,t:'あがりの形',sub:'3枚の組×4＋アタマ。最後の1枚を引く',
+  intro:[{who:'master',t:'目標の形を、もう一度。<b>3枚の組を4つ</b>と、<b>同じ牌2枚（アタマ）</b>。合わせて14枚だ。'},{who:'master',t:'今日は形が見えやすい配牌を用意した。あと1枚で完成する手だ。'}],
+  hand:[1,2,3,10,11,12,19,20,21,5,6,7,22],draws:[22],
+  steps:[
+    {tiles:[1,2,3],t:'まず<b>2萬3萬4萬</b>。同じ種類の連番3枚。これで1組（順子＝シュンツ）。'},
+    {tiles:[10,11,12],t:'<b>2筒3筒4筒</b>。これも順子で、2組目。'},
+    {tiles:[19,20,21],t:'<b>2索3索4索</b>で3組目。'},
+    {tiles:[5,6,7],t:'<b>6萬7萬8萬</b>で4組目。3枚の組が4つそろった。'},
+    {tiles:[22],t:'残るは<b>5索が1枚</b>。あと1枚、同じ5索が来れば「同じ牌2枚（アタマ）」ができて完成だ。この「あと1枚」の状態を<b>テンパイ</b>という。'},
+    {quiz:{q:'この手は、どの牌が来たらあがり？',opts:[{h:thtml(22),ok:true},{h:thtml(0),ok:false},{h:thtml(33),ok:false}]}},
+    {need:'draw',t:'では引いてみよう。「山から引く」を押す。'},
+    {need:'tsumo',t:'<b>5索</b>が来た。自分で引いてそろえるあがりを<b>ツモ</b>という。下の<span class="k">ツモ</span>を押そう。'}],
+  outro:[{who:'master',t:'それが「あがり」だ。今の画面に出ていた「役」や「点」は、第一章で一つずつ教える。'},
+    {who:'master',pose:'point',t:'ここまでで、麻雀の「遊び方」は一通り分かったはずだ。……さあ、本題に入ろう。'}]}
+];
+function zeroProgress(){return parseInt(lsGet('mjZero')||'0',10);}
+function zeroDoneAll(){return zeroProgress()>=ZERO.length;}
+function zeroStart(i){
+  const c=ZERO[i];tut={lesson:'zero'+i,mode:'zero',phase:'intro',i:0,story:-1,zero:i,steps:c.steps,cpuBusy:false};
+  document.getElementById('overlay').style.display='none';
+  storyCasting=true;
+  if(c.hand)rigGame(c.hand,c.draws||[]);
+  else{let all=[];for(let t=0;t<34;t++)for(let k=0;k<4;k++)all.push(t);all.sort(()=>Math.random()-.5);rigGame(all.slice(0,13),[]);}
+  storyCasting=false;G.tutGate=null;document.getElementById('coach').hidden=true;
+  say(c.intro,()=>{vnHide();setSpeaker('master');tut.i=0;zeroStep();},{bg:c.intro[0].bg||'store'});
+}
+const clearTour=()=>document.querySelectorAll('.tour-hl').forEach(e=>e.classList.remove('tour-hl'));
+function zeroStep(){
+  const st=tut.steps[tut.i];clearTour();clearHL();setSpeaker('master');
+  if(st.el){const el=document.querySelector(st.el);if(el)el.classList.add('tour-hl');}
+  (st.tiles||[]).forEach(v=>hlTile(v));
+  const num=`<span class="qtag">${tut.i+1}/${tut.steps.length}</span> `;
+  if(st.quiz){renderQuiz(st.quiz,zeroNext);return;}
+  if(st.need==='draw'){coachShow(num+st.t,[{label:'山から引く',fn:()=>{zeroDraw();zeroNext();}}],true);return;}
+  if(st.need==='discard'){G.phase='discard';G.turn=0;G.tutGate=null;coachShow(num+st.t,[],true);return;}
+  if(st.need==='cpu'){coachShow(num+st.t,[],true);zeroCpuTurns(zeroNext);return;}
+  if(st.need==='tsumo'){const p=G.players[0];renderActions([{label:'ツモ',cls:'red',fn:()=>win(0,0,true,p.drawn)}],false);hlBtn('ツモ');coachShow(num+st.t,[],true);return;}
+  const last=tut.i>=tut.steps.length-1;
+  coachShow(num+st.t,[{label:last?'つづける':'次へ',fn:zeroNext}],true);
+}
+function zeroNext(){clearTour();tut.i++;if(tut.i<tut.steps.length)zeroStep();else zeroDone();}
+function zeroDraw(){const p=G.players[0];const t=G.wall.pop();p.hand.push(t);p.drawn=t;G.turn=0;G.phase='discard';sfx.draw();render();renderActions([],false);}
+function zeroCpuTurns(done){
+  tut.cpuBusy=true;let k=1;
+  const one=()=>{if(k>3){tut.cpuBusy=false;G.turn=0;G.phase='draw';render();done();return;}
+    const pid=k,p=G.players[pid];const t=G.wall.pop();p.hand.push(t);p.drawn=t;G.turn=pid;G.phase='discard';render();sfx.draw();
+    setTimeout(()=>{doDiscard(pid,chooseBestDiscard(p));k++;setTimeout(one,900);},900);};
+  setTimeout(one,500);
+}
+function zeroDone(){
+  const i=tut.zero,c=ZERO[i];clearTour();clearHL();document.getElementById('actions').innerHTML='';
+  if(zeroProgress()<i+1)lsSet('mjZero',String(i+1));
+  document.getElementById('coach').hidden=true;
+  say(c.outro,()=>{hideTalk();confetti();
+    const ov=document.getElementById('overlay');ov.style.display='flex';
+    document.getElementById('modal').innerHTML=`<div class="chap-num">第0章　第${['一','二','三'][i]}節</div><h2>${c.t}</h2>
+      <div class="port-big">${portraitSVG('master','point')}</div><div class="title-earn">クリア</div>
+      <div class="sub">${i+1<ZERO.length?'次の節が開きました。':'第一章「翠の教え」が開きました。'}</div>
+      <button class="btn" id="zeroNextBtn">つづける</button>`;
+    document.getElementById('zeroNextBtn').onclick=()=>showStory();},{bg:'store'});
+}
 function storyProgress(){return parseInt(lsGet('mjStory')||'0',10);}
 
 /* ===== 序章：主人公を決める ===== */
@@ -2541,14 +2639,14 @@ function showPrologue(){
   document.getElementById('proGo').onclick=()=>{
     const nm=document.getElementById('heroName').value.trim().slice(0,8);
     HERO=blankHero();HERO.name=nm;HERO.origin=sel;HERO.notes=['origin'];saveHero();
-    ['mjStory','mjStage','mjTitle','mjRoute','mjFlag_hayato','mjFlag_shizuka','mjFlag_gen','mjFlag_ren','mjFlag_kuroda','mjInter_hayato','mjInter_shizuka','mjInter_gen','mjInter_ren','mjInter_kuroda','mjInter2_hayato','mjInter2_shizuka','mjInter2_gen','mjInter2_ren','mjInter2_kuroda'].forEach(k=>{try{localStorage.removeItem(k)}catch(e){}});
-    ov.style.display='none';storyStart(0);
+    ['mjStory','mjZero','mjStage','mjTitle','mjRoute','mjFlag_hayato','mjFlag_shizuka','mjFlag_gen','mjFlag_ren','mjFlag_kuroda','mjInter_hayato','mjInter_shizuka','mjInter_gen','mjInter_ren','mjInter_kuroda','mjInter2_hayato','mjInter2_shizuka','mjInter2_gen','mjInter2_ren','mjInter2_kuroda'].forEach(k=>{try{localStorage.removeItem(k)}catch(e){}});
+    ov.style.display='none';zeroStart(0);
   };
 }
 function resetStory(){
   if(!confirm('物語の進行をすべて消して、最初から始めますか？（道場の記録は残ります）'))return;
   HERO=blankHero();saveHero();
-  ['mjStory','mjStage','mjTitle','mjRoute','mjFlag_hayato','mjFlag_shizuka','mjFlag_gen','mjFlag_ren','mjFlag_kuroda','mjEnd_true','mjEnd_top','mjEnd_neo','mjEnd_close','mjEnd_dark','mjEnd_tower','mjFlag_karasu','mjFlag_domoto','mjFlag_minato','mjFlag_hayato2','mjInter_karasu','mjInter_domoto','mjInter_minato','mjInter_hayato2','mjInter_hayato','mjInter_shizuka','mjInter_gen','mjInter_ren','mjInter_kuroda','mjInter2_hayato','mjInter2_shizuka','mjInter2_gen','mjInter2_ren','mjInter2_kuroda'].forEach(k=>{try{localStorage.removeItem(k)}catch(e){}});
+  ['mjStory','mjZero','mjStage','mjTitle','mjRoute','mjFlag_hayato','mjFlag_shizuka','mjFlag_gen','mjFlag_ren','mjFlag_kuroda','mjEnd_true','mjEnd_top','mjEnd_neo','mjEnd_close','mjEnd_dark','mjEnd_tower','mjFlag_karasu','mjFlag_domoto','mjFlag_minato','mjFlag_hayato2','mjInter_karasu','mjInter_domoto','mjInter_minato','mjInter_hayato2','mjInter_hayato','mjInter_shizuka','mjInter_gen','mjInter_ren','mjInter_kuroda','mjInter2_hayato','mjInter2_shizuka','mjInter2_gen','mjInter2_ren','mjInter2_kuroda'].forEach(k=>{try{localStorage.removeItem(k)}catch(e){}});
   showStory();
 }
 
@@ -3083,8 +3181,16 @@ function showEnding(outcome,rows,idx){
 function showStory(){
   {const _m=document.getElementById('modal');_m.classList.remove('done');_m.onclick=null;}
   if(!HERO.origin)return showPrologue();
+  if(storyProgress()>0&&!lsGet('mjZero'))lsSet('mjZero',String(ZERO.length));
   const ov=document.getElementById('overlay');ov.style.display='flex';const m=document.getElementById('modal');
   const prog=storyProgress(),sprog=stageProgress(),p1=part1Done(),path=storyPath(),o=originOf();
+  const zp=zeroProgress(),z0=zeroDoneAll();
+  const rows0=ZERO.filter(c=>c.id<=zp).map(c=>{const done=c.id<zp;
+    return `<button class="st-ch" data-zero="${c.id}">
+      <span class="num">第${['一','二','三'][c.id]}節</span>
+      <span class="ttl"><b>${c.t}</b><small>${c.sub}</small></span>
+      <span class="who">${portraitSVG('master','calm')}</span>
+      <span class="st ${done?'on':''}">${done?'✓':'▶'}</span></button>`;}).join('');
   const rows1=STORY.filter(c=>c.id<=prog).map(c=>{const done=c.id<prog,lock=c.id>prog;
     return `<button class="st-ch ${lock?'lock':''}" data-id="${c.id}" ${lock?'disabled':''}>
       <span class="num">${c.final?'終節':'第'+['一','二','三','四','五','六','七'][c.id]+'節'}</span>
@@ -3117,8 +3223,8 @@ function showStory(){
   let secs='';for(const c of CH){if(c.open){secs+=`<div class="dojo-sec">${c.n}</div><div id="dojo2">${c.rows}</div>`;}else{secs+=`<div class="dojo-sec">${c.n.split('　')[0]}　？？？<span style="opacity:.6;font-weight:400">　（${c.hint}）</span></div>`;break;}}
   m.innerHTML=`<h2>雀荘「翠」</h2>
     <div class="hero-card"><span class="hn">${heroName()}</span><span class="ho">${o?o.t:''}　<em>難易度 ${o?o.diff:''}</em></span>${title?`<span class="ttl-now">称号：${title}</span>`:''}${ASSIST?'<span class="ttl-now">おたすけ中</span>':''}${HERO.route?`<span class="ttl-now">${HERO.route==='neo'?'新しい翠の道':'翠を守る道'}</span>`:''}</div>
-    <div class="dojo-sec">第一章　翠の教え</div><div id="dojo">${rows1}</div>
-    ${secs}
+    <div class="dojo-sec">第0章　はじめの一歩</div><div id="dojo">${rows0}</div>
+    ${z0?`<div class="dojo-sec">第一章　翠の教え</div><div id="dojo">${rows1}</div>${secs}`:`<div class="dojo-sec">第一章　？？？<span style="opacity:.6;font-weight:400">　（第0章をクリアすると開く）</span></div>`}
     <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px">
       <button class="btn gray" id="stNotes">翠ノート ${HERO.notes.length}/${NOTES.length}</button>
       <button class="btn gray" id="stDojo">道場（復習）</button>
@@ -3135,6 +3241,7 @@ function showStory(){
   document.getElementById('stSound').onclick=()=>{setSound(!SOUND_ON);showStory();};
   document.getElementById('stRed').onclick=()=>{RED_ON=!RED_ON;lsSet('mjRed',RED_ON?'1':'0');showStory();};
   m.querySelectorAll('.st-ch[data-id]:not(.lock)').forEach(b=>b.onclick=()=>{ov.style.display='none';storyStart(parseInt(b.dataset.id,10));});
+  m.querySelectorAll('.st-ch[data-zero]').forEach(b=>b.onclick=()=>{ov.style.display='none';zeroStart(parseInt(b.dataset.zero,10));});
   m.querySelectorAll('.st-ch[data-stage]:not(.lock)').forEach(b=>b.onclick=()=>startStage(parseInt(b.dataset.stage,10)));
   document.getElementById('stNotes').onclick=()=>showNotes();
   document.getElementById('stDojo').onclick=()=>showDojo();
@@ -3249,6 +3356,7 @@ function showDojo(){
       <span class="chk ${ok?'on':''}">${ok?'✓':'▶'}</span></button>`;}).join('');
   const pct=Math.round(done/LESSONS.length*100);
   m.innerHTML=`<h2>麻雀道場</h2>
+    <button class="opt lesson" id="dojoZero" style="margin:4px auto 6px;max-width:420px"><span class="lic">${avSVG('master')}</span><span class="ltx"><b>はじめの一歩（第0章）</b><small>麻雀って何をするゲーム？ 配牌・山・ツモ・あがりの形をいちから</small></span><span class="chk">▶</span></button>
     <button class="opt lesson" id="dojoStory" style="margin:4px auto 10px;max-width:420px"><span class="lic">${avSVG('master')}</span><span class="ltx"><b>ストーリーで学ぶ</b><small>雀荘「翠」で店主と常連に教わる（おすすめ）</small></span><span class="chk">▶</span></button>
     <div class="dojo-count">${done} / ${LESSONS.length} クリア</div>
     <div class="dojo-prog"><div class="dojo-bar" style="width:${pct}%"></div></div>
@@ -3258,6 +3366,7 @@ function showDojo(){
       <button class="btn gray" id="dojoRead">説明を読む</button></div>`;
   m.querySelectorAll('.lesson[data-id]').forEach(b=>b.onclick=()=>{const L=LESSONS.find(x=>x.id===b.dataset.id);ov.style.display='none';L.run();});
   document.getElementById('dojoStory').onclick=()=>showStory();
+  document.getElementById('dojoZero').onclick=()=>{if(!HERO.origin){HERO=blankHero();HERO.origin='student';HERO.name='';saveHero();}zeroStart(0);};
   document.getElementById('dojoPlay').onclick=()=>{ov.style.display='none';lsSet('mjHelpSeen','1');G=null;newHand(false);};
   document.getElementById('dojoRead').onclick=()=>showHelp();
 }
