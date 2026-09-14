@@ -305,6 +305,34 @@
   .qfb.ok{color:var(--gold-hi)}.qfb.ng{color:var(--shu)}
   .chap-num{font-family:var(--f-mincho);font-size:13px;color:var(--muted);letter-spacing:.2em;margin-bottom:2px}
   .badge-big svg{width:40px;height:40px}
+  /* ===== 物語：選択肢・主人公 ===== */
+  #coachBtns.choice{flex-direction:column;align-items:stretch;justify-content:flex-start;gap:6px}
+  #coachBtns.choice .cho{flex-direction:column;align-items:flex-start;gap:2px;text-align:left;padding:9px 14px;font-size:14px}
+  #coachBtns.choice .cho small{font-size:11px;font-weight:400;opacity:.8;line-height:1.4}
+  #coachBtns.choice .skip{margin:0 0 2px;align-self:flex-start}
+  #coachBubble.nar #coachMsg{font-family:var(--f-mincho);color:#cfd6d1;letter-spacing:.04em;padding-top:6px}
+  .hero-in{display:flex;align-items:center;gap:10px;justify-content:center;margin:8px 0 4px}
+  .hero-in label{font-size:12px;color:var(--muted)}
+  .hero-in input{font-family:var(--f-ui);font-size:15px;padding:8px 12px;border-radius:8px;border:1px solid var(--line2);background:rgba(0,0,0,.25);color:var(--ink);width:180px;outline:none}
+  .hero-in input:focus{border-color:var(--gold)}
+  #originList{max-width:440px;margin:6px auto 2px}
+  .origin{display:flex;align-items:center;gap:12px;width:100%;margin:7px 0;padding:11px 14px;border-radius:9px;border:1px solid var(--line);
+    background:rgba(255,255,255,.07);color:var(--ink);cursor:pointer;text-align:left;font-family:var(--f-ui);transition:.16s}
+  .origin:hover{border-color:var(--line2)}
+  .origin.sel{border-color:var(--gold);background:rgba(201,169,97,.13);box-shadow:inset 0 0 0 1px var(--gold)}
+  .origin .ob{flex:1;min-width:0}.origin b{font-size:15px}
+  .origin small{display:block;color:var(--muted);font-size:11px;margin-top:3px;line-height:1.5}
+  .origin small.eff{color:#a9b3ad;opacity:.85}
+  .origin .df{flex:0 0 auto;font-size:11px;padding:2px 9px;border-radius:10px;border:1px solid var(--line2);color:var(--gold);white-space:nowrap}
+  .hero-card{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline;justify-content:center;margin:2px 0 6px;font-size:13px}
+  .hero-card .hn{font-family:var(--f-mincho);font-weight:700;font-size:17px;color:var(--gold-hi)}
+  .hero-card .ho{color:var(--muted)}.hero-card em{font-style:normal;color:var(--gold)}
+  .linkbtn{background:none;border:none;color:var(--muted);font-size:11px;text-decoration:underline;cursor:pointer;margin-top:12px;font-family:var(--f-ui)}
+  .note{text-align:left;padding:10px 14px;margin:6px 0;border-radius:9px;border:1px solid var(--line);background:rgba(255,255,255,.05)}
+  .note b{font-size:14px;color:var(--muted)}.note.on b{color:var(--gold-hi)}
+  .note small{display:block;color:var(--muted);font-size:12px;margin-top:3px;line-height:1.6}
+  .skill.lock{opacity:.3;cursor:default}
+  .st-ch .who:empty{border:none;background:none}
   @media (min-width:900px) and (min-height:700px){ :root{--smw:21px;--smh:29px;--xsw:10px;--xsh:14px} .seat.top,.seat.left,.seat.right{--smw:19px;--smh:26px} .qopt .tile.sm{width:29px;height:40px} }
   .qopt.qok{outline:1.5px solid var(--gold);outline-offset:2px}
   .qopt.qng{animation:shake .38s}
@@ -697,12 +725,12 @@ function newHand(keep){
   if(cast){players.forEach((p,i)=>{p.style=cast[i].style;p.name=cast[i].name;p.level=cast[i].level;});}
   else{const st=['call','defense','riichi'].sort(()=>Math.random()-.5);for(let i=1;i<4;i++)players[i].style=st[i-1];}
   const storyFinal=keep&&prev?prev.storyFinal:false;
-  const stage=keep&&prev?prev.stage:null;
+  const stage=keep&&prev?prev.stage:null;const wager=keep&&prev?!!prev.wager:false;
   const stats=keep&&prev&&prev.stats?prev.stats:{dealIns:0,maxHan:0,ronBoss:false};
   G={wall,dead,doraInd:[dead[4]],uraInd:[dead[5]],players,dealer,round,honba,turn:dealer,roundWind:round,
      phase:'draw',over:false,riichiSticks:sticks,ippatsu:[false,false,false,false],callHappened:false,
      rinshanFlag:false,lastDiscard:null,advance:false,keepHonba:false,pendingRiichiDeclarer:-1,offering:false,
-     tutorial:false,tutGate:null,gen:++GEN,skill:{foresight:false,peekTiles:null,god:false},storyFinal,stage,stats};
+     tutorial:false,tutGate:null,gen:++GEN,skill:{foresight:false,peekTiles:null,god:false},storyFinal,stage,wager,stats};
   render();
   later(drawStep,620);
 }
@@ -1323,7 +1351,7 @@ const SKILLS=[
   {id:'foresight',cost:45,name:'千里眼'},
   {id:'god',cost:80,name:'神引き'}
 ];
-function gaugeAdd(n){if(!G||G.tutorial)return;SKILL.gauge=Math.min(100,SKILL.gauge+n);updateSkillbar();}
+function gaugeAdd(n){if(!G||G.tutorial)return;if(G.stage!=null){const o=typeof HERO!=='undefined'?HERO.origin:'';n=Math.round(n*(o==='clerk'?2:o==='gambler'?0.5:1));}SKILL.gauge=Math.min(100,SKILL.gauge+n);updateSkillbar();}
 function updateSkillbar(){
   const bar=document.getElementById('skillbar');if(!bar)return;
   const inTut=G&&G.tutorial;bar.style.display=inTut?'none':'flex';
@@ -1331,6 +1359,7 @@ function updateSkillbar(){
   document.getElementById('gaugeLbl').textContent='SKILL '+SKILL.gauge;
   const usableTurn=G&&!G.over&&!inTut&&G.turn===0&&G.phase==='discard';
   SKILLS.forEach((s,i)=>{const b=document.getElementById('sk'+i);b.className='skill';
+    if(skillLocked(s)){b.classList.add('lock');b.disabled=true;b.title='物語で託されると使える';return;}b.title='';
     const used=(s.id==='foresight'&&G.skill&&G.skill.foresight)||(s.id==='god'&&G.skill&&G.skill.god);
     if(used){b.classList.add('used');b.disabled=true;return;}
     const ok=usableTurn&&SKILL.gauge>=s.cost;
@@ -1338,8 +1367,10 @@ function updateSkillbar(){
     b.disabled=!ok;
   });
 }
+function skillLocked(s){return !!(G&&G.stage!=null&&typeof HERO!=='undefined'&&!HERO.skills.includes(s.id));}
 function useSkill(i){
   const s=SKILLS[i];
+  if(skillLocked(s))return;
   if(!G||G.over||G.tutorial||G.turn!==0||G.phase!=='discard'||SKILL.gauge<s.cost)return;
   if(s.id==='foresight'&&G.skill.foresight)return;
   if(s.id==='god'&&G.skill.god)return;
@@ -1367,9 +1398,9 @@ let tut={lesson:'',mode:'',phase:'',i:0};
 function coachShow(html,btns,showSkip){
   const c=document.getElementById('coach');c.hidden=false;
   document.getElementById('coachMsg').innerHTML=html;
-  const bc=document.getElementById('coachBtns');bc.innerHTML='';
+  const bc=document.getElementById('coachBtns');bc.innerHTML='';bc.classList.remove('choice');
   if(showSkip){const s=document.createElement('button');s.className='skip';s.textContent='やめる';
-    s.onclick=()=>{if(confirm('レッスンを中断しますか？')){document.getElementById('coach').hidden=true;clearHL();if(G)G.tutGate=null;const st=tut.story!=null;tut.story=null;setSpeaker(null);st?showStory():showDojo();}};bc.appendChild(s);}
+    s.onclick=()=>{if(confirm('レッスンを中断しますか？')){document.getElementById('coach').hidden=true;clearHL();if(G)G.tutGate=null;const st=tut.story!=null||!G||!G.tutorial;tut.story=null;setSpeaker(null);if(G&&G.stage!=null){G.over=true;G.gen++;G.stage=null;}st?showStory():showDojo();}};bc.appendChild(s);}
   (btns||[]).forEach(b=>{const el=document.createElement('button');el.className='btn '+(b.cls||'');el.textContent=b.label;el.onclick=b.fn;bc.appendChild(el);});
 }
 function clearHL(){document.querySelectorAll('.pulse').forEach(e=>e.classList.remove('pulse'));}
@@ -1649,11 +1680,13 @@ function lessonComplete(id){
 /* ===== ストーリーモード「雀荘 翠」 ===== */
 const CHARS={
   coach:{n:'コーチ',ic:''},
+  nar:{n:'',ic:''},
   master:{n:'マスター',ic:'<path d="M12 3c-4 3-6 6-6 9a6 6 0 0 0 12 0c0-3-2-6-6-9z"/><path d="M12 9v9"/>'},
   hayato:{n:'ハヤト',ic:'<path d="M13 3L5 13h6l-2 8 8-11h-6z"/>'},
   shizuka:{n:'シズカ',ic:'<path d="M15 3a8 8 0 1 0 6 13 7 7 0 0 1-6-13z"/>'},
   gen:{n:'ゲン',ic:'<path d="M12 3l7 9-7 9-7-9z"/><path d="M12 8l3 4-3 4-3-4z"/>'},
-  ren:{n:'レン',ic:'<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/>'}
+  ren:{n:'レン',ic:'<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/>'},
+  kuroda:{n:'クロダ',ic:'<rect x="5" y="5" width="14" height="14" rx="2"/><path d="M9 12h6"/>'}
 };
 /* 影絵ポートレート（墨＋朱、金の灯り） */
 let PGN=0;
@@ -1683,7 +1716,12 @@ const PORTRAITS={
   body:'<path d="M18,140 C18,110 36,98 51,94 L54,86 L66,86 L69,94 C84,98 102,110 102,140 Z"/>',
   head:'<ellipse cx="60" cy="54" rx="22" ry="27"/>',
   hair:'<path d="M36,62 C34,24 86,24 84,62 L84,74 C80,68 76,66 74,66 L74,49 L46,49 L46,66 C44,66 40,68 36,74 Z"/>',
-  acc:'<circle cx="49" cy="57" r="7" fill="rgba(226,239,233,.88)"/><circle cx="71" cy="57" r="7" fill="rgba(226,239,233,.88)"/><path d="M56,57 L64,57"/><path d="M48,92 C53,99 67,99 72,92"/>'}
+  acc:'<circle cx="49" cy="57" r="7" fill="rgba(226,239,233,.88)"/><circle cx="71" cy="57" r="7" fill="rgba(226,239,233,.88)"/><path d="M56,57 L64,57"/><path d="M48,92 C53,99 67,99 72,92"/>'},
+ kuroda:{bg:['#e8eaec','#8f979e'],acc:'#3a4652',
+  body:'<path d="M6,140 C6,106 26,94 46,90 L52,84 L68,84 L74,90 C94,94 114,106 114,140 Z"/>',
+  head:'<ellipse cx="60" cy="54" rx="22" ry="27"/>',
+  hair:'<path d="M38,44 C36,24 46,17 60,17 C74,17 84,24 82,44 L86,38 C88,26 78,13 60,13 C42,13 32,26 34,38 Z"/>',
+  acc:'<path d="M60,90 L55,98 L60,126 L65,98 Z" fill="#3a4652" stroke="none"/><path d="M38,90 L52,84 M82,90 L68,84"/><rect x="40" y="50" width="16" height="9" rx="1.5"/><rect x="64" y="50" width="16" height="9" rx="1.5"/><path d="M56,54 L64,54"/>'}
 };
 const POSES={
  point:'<path d="M97,140 C97,112 100,94 104,80 L104,64 L113,64 L113,82 C112,96 110,112 110,140 Z"/><rect x="105" y="46" width="6" height="20" rx="3"/>',
@@ -1700,83 +1738,419 @@ let storyCasting=false;
 function avSVG(id){const c=CHARS[id];return c&&c.ic?`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${c.ic}</svg>`:'';}
 function setSpeaker(id,pose){
   const w=document.getElementById('coachWho'),b=document.getElementById('coachBubble'),pt=document.getElementById('coachPortrait');
-  const c=CHARS[id]||CHARS.coach;const story=!!(id&&id!=='coach');
+  const c=CHARS[id]||CHARS.coach;const nar=id==='nar';const story=!!(id&&id!=='coach'&&!nar);
   w.querySelector('.nm').textContent=c.n;w.querySelector('.av').innerHTML=avSVG(id);
-  w.classList.toggle('story',story);b.classList.toggle('story',story);b.classList.toggle('hasport',story);
+  w.style.display=nar?'none':'';b.classList.toggle('nar',nar);
+  w.classList.toggle('story',story);b.classList.toggle('story',story||nar);b.classList.toggle('hasport',story);
   if(story){const key=id+'/'+(pose||'calm');if(pt.dataset.key!==key){pt.innerHTML=portraitSVG(id,pose||'calm');pt.dataset.key=key;pt.classList.remove('in');void pt.offsetWidth;pt.classList.add('in');}pt.hidden=false;
     const P=PORTRAITS[id];if(P){w.style.background=P.bg[1];w.style.color='#1b2520';w.style.borderColor='transparent';w.querySelector('.av').style.background='#1b2520';w.querySelector('.av').style.color=P.bg[0];}}
   else{pt.hidden=true;pt.dataset.key='';w.style.background='';w.style.color='';w.style.borderColor='';w.querySelector('.av').style.background='';w.querySelector('.av').style.color='';}
 }
 function castSeats(){for(let i=1;i<4;i++){G.players[i].name=SEATNAMES[i];G.players[i].style=SEATSTYLES[i];}render();}
-/* セリフを順に表示 */
+
+/* ===== 主人公 ===== */
+const ORIGINS=[
+ {id:'gambler',t:'元ギャンブラー',sub:'借金を抱え、稼ぐつもりで翠の扉を叩いた',diff:'難しい',eff:'腕試しの持ち点が2万点から。スキルゲージが半分しか溜まらない。常連は最初から本気'},
+ {id:'student',t:'祖父の店を探す学生',sub:'祖父の日記に「翠」の名があった',diff:'標準',eff:'標準の難易度。祖父と翠の因縁が終盤で明かされる'},
+ {id:'clerk',t:'大手チェーンの新人',sub:'偵察を命じられて翠へ。レンの後輩',diff:'やさしい',eff:'スキルゲージが2倍。賭けを流せば相手は手加減する。レンとの関係が特別に'}
+];
+function blankHero(){return {name:'',origin:'',skills:[],route:'',notes:[]};}
+let HERO=(()=>{try{return Object.assign(blankHero(),JSON.parse(lsGet('mjHero')||'null')||{});}catch(e){return blankHero();}})();
+function saveHero(){lsSet('mjHero',JSON.stringify(HERO));}
+function heroName(){return HERO.name||'新人';}
+function originOf(){return ORIGINS.find(o=>o.id===HERO.origin)||null;}
+function isO(id){return H=>H.origin===id;}
+function addNote(id){if(!HERO.notes.includes(id)){HERO.notes.push(id);saveHero();}}
+function fmt(t){return t.replace(/\{n\}/g,heroName());}
+/* セリフを順に表示（if:主人公条件、{n}:名前） */
 function say(lines,onDone){
+  lines=lines.filter(L=>!L.if||L.if(HERO));
+  if(!lines.length){onDone();return;}
   let i=0;const step=()=>{clearHL();const L=lines[i];setSpeaker(L.who,L.pose);
     const last=i>=lines.length-1;
-    coachShow(L.t,[{label:last?(lines.done||'次へ'):'次へ',fn:()=>{i++;if(i<lines.length)step();else onDone();}}],true);};
+    coachShow(fmt(L.t),[{label:last?(lines.done||'次へ'):'次へ',fn:()=>{i++;if(i<lines.length)step();else onDone();}}],true);};
   step();
 }
+/* 選択肢 */
+function choose(who,pose,text,opts){
+  clearHL();setSpeaker(who,pose);
+  const c=document.getElementById('coach');c.hidden=false;
+  document.getElementById('coachMsg').innerHTML=fmt(text);
+  const bc=document.getElementById('coachBtns');bc.innerHTML='';bc.classList.add('choice');
+  opts.forEach(o=>{const el=document.createElement('button');el.className='btn cho'+(o.cls?' '+o.cls:'');el.innerHTML=`<b>${o.label}</b>${o.sub?`<small>${o.sub}</small>`:''}`;el.onclick=()=>{bc.classList.remove('choice');sfx.tick&&sfx.tick();o.fn();};bc.appendChild(el);});
+}
+const N=(t,cond)=>({who:'nar',t,if:cond});
+
+/* ===== 第一部「翠の教え」 ===== */
 const STORY=[
   {id:0,t:'入店',sub:'雀荘「翠」の扉を開ける',who:'master',
-   intro:[{who:'master',t:'いらっしゃい。ここは雀荘「翠」。麻雀は初めてかい？'},{who:'master',pose:'point',t:'まずは牌を見てみよう。種類さえ分かれば、あとは並べるだけだ。'}],
+   intro:[N('駅裏の路地。看板の灯りは半分消えている。雀荘「翠」。'),
+     N('財布には千円札が二枚。ここで増やすつもりで来た。',isO('gambler')),
+     N('祖父の日記にあった店名。本当に、まだあった。',isO('student')),
+     N('本社の指示は「翠の内情を探れ」。レン先輩が先に通っているらしい。',isO('clerk')),
+     {who:'master',t:'いらっしゃい。……初めての顔だね。名前は？'},
+     {who:'master',t:'{n}か。いい名だ。麻雀は初めてかい？'},
+     {who:'master',pose:'point',t:'経験者の目だね。それでも一度、ここの流儀でおさらいしてもらう。まずは牌からだ。',if:isO('gambler')},
+     {who:'master',pose:'point',t:'初めてなら、まず牌を見よう。種類が分かれば、あとは並べるだけだ。',if:H=>H.origin!=='gambler'}],
    run:()=>{startKihon();setSpeaker('master');},
-   outro:[{who:'master',t:'筋がいいね。次は実際に一局、あがってみようか。'}]},
+   outro:[{who:'master',t:'筋がいいね。次は実際に一局、あがってみようか。'},
+     N('店の奥に古い写真があった。若い男が二人、笑っている。片方は、祖父に似ていた。',isO('student'))]},
   {id:1,t:'初めての和了',sub:'マスターの手ほどき',who:'master',
    intro:[{who:'master',t:'配牌を見て、いらない牌から切っていく。焦らなくていい。'},{who:'master',t:'最後の1枚を自分で引けば「ツモ」だ。やってごらん。'}],
    run:()=>{startTsumo();setSpeaker('master');},
-   outro:[{who:'master',pose:'cross',t:'見事。それが「あがり」だ。'},{who:'hayato',pose:'point',t:'へえ、新人さんやるじゃん。次は俺と打とうぜ！'}]},
+   outro:[{who:'master',pose:'cross',t:'見事。それが「あがり」だ。'},
+     {who:'gen',pose:'cross',t:'……おい。今の切り順、素人じゃねえな。',if:isO('gambler')},
+     {who:'hayato',pose:'point',t:'へえ、{n}やるじゃん。次は俺と打とうぜ！'}]},
   {id:2,t:'早打ちのハヤト',sub:'鳴きを覚える',who:'hayato',
    intro:[{who:'hayato',pose:'point',t:'俺は待たない主義でね。鳴いて鳴いて、速攻であがる！'},{who:'master',t:'彼の打ち方から「鳴き」を学ぶといい。相手の捨て牌をもらう技だ。'}],
    run:()=>{startNaki();setSpeaker('hayato');},
-   outro:[{who:'hayato',pose:'cross',t:'そうそう！ でも鳴くとリーチできないし、役がいる。そこは気をつけな。'}]},
+   outro:[{who:'hayato',pose:'cross',t:'そうそう！ でも鳴くとリーチできないし、役がいる。そこは気をつけな。'},
+     N('ハヤトは一度も長考しなかった。まるで、考えるのを避けているみたいに。')]},
   {id:3,t:'シズカの守り',sub:'リーチに振り込まない',who:'shizuka',
-   intro:[{who:'shizuka',pose:'cross',t:'攻めるだけが麻雀じゃない。……リーチ。'},{who:'master',pose:'point',t:'相手がリーチしたら、まず守り。彼女の捨て牌をよく見て。'}],
+   intro:[N('雨の日。客はシズカ一人だった。'),{who:'shizuka',pose:'cross',t:'攻めるだけが麻雀じゃない。……リーチ。'},{who:'master',pose:'point',t:'相手がリーチしたら、まず守り。彼女の捨て牌をよく見て。'}],
    run:()=>{startMamori();setSpeaker('shizuka');},
-   outro:[{who:'shizuka',t:'現物は絶対に当たらない。覚えておいて。'}]},
+   outro:[{who:'shizuka',t:'現物は絶対に当たらない。覚えておいて。'},{who:'shizuka',t:'……この打ち方、ある人の受け売りなの。'}]},
   {id:4,t:'勝負師ゲン',sub:'リーチとロンで取る',who:'gen',
    intro:[{who:'gen',pose:'cross',t:'小さくまとまるな。リーチして、ロンで取る。それが一番気持ちいい。'},{who:'gen',pose:'point',t:'テンパイしたら迷わずリーチだ。俺の捨て牌、しっかり見とけよ。'}],
    run:()=>{startRiichiRon();setSpeaker('gen');},
-   outro:[{who:'gen',pose:'point',t:'いい和了だ。役とドラで点は化ける。覚えとけ。'}]},
+   outro:[{who:'gen',pose:'point',t:'いい和了だ。役とドラで点は化ける。覚えとけ。'},
+     N('帰り際、マスターが咳き込んでいるのを見た。ゲンは目を逸らした。')]},
   {id:5,t:'牌効率',sub:'くっついた牌を残し、両面で待つ',who:'master',
-   intro:[{who:'master',t:'あがるまでの道のりを短くする考え方を教えよう。「効率」だ。'}],
+   intro:[N('見慣れない女性が、店の隅で静かに打っていた。「レン」と名乗った。'),
+     {who:'ren',t:'……{n}。あなたも来たのね。本社の指示？　……ここでは言わないで。',if:isO('clerk')},
+     {who:'master',t:'あがるまでの道のりを短くする考え方を教えよう。「効率」だ。'}],
    run:()=>{startKouritsu();setSpeaker('master');},
    outro:[{who:'master',pose:'point',t:'迷ったら、何とも繋がっていない牌から切る。それだけで勝率は変わる。'}]},
   {id:6,t:'押し引き',sub:'攻めるか降りるかの判断',who:'master',
    intro:[{who:'master',pose:'cross',t:'最後の教えだ。麻雀で一番大事なのは「攻めるか、降りるか」。'}],
    run:()=>{startOshihiki();setSpeaker('master');},
-   outro:[{who:'master',pose:'point',t:'これで戦術の土台は揃った。あとは実戦で体に染み込ませるだけだ。'}]},
+   outro:[{who:'master',pose:'point',t:'これで戦術の土台は揃った。あとは実戦で体に染み込ませるだけだ。'},
+     N('閉店後。シズカとゲンが小声で話していた。「マスターは、店を畳むつもりよ」')]},
   {id:7,final:true,t:'翠の一員',sub:'三人と本気の一局',who:'master',
    intro:[{who:'master',pose:'cross',t:'ここまでよく頑張った。最後は三人と一局、本気で打ってみな。'},{who:'master',pose:'point',t:'ハヤトは鳴き、シズカは守り、ゲンはリーチ。三人の癖を思い出して。あがれたら合格だ。'}],
    run:()=>storyFinalStart(),
-   outro:[{who:'master',pose:'point',t:'今日から君も、この店の一員だ。'}]}
+   outro:[{who:'master',pose:'point',t:'今日から君も、この店の一員だ。'},
+     N('「一員」。その言葉が、思ったより重く胸に残った。')]}
 ];
 function storyProgress(){return parseInt(lsGet('mjStory')||'0',10);}
-function showStory(){
+
+/* ===== 序章：主人公を決める ===== */
+function showPrologue(){
   {const _m=document.getElementById('modal');_m.classList.remove('done');_m.onclick=null;}
   const ov=document.getElementById('overlay');ov.style.display='flex';const m=document.getElementById('modal');
-  const prog=storyProgress(),sprog=stageProgress(),p1=part1Done();
+  let sel=HERO.origin||'student';
+  const cards=()=>ORIGINS.map(o=>`<button class="origin ${o.id===sel?'sel':''}" data-o="${o.id}"><span class="ob"><b>${o.t}</b><small>${o.sub}</small><small class="eff">${o.eff}</small></span><span class="df">${o.diff}</span></button>`).join('');
+  m.innerHTML=`<div class="chap-num">序章</div><h2>扉の前で</h2>
+    <div class="st-intro">駅裏の小さな雀荘「翠」。<br>君は、どんな人物としてこの扉を開ける？</div>
+    <div class="hero-in"><label>名前</label><input id="heroName" maxlength="8" placeholder="8文字まで" value="${(HERO.name||'').replace(/"/g,'')}"></div>
+    <div id="originList">${cards()}</div>
+    <button class="btn" id="proGo" style="margin-top:8px">扉を開ける</button>`;
+  const bind=()=>m.querySelectorAll('.origin').forEach(b=>b.onclick=()=>{sel=b.dataset.o;document.getElementById('originList').innerHTML=cards();bind();});
+  bind();
+  document.getElementById('proGo').onclick=()=>{
+    const nm=document.getElementById('heroName').value.trim().slice(0,8);
+    HERO=blankHero();HERO.name=nm;HERO.origin=sel;HERO.notes=['origin'];saveHero();
+    ['mjStory','mjStage','mjTitle','mjRoute','mjFlag_hayato','mjFlag_shizuka','mjFlag_gen','mjFlag_ren','mjFlag_kuroda'].forEach(k=>{try{localStorage.removeItem(k)}catch(e){}});
+    ov.style.display='none';storyStart(0);
+  };
+}
+function resetStory(){
+  if(!confirm('物語の進行をすべて消して、最初から始めますか？（道場の記録は残ります）'))return;
+  HERO=blankHero();saveHero();
+  ['mjStory','mjStage','mjTitle','mjRoute','mjFlag_hayato','mjFlag_shizuka','mjFlag_gen','mjFlag_ren','mjFlag_kuroda','mjEnd_true','mjEnd_top','mjEnd_new','mjEnd_close'].forEach(k=>{try{localStorage.removeItem(k)}catch(e){}});
+  showStory();
+}
+
+/* ===== 翠ノート ===== */
+const NOTES=[
+ {id:'origin',t:'扉を開けた日',d:()=>{const o=originOf();return o?`${heroName()}――${o.sub}。`:'';}},
+ {id:'hayato',t:'ハヤトの長考',d:'昔は長考派だった。全てを賭けて失い、考えないために速く打つようになった。'},
+ {id:'shizuka',t:'先代ユウジ',d:'シズカの亡き夫は翠の先代。振り込まない打ち手だった。彼女はその打ち方を守り続けていた。'},
+ {id:'gen',t:'一番弟子',d:'ゲンはマスターの一番弟子。店を継ぐのが怖くて、言い出せなかった。'},
+ {id:'ren',t:'外した名札',d:'レンは偵察役だった。翠を好きになり、本部に辞表を出した。'},
+ {id:'kuroda',t:'数字の男',d:'クロダも昔、小さな店で麻雀を覚えた。効率ではなく、楽しさで。'},
+ {id:'end_close',t:'結末「閉店」',d:'届かなかった。翠はその月の末に閉まった。'},
+ {id:'end_new',t:'結末「新しい翠」',d:'看板は変わった。卓は残った。'},
+ {id:'end_top',t:'結末「翠の頂」',d:'一番強くなった。だが店は、まだ渡されない。'},
+ {id:'end_true',t:'結末「翠の主」',d:'店を託された。今度は君が「いらっしゃい」と言う。'}
+];
+function showNotes(){
+  {const _m=document.getElementById('modal');_m.classList.remove('done');_m.onclick=null;}
+  const ov=document.getElementById('overlay');ov.style.display='flex';const m=document.getElementById('modal');
+  const rows=NOTES.map(n=>{const ok=HERO.notes.includes(n.id);const d=typeof n.d==='function'?n.d():n.d;
+    return `<div class="note ${ok?'on':''}"><b>${ok?n.t:'？？？'}</b><small>${ok?d:'まだ開かれていないページ'}</small></div>`;}).join('');
+  m.innerHTML=`<h2>翠ノート</h2><div class="st-intro">この店で知ったこと。${HERO.notes.length} / ${NOTES.length} ページ</div>
+    <div id="dojo">${rows}</div><button class="btn gray" id="noteBack">もどる</button>`;
+  document.getElementById('noteBack').onclick=()=>showStory();
+}
+
+/* ===== 第二部・第三部・終章 ===== */
+const CHAR_STYLE={hayato:'call',shizuka:'defense',gen:'riichi',ren:'normal',master:'normal',kuroda:'normal'};
+const ST={
+ hayato:{id:'hayato',boss:'hayato',t:'ハヤト',sub:'鳴き速攻',cast:{2:'hayato',1:'gen',3:'shizuka'},title:'ハヤト超え',skill:'peek',
+  cond:{text:'ハヤトから直撃（ロン）で決める',test:(s,r)=>!!s.ronBoss},
+  pre:[N('翠に通い始めて一ヶ月。'),{who:'hayato',pose:'point',t:'{n}、そろそろ本気で打とうぜ。半荘、トップ取れたら認めてやる。'}],
+  wager:{ask:'ついでに賭けねえか？　負けた方が一ヶ月出禁。……俺はマジだぜ。',stake:'負ければ出禁。ハヤトは全力で来る。直撃で決めれば秘密が開く',
+    accept:[{who:'hayato',pose:'point',t:'いいね。じゃあ、俺の速さについてこい！'}],
+    decline:[{who:'hayato',t:'ちぇ、つまんねえの。まあいい、普通にやろうぜ。'}]},
+  win:[{who:'hayato',pose:'cross',t:'……マジかよ。負けたのは俺だ。'}],
+  narrow:[{who:'hayato',pose:'point',t:'まあ俺には勝ったけどよ、トップじゃねえだろ。まだ認めねえぞ。'}],
+  lose:[{who:'hayato',pose:'point',t:'速さで負けてるぜ。守るだけじゃ勝てない、あがりに行け！'}],
+  condOnly:[{who:'hayato',t:'直撃かよ……。賭けてりゃ、もっと話すこともあったんだけどな。'}],
+  secret:[{who:'hayato',pose:'cross',t:'俺の牌でロンかよ……。速さの上を行かれた。完敗だ。'},
+    {who:'hayato',t:'……俺さ、昔は長考派だったんだ。考えて考えて、全部賭けて、全部失った。'},
+    {who:'hayato',t:'だから考えないことにした。速く打てば、怖くない。'},
+    {who:'hayato',pose:'point',t:'でもお前の直撃で分かった。逃げてただけだ。……これ、やるよ。俺の「速さの目」。'},
+    N('ハヤトから「透視」を託された。腕試しで使えるようになった。')],
+  badEnd:[N('約束は約束だ。翠の扉が、背中で閉まった。'),N('一ヶ月。長い一ヶ月だった。'),{who:'hayato',t:'……よう。戻ってきたか。もう一回やるか？'}]},
+ shizuka:{id:'shizuka',boss:'shizuka',t:'シズカ',sub:'鉄壁の守り',cast:{2:'shizuka',1:'hayato',3:'gen'},title:'シズカ超え',skill:'foresight',
+  cond:{text:'一度も振り込まずに勝つ',test:(s,r)=>s.dealIns===0},
+  pre:[N('シズカは今日も、静かに現物を切っている。'),{who:'shizuka',t:'あなた、ハヤトに勝ったのね。……私とも打ってくれる？'}],
+  wager:{ask:'賭けをしましょう。あなたが一度でも私に振り込んだら、二度と私とは打たない。',stake:'本気のシズカ。振り込まずに勝てば秘密が開く',
+    accept:[{who:'shizuka',t:'……ありがとう。本気で行くわ。'}],
+    decline:[{who:'shizuka',t:'そう。じゃあ、普通に打ちましょう。'}]},
+  win:[{who:'shizuka',t:'……見事。守りを崩されるのは久しぶり。'}],
+  narrow:[{who:'shizuka',t:'私より上……でも一番ではない。まだ、よ。'}],
+  lose:[{who:'shizuka',pose:'point',t:'焦ってはだめ。相手が降りている時こそ、確実にあがる形を作って。'}],
+  condOnly:[{who:'shizuka',t:'一度も振り込まなかったのね。……賭けていたら、話したいことがあったのに。'}],
+  secret:[{who:'shizuka',t:'一度も振り込まなかった。……あの人と同じ。'},
+    {who:'shizuka',pose:'cross',t:'夫のユウジは、この店の先代よ。振り込まない打ち手だった。私はずっと、彼の打ち方を守ってきた。'},
+    {who:'shizuka',pose:'point',t:'でも、あなたを見て気づいた。守るべきは打ち方じゃなくて、この店だったのね。'},
+    N('シズカから「千里眼」を託された。腕試しで使えるようになった。')],
+  badEnd:[N('振り込んだ瞬間、シズカは静かに牌を伏せた。'),{who:'shizuka',t:'約束だから。……さようなら。'},N('翠は、少し静かになった。')]},
+ gen:{id:'gen',boss:'gen',t:'ゲン',sub:'リーチと高打点',cast:{2:'gen',1:'hayato',3:'shizuka'},title:'ゲン超え',skill:'god',
+  cond:{text:'満貫以上をあがって勝つ',test:(s,r)=>s.maxHan>=5},
+  pre:[N('閉店後。ゲンが一人、マスターの席に座っていた。'),{who:'gen',pose:'cross',t:'{n}。お前に頼みがある。俺と本気で打て。'}],
+  wager:{ask:'負けたら翠を出ていけ。勝ったら……俺の話を聞いてもらう。',stake:'負ければ翠を去る。ゲンは全力。満貫以上で勝てば秘密が開く',
+    accept:[{who:'gen',pose:'point',t:'上等だ。取りに来い。'}],
+    decline:[{who:'gen',pose:'cross',t:'……そうか。まあ、普通にやるか。'}]},
+  win:[{who:'gen',t:'……いい打ち手になったな。認めてやる。'}],
+  narrow:[{who:'gen',pose:'cross',t:'俺には勝ったな。だが上がいる。悔しくねえのか？'}],
+  lose:[{who:'gen',pose:'point',t:'俺のリーチに突っ込みすぎだ。押すのは自分がテンパイの時だけだ。'}],
+  condOnly:[{who:'gen',t:'満貫か。……賭けてりゃ、俺の話をしてやったんだがな。'}],
+  secret:[{who:'gen',pose:'cross',t:'満貫か。……それでこそ勝負師だ。'},
+    {who:'gen',t:'マスターは体を壊してる。店を畳むつもりだ。俺は一番弟子なのに、継ぐと言えなかった。'},
+    {who:'gen',pose:'point',t:'怖かったんだよ。負けるのが。……でもお前なら取れる。俺の「引き」をやる。'},
+    N('ゲンから「神引き」を託された。腕試しで使えるようになった。')],
+  badEnd:[N('「出ていけ」。ゲンは本気だった。'),N('翠のない日々は、思ったよりつまらなかった。'),{who:'gen',t:'……戻れ。もう一度だ。'}]},
+ cross:{id:'cross',scene:true,t:'岐路',sub:'買収の申し出',who:'kuroda',
+  lines:[N('その夜、店に見慣れないスーツの男が来た。'),
+    {who:'kuroda',t:'マルヨシ・グループのクロダです。この店を、買い取らせていただきたい。'},
+    {who:'master',t:'……レン。君の会社か。'},
+    {who:'ren',t:'……はい。私は偵察に来ていました。すみません。'},
+    {who:'ren',t:'{n}も、そうよね。……言えなかった。',if:isO('clerk')},
+    {who:'kuroda',pose:'point',t:'条件は悪くない。看板は残す。店主も雇う。ただし、打ち方は本部の基準に統一する。'},
+    {who:'master',t:'体がもたないのは事実だ。……{n}、君はどう思う？'}],
+  protect:[{who:'master',pose:'point',t:'……そうか。なら、示してくれ。この店の打ち方が通用することを。'},{who:'ren',pose:'cross',t:'なら私が相手よ。会社の代表として。'}],
+  neo:[{who:'master',t:'……そうか。それも一つの道だ。'},{who:'kuroda',t:'賢明です。ただし、私に勝てたら条件を上乗せしましょう。'},{who:'ren',t:'私も……本部側で打ちます。ごめんなさい。'}]},
+ ren:{id:'ren',boss:'ren',t:'レン',sub:'会社の代表として',cast:{2:'ren',1:'hayato',3:'shizuka'},title:'レン超え',level3:true,
+  cond:{text:'トビを出さず、2着以内',test:(s,r)=>!s.tobi&&r<=2},
+  pre:[N('レンは会社の名札を外して座った。'),{who:'ren',t:'私は普通に打つだけ。それが一番強いと、会社で教わった。'}],
+  wager:{ask:'賭けましょう。私が勝ったら買収は成立。あなたが勝ったら……私が本部を説得する。',stake:'本気のレン。負ければ買収が進む。トビなし2着以内で秘密が開く',
+    accept:[{who:'ren',t:'……ありがとう。本気で打つ。'}],
+    decline:[{who:'ren',t:'……そう。なら、普通に。'}]},
+  win:[{who:'ren',t:'完敗。あなた、もうこの店で一番強いかもしれない。'}],
+  narrow:[{who:'ren',t:'私を上回ったのは事実。でも一番を取れないなら、まだ完成じゃない。'}],
+  lose:[{who:'ren',pose:'point',t:'どこかで無理をしたでしょう。基本を淡々と。それだけでいい。'}],
+  condOnly:[{who:'ren',t:'淡々と、強い。……賭けていれば、本音を言えたのに。'}],
+  secret:[{who:'ren',pose:'cross',t:'淡々と、強い。本部で教わった「普通」より、ずっと。'},
+    {who:'ren',t:'……本当はね。翠が好きになってた。ハヤトの馬鹿騒ぎも、シズカさんのお茶も。'},
+    {who:'ren',pose:'point',t:'私は帰らない。本部には辞表を出す。'},
+    {who:'ren',t:'{n}、あなたも決めなさい。名札を捨てるかどうか。',if:isO('clerk')},
+    N('レンが翠に残った。')],
+  badEnd:[N('買収は成立した。翠の看板は、翌週外された。'),{who:'ren',t:'……ごめんなさい。'}]},
+ kuroda:{id:'kuroda',boss:'kuroda',t:'クロダ',sub:'数字の麻雀',cast:{2:'kuroda',1:'ren',3:'gen'},title:'クロダ超え',level3:true,
+  cond:{text:'クロダから直撃（ロン）で決める',test:(s,r)=>!!s.ronBoss},
+  pre:[N('クロダはネクタイを緩めずに座った。'),{who:'kuroda',t:'私の麻雀は数字です。期待値の高い方を、ただ選ぶ。'}],
+  wager:{ask:'勝負を面白くしましょう。あなたが勝てば、店の打ち方は自由のまま。負ければ、常連の席もなくなる。',stake:'本気のクロダ。負ければ常連の席が消える。直撃で決めれば秘密が開く',
+    accept:[{who:'kuroda',pose:'point',t:'結構。数字で示しましょう。'}],
+    decline:[{who:'kuroda',t:'……賭けない。それも期待値の判断ですね。'}]},
+  win:[{who:'kuroda',t:'完敗です。契約書は書き直しましょう。'}],
+  narrow:[{who:'kuroda',t:'私より上、ですか。……条件は据え置きで。'}],
+  lose:[{who:'kuroda',pose:'point',t:'期待値の低い勝負を選びすぎです。'}],
+  condOnly:[{who:'kuroda',t:'直撃ですか。……数字にない打ち方だ。'}],
+  secret:[{who:'kuroda',pose:'cross',t:'……数字にない打ち方だ。'},
+    {who:'kuroda',t:'私も昔、こういう店で覚えた。効率を教える上司はいなかったが、楽しかった。'},
+    {who:'kuroda',pose:'point',t:'条件を変えます。看板も打ち方も、このまま。本部には私が言う。'}],
+  badEnd:[N('常連の席は、番号札に変わった。'),{who:'hayato',pose:'cross',t:'……つまんねえ店になったな。'}]},
+ master:{id:'master',boss:'master',t:'マスター',sub:'翠の全部を賭けた一局',cast:{2:'master',1:'gen',3:'shizuka'},title:'翠の頂',final:true,level3:true,
+  pre:[N('翠の最後の営業日。……ではなく、「最初の」営業日にするために。',H=>H.route!=='neo'),
+    N('看板が変わる前の、最後の夜。',H=>H.route==='neo'),
+    {who:'master',pose:'cross',t:'よくここまで来た。最後は私が相手だ。'},
+    {who:'master',pose:'point',t:'賭けは要らない。この一局に、店の全部を賭けている。'}]}
+};
+const ENDINGS={
+ close:{id:'close',t:'閉店',lines:[N('……届かなかった。'),{who:'master',t:'いい麻雀だった。だが、それだけだ。'},N('翠は、その月の末に閉まった。'),N('シャッターの前で、ただ立っていた。')]},
+ neo:{id:'neo',t:'新しい翠',lines:[{who:'kuroda',t:'約束通り、条件は据え置きです。'},{who:'master',t:'看板は「マルヨシ翠店」になる。……だが、卓はこのままだ。'},{who:'ren',t:'私はここの店長として残ります。'},{who:'hayato',pose:'point',t:'まあ、卓が残りゃいいさ。'},N('翠は残った。少しだけ、違う形で。')]},
+ top:{id:'top',t:'翠の頂',lines:[{who:'master',pose:'point',t:'……参った。今日から、この店で一番強いのは君だ。'},{who:'master',t:'だが、まだ渡せない。常連の心を、全部は掴んでいない。'},N('翠は続く。看板は、まだマスターの名前のまま。')]},
+ true:{id:'true',t:'翠の主',lines:[{who:'hayato',pose:'point',t:'言ったろ、{n}はやるって。'},{who:'shizuka',t:'守りも攻めも、もう教えることはない。'},{who:'gen',pose:'cross',t:'……認める。お前が一番だ。'},{who:'ren',t:'私も、ここに残る。'},
+   {who:'master',pose:'point',t:'この店を、君に託そう。今日から君が「翠の主」だ。'},
+   N('借金は、まだ残っている。でも稼ぐ場所じゃなく、帰る場所ができた。',isO('gambler')),
+   {who:'master',t:'……君の祖父は、先代の相棒だった。写真の左端の男だ。店を出た理由は、聞かないでおこう。',if:isO('student')},
+   N('祖父の日記の最後のページに、こう書いてあった。「翠を頼む」。',isO('student')),
+   {who:'ren',t:'辞表、二人分出してきた。',if:isO('clerk')},
+   N('本社の名札を、川に投げた。',isO('clerk')),
+   N('翌朝。扉が開く音がした。'),N('「いらっしゃい」。今度は、君が言う。')]}
+};
+function storyPath(){const r=HERO.route;return [ST.hayato,ST.shizuka,ST.gen,ST.cross,r==='neo'?ST.kuroda:(r==='protect'?ST.ren:null),ST.master];}
+function stageProgress(){return parseInt(lsGet('mjStage')||'0',10);}
+function part1Done(){return storyProgress()>=STORY.length;}
+function flagCount(){return ['hayato','shizuka','gen','ren'].filter(id=>lsGet('mjFlag_'+id)==='1').length;}
+function currentTitle(){const t=lsGet('mjTitle');if(t)return t;const sp=stageProgress(),path=storyPath();
+  for(let i=Math.min(sp,path.length)-1;i>=0;i--){if(path[i]&&path[i].title)return path[i].title;}
+  if(part1Done())return '翠の一員';return '';}
+function bossLevel(st,wager){
+  if(st.boss==='master')return HERO.origin==='clerk'?2:3;
+  if(wager)return 3;
+  const base=st.level3?3:2;return HERO.origin==='clerk'?base-1:base;
+}
+function castStage(st,idx,wager){
+  const lv=bossLevel(st,wager),sub=HERO.origin==='gambler'?2:1;
+  for(const seat in st.cast){const id=st.cast[seat];const p=G.players[+seat];
+    p.name=CHARS[id].n;p.style=CHAR_STYLE[id];p.level=(id===st.boss)?lv:sub;}
+  if(HERO.origin==='gambler')G.players[0].score=20000;
+  G.stage=idx;G.wager=!!wager;render();updateSkillbar();
+}
+function startStage(i){
+  const path=storyPath(),st=path[i];if(!st)return;
+  document.getElementById('overlay').style.display='none';
+  tut={lesson:'',mode:'',phase:'',i:0,story:null};
+  G=null;
+  if(st.scene)return runCrossroad(i);
+  const go=w=>{const after=st.wager?(w?st.wager.accept:st.wager.decline):[];
+    say(after,()=>{document.getElementById('coach').hidden=true;setSpeaker(null);newHand(false);castStage(st,i,w);});};
+  say(st.pre,()=>{
+    if(!st.wager)return go(false);
+    choose(st.boss,'cross',st.wager.ask,[
+      {label:'受ける',sub:st.wager.stake},
+      {label:'流す',sub:'普通の対局。称号は取れるが、秘密は開かない'}
+    ].map((o,k)=>Object.assign(o,{fn:()=>go(k===0)})));
+  });
+}
+function runCrossroad(i){
+  const st=ST.cross;
+  say(st.lines,()=>{
+    choose('master','calm','この店を、どうしたい？',[
+      {label:'翠を守る',sub:'買収を断る。レン、そしてマスターと打つ。真の結末へ続く道'},
+      {label:'新しい翠',sub:'買収を受ける。クロダと打ち、条件を勝ち取る。もう一つの結末'}
+    ].map((o,k)=>Object.assign(o,{fn:()=>{
+      const route=k===0?'protect':'neo';
+      if(HERO.route&&HERO.route!==route){try{localStorage.removeItem('mjFlag_ren');localStorage.removeItem('mjFlag_kuroda');localStorage.removeItem('mjTitle');}catch(e){}}
+      HERO.route=route;saveHero();lsSet('mjStage',String(i+1));
+      say(k===0?st.protect:st.neo,()=>{document.getElementById('coach').hidden=true;setSpeaker(null);showStory();});
+    }})));
+  });
+}
+function showStageResult(){
+  {const _m=document.getElementById('modal');_m.classList.remove('done');_m.onclick=null;}
+  const path=storyPath(),idx=G.stage,st=path[idx],wager=!!G.wager,bossSeat=2;
+  const order=G.players.map((p,i)=>({i,score:p.score})).sort((a,b)=>b.score-a.score);
+  const rank=order.findIndex(o=>o.i===0)+1,bossRank=order.findIndex(o=>o.i===bossSeat)+1;
+  const outcome=rank===1?'win':(rank<bossRank?'narrow':'lose');
+  const stats=Object.assign({dealIns:0,maxHan:0,ronBoss:false},G.stats||{});stats.tobi=G.players.some(p=>p.score<0);
+  const special=outcome!=='lose'&&!!st.cond&&st.cond.test(stats,rank);
+  const hadFlag=lsGet('mjFlag_'+st.boss)==='1';
+  const gotFlag=special&&wager;
+  if(outcome!=='lose'&&stageProgress()<idx+1)lsSet('mjStage',String(idx+1));
+  if(gotFlag){lsSet('mjFlag_'+st.boss,'1');addNote(st.boss);if(st.skill&&!HERO.skills.includes(st.skill)){HERO.skills.push(st.skill);saveHero();}}
+  G.stage=null;G.wager=false;
+  const rows=order.map((o,k)=>`${k+1}位 ${G.players[o.i].name||POS[o.i]}<span class="h">${G.players[o.i].score}</span>`).join('<br>');
+  if(st.final)return showEnding(outcome,rows,idx);
+  const ov=document.getElementById('overlay');ov.style.display='flex';
+  const hide=()=>{document.getElementById('coach').hidden=true;setSpeaker(null);};
+  if(wager&&outcome==='lose'){
+    hide();say(st.badEnd,()=>{hide();
+      ov.style.display='flex';
+      document.getElementById('modal').innerHTML=`<div class="chap-num">賭けに敗れた</div><h2>${st.t}との約束</h2>
+        <div class="port-big">${portraitSVG(st.boss,'point')}</div><div class="yaku">${rows}</div>
+        <div class="sub">賭けを受けた対局で負けた。物語はここで一度途切れる。</div>
+        <div style="display:flex;gap:8px;justify-content:center;margin-top:10px"><button class="btn" id="beRetry">あの日に戻る</button><button class="btn gray" id="beBack">雀荘へ</button></div>`;
+      document.getElementById('beRetry').onclick=()=>startStage(idx);
+      document.getElementById('beBack').onclick=()=>showStory();});
+    return;
+  }
+  const head=outcome==='win'?'完全勝利':(outcome==='narrow'?'辛勝':'敗北');
+  const title=outcome==='win'?st.title:null;
+  const note=outcome==='win'?'':(outcome==='narrow'?`${st.t}より上の順位で突破。称号は1位の時だけ。`:'1位（またはボスより上）で突破。もう一度挑戦できます。');
+  document.getElementById('modal').innerHTML=`<div class="chap-num">${idx<3?'腕試し':'岐路'}　${wager?'本気の賭け':'通常'}</div>
+    <h2>${head}</h2>
+    <div class="port-big">${portraitSVG(st.boss,outcome==='lose'?'point':'calm')}</div>
+    <div class="yaku">${rows}</div>
+    ${special?`<div class="cond-ok">${gotFlag?'流儀を制した　':'流儀は満たしたが賭けなし　'}${st.cond.text}</div>`:''}
+    ${title?`<div class="title-earn">称号「${title}」を獲得</div>`:''}
+    ${note?`<div class="sub">${note}</div>`:''}
+    <button class="btn" id="stgNext">つづける</button>`;
+  document.getElementById('stgNext').onclick=()=>{ov.style.display='none';
+    let lines=outcome==='win'?st.win:(outcome==='narrow'?st.narrow:st.lose);
+    if(gotFlag)lines=lines.concat(hadFlag?[]:st.secret);
+    else if(special&&st.condOnly)lines=lines.concat(st.condOnly);
+    say(lines,()=>{hide();if(outcome!=='lose')confetti();showStory();});};
+}
+function showEnding(outcome,rows,idx){
+  const ov=document.getElementById('overlay');
+  const hide=()=>{document.getElementById('coach').hidden=true;setSpeaker(null);};
+  let E;
+  if(outcome==='lose')E=ENDINGS.close;
+  else if(HERO.route==='neo')E=ENDINGS.neo;
+  else if(outcome==='win'&&flagCount()>=3)E=ENDINGS.true;
+  else E=ENDINGS.top;
+  if(outcome!=='lose'){lsSet('mjStage',String(idx+1));}
+  if(E.id==='true')lsSet('mjTitle','翠の主');
+  lsSet('mjEnd_'+E.id,'1');addNote('end_'+E.id);
+  hide();
+  say(E.lines,()=>{hide();ov.style.display='flex';
+    const hint=E.id==='top'?'（賭けを受けて常連の流儀を制し、秘密を3つ以上聞くと結末が変わる）':E.id==='neo'?'（岐路をやり直せば、別の結末が見られる）':E.id==='close'?'':'';
+    document.getElementById('modal').innerHTML=`<div class="chap-num">終章</div><h2>${E.t}</h2>
+      <div class="port-big">${portraitSVG('master',E.id==='close'?'point':(E.id==='true'?'point':'calm'))}</div>
+      <div class="yaku">${rows}</div>
+      ${E.id==='true'?'<div class="title-earn">称号「翠の主」を獲得</div>':''}
+      ${hint?`<div class="sub">${hint}</div>`:''}
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:10px">${E.id==='close'?'<button class="btn" id="endRetry">もう一度</button>':''}<button class="btn ${E.id==='close'?'gray':''}" id="endBack">雀荘へ</button></div>`;
+    if(E.id!=='close')confetti();
+    const r=document.getElementById('endRetry');if(r)r.onclick=()=>startStage(idx);
+    document.getElementById('endBack').onclick=()=>showStory();});
+}
+
+/* ===== 雀荘メニュー ===== */
+function showStory(){
+  {const _m=document.getElementById('modal');_m.classList.remove('done');_m.onclick=null;}
+  if(!HERO.origin)return showPrologue();
+  const ov=document.getElementById('overlay');ov.style.display='flex';const m=document.getElementById('modal');
+  const prog=storyProgress(),sprog=stageProgress(),p1=part1Done(),path=storyPath(),o=originOf();
   const rows1=STORY.map(c=>{const done=c.id<prog,lock=c.id>prog;
     return `<button class="st-ch ${lock?'lock':''}" data-id="${c.id}" ${lock?'disabled':''}>
       <span class="num">${c.final?'終章':'第'+['一','二','三','四','五','六','七'][c.id]+'章'}</span>
       <span class="ttl"><b>${c.t}</b><small>${c.sub}</small></span>
       <span class="who">${portraitSVG(c.who,'calm')}</span>
       <span class="st ${done?'on':''}">${done?'✓':(lock?'—':'▶')}</span></button>`;}).join('');
-  const rows2=STAGES.map(st=>{const done=st.id<sprog,lock=!p1||st.id>sprog;
-    return `<button class="st-ch ${lock?'lock':''}" data-stage="${st.id}" ${lock?'disabled':''}>
-      <span class="num">第${['一','二','三','四','五'][st.id]}戦</span>
-      <span class="ttl"><b>${st.t}</b><small>${st.sub}</small>${st.cond?`<small class="cond ${lsGet('mjFlag_'+st.boss)==='1'?'on':''}">流儀 ${lsGet('mjFlag_'+st.boss)==='1'?'◆':'◇'} ${st.cond.text}</small>`:''}</span>
-      <span class="who">${portraitSVG(st.boss,'calm')}</span>
-      <span class="st ${done?'on':''}">${done?'✓':(lock?'—':'▶')}</span></button>`;}).join('');
-  const title=currentTitle();
+  const row=(st,i,label)=>{
+    if(!st)return `<button class="st-ch lock" disabled><span class="num">${label}</span><span class="ttl"><b>？？？</b><small>岐路の選択で決まる</small></span><span class="who"></span><span class="st">—</span></button>`;
+    const done=i<sprog,lock=!p1||i>sprog;const flag=st.boss&&lsGet('mjFlag_'+st.boss)==='1';
+    return `<button class="st-ch ${lock?'lock':''}" data-stage="${i}" ${lock?'disabled':''}>
+      <span class="num">${label}</span>
+      <span class="ttl"><b>${st.t}</b><small>${st.sub}</small>${st.cond?`<small class="cond ${flag?'on':''}">流儀 ${flag?'◆':'◇'} ${st.cond.text}</small>`:''}</span>
+      <span class="who">${portraitSVG(st.boss||st.who,'calm')}</span>
+      <span class="st ${done?'on':''}">${done?'✓':(lock?'—':'▶')}</span></button>`;};
+  const rows2=[row(path[0],0,'第一戦'),row(path[1],1,'第二戦'),row(path[2],2,'第三戦')].join('');
+  const rows3=[row(path[3],3,'岐路'),row(path[4],4,HERO.route?'第四戦':'第四戦')].join('');
+  const rows4=row(path[5],5,'最終戦');
+  const title=currentTitle();const ended=sprog>=path.length;
   m.innerHTML=`<h2>雀荘「翠」</h2>
-    <div class="st-intro">初めて訪れた小さな雀荘。<br>店主と常連に教わり、やがて追い越していく。${title?`<br><span class="ttl-now">現在の称号：${title}</span>`:''}</div>
+    <div class="hero-card"><span class="hn">${heroName()}</span><span class="ho">${o?o.t:''}　<em>難易度 ${o?o.diff:''}</em></span>${title?`<span class="ttl-now">称号：${title}</span>`:''}${HERO.route?`<span class="ttl-now">${HERO.route==='neo'?'新しい翠の道':'翠を守る道'}</span>`:''}</div>
     <div class="dojo-sec">第一部　翠の教え</div><div id="dojo">${rows1}</div>
     <div class="dojo-sec">第二部　腕試し${p1?'':'　（終章クリアで解放）'}</div><div id="dojo2">${rows2}</div>
-    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:8px">
+    <div class="dojo-sec">第三部　岐路${sprog>=3?'':'　（第三戦クリアで解放）'}</div><div id="dojo2">${rows3}</div>
+    <div class="dojo-sec">終章${sprog>=5?'':'　（第四戦クリアで解放）'}</div><div id="dojo2">${rows4}</div>
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px">
+      <button class="btn gray" id="stNotes">翠ノート ${HERO.notes.length}/${NOTES.length}</button>
       <button class="btn gray" id="stDojo">道場（復習）</button>
-      <button class="btn" id="stPlay">自由対局</button></div>`;
+      <button class="btn" id="stPlay">自由対局</button></div>
+    <button class="linkbtn" id="stReset">物語を最初から（主人公を変える）</button>`;
   m.querySelectorAll('.st-ch[data-id]:not(.lock)').forEach(b=>b.onclick=()=>{ov.style.display='none';storyStart(parseInt(b.dataset.id,10));});
   m.querySelectorAll('.st-ch[data-stage]:not(.lock)').forEach(b=>b.onclick=()=>startStage(parseInt(b.dataset.stage,10)));
+  document.getElementById('stNotes').onclick=()=>showNotes();
   document.getElementById('stDojo').onclick=()=>showDojo();
+  document.getElementById('stReset').onclick=()=>resetStory();
   document.getElementById('stPlay').onclick=()=>{ov.style.display='none';lsSet('mjHelpSeen','1');G=null;newHand(false);};
 }
 function storyStart(ch){
@@ -1795,18 +2169,16 @@ function storyChapterDone(id){
   const finish=()=>{tut.story=null;setSpeaker(null);document.getElementById('coach').hidden=true;
     confetti();
     if(!c.final){showChapterClear(ch);return;}
-    if(c.final){const ov=document.getElementById('overlay');ov.style.display='flex';
-      document.getElementById('modal').innerHTML=`<h2>物語クリア</h2>
-        <div class="badge-big grand"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8l4 4 4-7 4 7 4-4-1.5 10H5.5z"/></svg></div>
-        <div class="title-earn">称号「翠の一員」を獲得</div>
-        <div class="sub">店主と三人に認められた。これからは自由対局で腕を磨こう。</div>
-        <button class="btn" id="celBtn">雀荘へ</button>`;
-      document.getElementById('celBtn').onclick=()=>showStory();}
-    else showStory();};
+    const ov=document.getElementById('overlay');ov.style.display='flex';
+    document.getElementById('modal').innerHTML=`<h2>第一部 完</h2>
+      <div class="badge-big grand"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8l4 4 4-7 4 7 4-4-1.5 10H5.5z"/></svg></div>
+      <div class="title-earn">称号「翠の一員」を獲得</div>
+      <div class="sub">店主と三人に認められた。<br>だが翠には、閉店の噂がある。第二部「腕試し」が開いた。</div>
+      <button class="btn" id="celBtn">雀荘へ</button>`;
+    document.getElementById('celBtn').onclick=()=>showStory();};
   document.getElementById('coach').hidden=false;
   say(c.outro,finish);
 }
-/* 最終章：三人と本気の一局（配牌だけ少し良くする） */
 function showChapterClear(ch){
   {const _m=document.getElementById('modal');_m.classList.remove('done');_m.onclick=null;}
   const c=STORY[ch];const ov=document.getElementById('overlay');ov.style.display='flex';
@@ -1818,6 +2190,7 @@ function showChapterClear(ch){
     <button class="btn" id="chapNext">つづける</button>`;
   document.getElementById('chapNext').onclick=()=>showStory();
 }
+/* 最終章：三人と本気の一局（配牌だけ少し良くする） */
 function storyFinalStart(){
   document.getElementById('coach').hidden=true;setSpeaker(null);
   G=null;newHand(false);
@@ -1839,94 +2212,6 @@ function storyFinalEnd(won){
       <button class="btn" id="stRetry">もう一度</button><button class="btn gray" id="stBack">雀荘へ</button></div>`;
   document.getElementById('stRetry').onclick=()=>{ov.style.display='none';storyFinalStart();};
   document.getElementById('stBack').onclick=()=>showStory();
-}
-
-/* ===== 第二部「腕試し」: 半荘で1位を取れば突破 ===== */
-const CHAR_STYLE={hayato:'call',shizuka:'defense',gen:'riichi',ren:'normal',master:'normal'};
-const STAGES=[
- {id:0,boss:'hayato',t:'ハヤト',sub:'鳴き速攻・強化版',level:2,cast:{2:'hayato',1:'gen',3:'shizuka'},title:'ハヤト超え',cond:{text:'ハヤトから直撃（ロン）で決める',test:(s,r)=>!!s.ronBoss,line:[{who:'hayato',pose:'cross',t:'俺の牌でロンかよ……速さの上を行かれた。完敗だ。'}]},
-  narrow:[{who:'hayato',pose:'point',t:'まあ俺には勝ったけどよ、トップじゃねえだろ。まだ認めねえぞ。'}],
-  intro:[{who:'hayato',pose:'point',t:'よし、本気でいくぜ。鳴きの速さについてこれるか？'}],
-  win:[{who:'hayato',pose:'cross',t:'……マジかよ。負けたのは俺だ。次はシズカさんに挑んでみな。'}],
-  lose:[{who:'hayato',pose:'point',t:'速さで負けてるぜ。守るだけじゃ勝てない、あがりに行け！'}]},
- {id:1,boss:'shizuka',t:'シズカ',sub:'鉄壁の守り・強化版',level:2,cast:{2:'shizuka',1:'hayato',3:'gen'},title:'シズカ超え',cond:{text:'一度も振り込まずに勝つ',test:(s,r)=>s.dealIns===0,line:[{who:'shizuka',t:'一度も振り込まなかったのね。守りを教えた甲斐があった。'}]},
-  narrow:[{who:'shizuka',t:'私より上……でも一番ではない。まだ、よ。'}],
-  intro:[{who:'shizuka',pose:'cross',t:'私は振り込まない。あなたがあがれなければ、それで私の勝ち。'}],
-  win:[{who:'shizuka',t:'……見事。守りを崩されるのは久しぶり。'}],
-  lose:[{who:'shizuka',pose:'point',t:'焦ってはだめ。相手が降りている時こそ、確実にあがる形を作って。'}]},
- {id:2,boss:'gen',t:'ゲン',sub:'リーチと高打点・強化版',level:2,cast:{2:'gen',1:'hayato',3:'shizuka'},title:'ゲン超え',cond:{text:'満貫以上をあがって勝つ',test:(s,r)=>s.maxHan>=5,line:[{who:'gen',pose:'point',t:'満貫か。それでこそ勝負師だ。'}]},
-  narrow:[{who:'gen',pose:'cross',t:'俺には勝ったな。だが上がいる。悔しくねえのか？'}],
-  intro:[{who:'gen',pose:'cross',t:'手加減はしねえ。リーチが来たら覚悟しろ。'}],
-  win:[{who:'gen',t:'……いい打ち手になったな。認めてやる。'}],
-  lose:[{who:'gen',pose:'point',t:'俺のリーチに突っ込みすぎだ。押すのは自分がテンパイの時だけだ。'}]},
- {id:3,boss:'ren',t:'レン',sub:'隙のないバランス型',level:3,cast:{2:'ren',1:'hayato',3:'shizuka'},title:'レン超え',cond:{text:'トビを出さず、2着以内',test:(s,r)=>!s.tobi&&r<=2,line:[{who:'ren',t:'淡々と、強い。私が目指す打ち方そのものね。'}]},
-  narrow:[{who:'ren',t:'私を上回ったのは事実。でも一番を取れないなら、まだ完成じゃない。'}],
-  intro:[{who:'ren',t:'初めまして。私は攻めも守りも普通にやるだけ。……それが一番強いと思ってる。'}],
-  win:[{who:'ren',t:'完敗。あなた、もうこの店で一番強いかもしれない。'}],
-  lose:[{who:'ren',pose:'point',t:'どこかで無理をしたでしょう。基本を淡々と。それだけでいい。'}]},
- {id:4,boss:'master',t:'マスター',sub:'翠の最強',level:3,cast:{2:'master',1:'gen',3:'ren'},title:'翠の頂',
-  narrow:[{who:'master',t:'私には勝った。だが頂に立つには、一番を取ることだ。'}],
-  intro:[{who:'master',pose:'cross',t:'よくここまで来た。最後は私が相手をしよう。'}],
-  win:[{who:'master',pose:'point',t:'……参った。今日から、この店で一番強いのは君だ。'}],
-  lose:[{who:'master',t:'まだ私には届かない。だが、あと一歩だ。'}]}
-];
-function stageProgress(){return parseInt(lsGet('mjStage')||'0',10);}
-function part1Done(){return storyProgress()>=STORY.length;}
-function currentTitle(){const t=lsGet('mjTitle');if(t)return t;const sp=stageProgress();if(sp>=STAGES.length)return '翠の頂';if(sp>0)return STAGES[sp-1].title;if(part1Done())return '翠の一員';return '';}
-function castStage(st){
-  for(const seat in st.cast){const id=st.cast[seat];const p=G.players[+seat];
-    p.name=CHARS[id].n;p.style=CHAR_STYLE[id];p.level=(id===st.boss)?st.level:Math.max(1,st.level-1);}
-  G.stage=st.id;render();
-}
-function startStage(i){
-  const st=STAGES[i];
-  document.getElementById('overlay').style.display='none';
-  tut={lesson:'',mode:'',phase:'',i:0,story:null};
-  G=null;
-  say(st.intro,()=>{document.getElementById('coach').hidden=true;setSpeaker(null);newHand(false);castStage(st);});
-}
-const TRUE_END=[
-  {who:'hayato',pose:'point',t:'言ったろ、新人さんはやるって。'},
-  {who:'shizuka',t:'守りも攻めも、もう教えることはない。'},
-  {who:'gen',pose:'cross',t:'……認める。お前が一番だ。'},
-  {who:'master',pose:'point',t:'この店を、君に託そう。今日から君が「翠の主」だ。'}
-];
-function flagCount(){return ['hayato','shizuka','gen','ren'].filter(id=>lsGet('mjFlag_'+id)==='1').length;}
-function showStageResult(){
-  {const _m=document.getElementById('modal');_m.classList.remove('done');_m.onclick=null;}
-  const st=STAGES[G.stage];const bossSeat=2;
-  const order=G.players.map((p,i)=>({i,score:p.score})).sort((a,b)=>b.score-a.score);
-  const rank=order.findIndex(o=>o.i===0)+1,bossRank=order.findIndex(o=>o.i===bossSeat)+1;
-  const outcome=rank===1?'win':(rank<bossRank?'narrow':'lose');
-  const stats=Object.assign({dealIns:0,maxHan:0,ronBoss:false},G.stats||{});stats.tobi=G.players.some(p=>p.score<0);
-  const special=outcome!=='lose'&&!!st.cond&&st.cond.test(stats,rank);
-  if(outcome!=='lose'&&stageProgress()<st.id+1)lsSet('mjStage',String(st.id+1));
-  if(special)lsSet('mjFlag_'+st.boss,'1');
-  const isFinal=st.boss==='master';
-  const trueEnd=isFinal&&outcome==='win'&&flagCount()>=3;
-  if(trueEnd)lsSet('mjTitle','翠の主');
-  G.stage=null;
-  const ov=document.getElementById('overlay');ov.style.display='flex';
-  const rows=order.map((o,k)=>`${k+1}位 ${G.players[o.i].name||POS[o.i]}<span class="h">${G.players[o.i].score}</span>`).join('<br>');
-  const head=outcome==='win'?'完全勝利':(outcome==='narrow'?'辛勝':'敗北');
-  const title=outcome==='win'?(trueEnd?'翠の主':st.title):null;
-  const note=outcome==='win'?'':(outcome==='narrow'?`${st.t}より上の順位で突破。称号は1位の時だけ。`:'1位（またはボスより上）で突破。もう一度挑戦できます。');
-  document.getElementById('modal').innerHTML=`<div class="chap-num">腕試し 第${['一','二','三','四','五'][st.id]}戦</div>
-    <h2>${head}</h2>
-    <div class="port-big">${portraitSVG(st.boss,outcome==='lose'?'point':'calm')}</div>
-    <div class="yaku">${rows}</div>
-    ${special?`<div class="cond-ok">流儀を制した　${st.cond.text}</div>`:''}
-    ${title?`<div class="title-earn">称号「${title}」を獲得</div>`:''}
-    ${note?`<div class="sub">${note}</div>`:''}
-    <button class="btn" id="stgNext">つづける</button>`;
-  document.getElementById('stgNext').onclick=()=>{ov.style.display='none';
-    let lines=outcome==='win'?st.win:(outcome==='narrow'?st.narrow:st.lose);
-    if(special)lines=lines.concat(st.cond.line);
-    if(isFinal&&outcome!=='lose'){
-      if(trueEnd)lines=TRUE_END;
-      else lines=lines.concat([{who:'master',t:'だが三人の流儀は、まだ全部は超えていないようだね。'}]);
-    }
-    say(lines,()=>{document.getElementById('coach').hidden=true;setSpeaker(null);if(outcome!=='lose')confetti();showStory();});};
 }
 function showDojo(){
   {const _m=document.getElementById('modal');_m.classList.remove('done');_m.onclick=null;}
