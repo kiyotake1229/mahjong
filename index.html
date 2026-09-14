@@ -92,6 +92,15 @@
   .cell .tile.settle{animation:settleR .22s ease-out}
   @keyframes settleR{0%{transform:rotate(90deg) scale(1.08)}100%{transform:rotate(90deg)}}
   .tile.fly{border-radius:3px}
+  .sb{position:fixed;z-index:47;max-width:min(240px,46vw);background:rgba(20,28,24,.94);border:1px solid var(--gold);border-radius:10px;padding:6px 10px;
+    font-size:12px;line-height:1.45;color:var(--gold-hi);box-shadow:0 6px 16px rgba(0,0,0,.45);pointer-events:none;opacity:0;transform:translateY(4px) scale(.96);
+    transition:opacity .22s ease,transform .22s ease}
+  .sb.in{opacity:1;transform:none}
+  .sb::before{content:"";position:absolute;width:8px;height:8px;background:inherit;border:inherit;border-right:none;border-bottom:none;transform:rotate(45deg)}
+  .sb.sb2::before{top:-5px;left:50%;margin-left:-4px}
+  .sb.sb1::before{right:-5px;top:50%;margin-top:-4px;transform:rotate(135deg)}
+  .sb.sb3::before{left:-5px;top:50%;margin-top:-4px;transform:rotate(-45deg)}
+  .tile.red{box-shadow:inset 0 1px 0 rgba(255,255,255,.9),inset 0 0 0 1px rgba(184,57,46,.25),0 2px 0 #b3ac99,0 3px 3px rgba(0,0,0,.4),0 7px 12px rgba(0,0,0,.3)}
   .delta{position:fixed;transform:translate(-50%,-100%);font-weight:700;font-size:15px;font-variant-numeric:tabular-nums;pointer-events:none;z-index:48;animation:deltaup 1.5s ease-out forwards;text-shadow:0 1px 3px rgba(0,0,0,.7)}
   .delta.plus{color:var(--gold-hi)}.delta.minus{color:#e08a83}
   @keyframes deltaup{0%{opacity:0;transform:translate(-50%,-60%)}15%{opacity:1}75%{opacity:1}100%{opacity:0;transform:translate(-50%,-180%)}}
@@ -450,9 +459,13 @@
 const SUIT=['man','pin','sou'], SUITJ=['萬','筒','索'], HON=['東','南','西','北','白','發','中'];
 const WINDS=['東','南','西','北'], POS=['あなた','下家','対面','上家'];
 const isHonor=t=>t>=27;
+const nt=t=>Math.floor(t);            // 赤ドラ(t+0.5)を通常の牌番号に
+const isRed=t=>t%1!==0;
+const REDABLE={4:1,13:1,22:1};        // 5萬・5筒・5索
+let RED_ON=lsGet('mjRed')!=='0';
 const pname=i=>(G&&G.players[i]&&G.players[i].name)||POS[i];
 const isTermHon=t=>t>=27||t%9===0||t%9===8;
-function tileName(t){return t<27?(t%9+1)+['萬','筒','索'][(t/9)|0]:HON[t-27];}
+function tileName(t){const r=isRed(t)?'赤':'';t=nt(t);return r+(t<27?(t%9+1)+['萬','筒','索'][(t/9)|0]:HON[t-27]);}
 const KAN_NUM=['一','二','三','四','五','六','七','八','九'];
 const PIP={
   1:[[50,70,0]],
@@ -466,12 +479,14 @@ const PIP={
   9:[[30,40],[50,40],[70,40],[30,70],[50,70],[70,70],[30,100],[50,100],[70,100]]
 };
 function pinDot(cx,cy,r){return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#1e4b86"/><circle cx="${cx}" cy="${cy}" r="${r*.7}" fill="#2f6fb8"/><circle cx="${cx-r*.26}" cy="${cy-r*.26}" r="${r*.28}" fill="#dce7f2"/>`;}
-function pinSVG(n){
+function pinSVG(n,red){
+  if(red&&n===5){let s='';PIP[5].forEach((p,i)=>{s+=i===2?`<circle cx="${p[0]}" cy="${p[1]}" r="13" fill="#b8392e"/><circle cx="${p[0]}" cy="${p[1]}" r="9" fill="#d9534a"/><circle cx="${p[0]-3}" cy="${p[1]-3}" r="3.4" fill="#f6dcd8"/>`:pinDot(p[0],p[1],12);});return s;}
   if(n===1)return `<circle cx="50" cy="70" r="30" fill="#1e4b86"/><circle cx="50" cy="70" r="23" fill="#e8eef4"/><circle cx="50" cy="70" r="16" fill="#2f6fb8"/><circle cx="50" cy="70" r="9" fill="#b8392e"/><circle cx="50" cy="70" r="4" fill="#fff"/>`;
   const r=n>=7?10:12;let s='';for(const p of PIP[n])s+=pinDot(p[0],p[1],r);return s;
 }
 function souStick(cx,cy){return `<rect x="${cx-5.5}" y="${cy-11}" width="11" height="22" rx="5.5" fill="#2b7d52"/><rect x="${cx-3}" y="${cy-9}" width="3" height="18" rx="1.5" fill="#63a883" opacity=".7"/><rect x="${cx-5.5}" y="${cy-2}" width="11" height="4" fill="#1f5a3c"/>`;}
-function souSVG(n){
+function souSVG(n,red){
+  if(red&&n===5){let s='';PIP[5].forEach((p,i)=>{s+=i===2?`<rect x="${p[0]-5.5}" y="${p[1]-11}" width="11" height="22" rx="5.5" fill="#b8392e"/><rect x="${p[0]-3}" y="${p[1]-9}" width="3" height="18" rx="1.5" fill="#e08a83" opacity=".7"/><rect x="${p[0]-5.5}" y="${p[1]-2}" width="11" height="4" fill="#8d2a22"/>`:souStick(p[0],p[1]);});return s;}
   if(n===1)return `<g transform="translate(50,68)"><path d="M-6,20 Q-24,8 -12,-8 Q-2,-20 10,-13 Q24,-5 13,11 Q6,20 -6,20 Z" fill="#2b7d52"/><circle cx="11" cy="-14" r="8.5" fill="#2b7d52"/><path d="M17,-17 l14,-4 l-11,10 Z" fill="#b8392e"/><circle cx="12" cy="-15" r="2.2" fill="#14352a"/><path d="M-10,17 q-16,11 -24,5 q11,-1 17,-13 Z" fill="#1f5a3c"/></g>`;
   let s='';for(const p of PIP[n])s+=souStick(p[0],p[1]);return s;
 }
@@ -481,10 +496,10 @@ function honSVG(h){
   return `<text x="50" y="97" text-anchor="middle" font-size="72" font-family="var(--f-mincho)" font-weight="800" fill="${col}">${HON[h]}</text>`;
 }
 function faceSVG(t){
-  let inner;
-  if(t<9)inner=`<text x="50" y="58" text-anchor="middle" font-size="52" font-family="var(--f-mincho)" font-weight="800" fill="var(--man)">${KAN_NUM[t]}</text><text x="50" y="124" text-anchor="middle" font-size="44" font-family="var(--f-mincho)" font-weight="800" fill="var(--man)">萬</text>`;
-  else if(t<18)inner=pinSVG(t-9+1);
-  else if(t<27)inner=souSVG(t-18+1);
+  let inner;const red=isRed(t);t=nt(t);
+  if(t<9)inner=`${red?'<rect x="14" y="10" width="72" height="120" rx="10" fill="#b8392e" opacity=".14"/>':''}<text x="50" y="58" text-anchor="middle" font-size="52" font-family="var(--f-mincho)" font-weight="800" fill="${red?'#d0342c':'var(--man)'}">${KAN_NUM[t]}</text><text x="50" y="124" text-anchor="middle" font-size="44" font-family="var(--f-mincho)" font-weight="800" fill="${red?'#d0342c':'var(--man)'}">萬</text>`;
+  else if(t<18)inner=pinSVG(t-9+1,red);
+  else if(t<27)inner=souSVG(t-18+1,red);
   else inner=honSVG(t-27);
   return `<svg class="face" viewBox="0 0 100 140" preserveAspectRatio="xMidYMid meet">${inner}</svg>`;
 }
@@ -498,11 +513,11 @@ function backSVG(){return `<svg class="bk" viewBox="0 0 100 140" preserveAspectR
 function tileEl(t,cls=''){
   const d=document.createElement('div');d.className='tile '+cls;
   if(t<0){d.classList.add('back');d.innerHTML=backSVG();return d;}
-  d.classList.add(t<27?SUIT[(t/9)|0]:'hon');
+  d.classList.add(nt(t)<27?SUIT[(nt(t)/9)|0]:'hon');if(isRed(t))d.classList.add('red');
   d.innerHTML=faceSVG(t);
   return d;
 }
-const toCounts=ts=>{const c=new Array(34).fill(0);for(const t of ts)c[t]++;return c;};
+const toCounts=ts=>{const c=new Array(34).fill(0);for(const t of ts)c[t|0]++;return c;};
 
 /* ===== シャンテン / 和了 ===== */
 function dfsBlocks(c,i,budget){
@@ -541,10 +556,11 @@ function decompose(counts){
 }
 
 /* ===== ドラ ===== */
-function doraFrom(ind){if(ind<27){const b=((ind/9)|0)*9;return b+((ind%9+1)%9);}if(ind<31)return 27+((ind-27+1)%4);return 31+((ind-31+1)%3);}
+function doraFrom(ind){ind=nt(ind);if(ind<27){const b=((ind/9)|0)*9;return b+((ind%9+1)%9);}if(ind<31)return 27+((ind-27+1)%4);return 31+((ind-31+1)%3);}
 const liveDora=()=>G.doraInd.map(doraFrom);
 const liveUra=()=>G.uraInd.map(doraFrom);
-const expandMeld=m=>m.t==='seq'?[m.tile,m.tile+1,m.tile+2]:Array(m.k||3).fill(m.tile);
+const expandMeld=m=>{const a=m.t==='seq'?[m.tile,m.tile+1,m.tile+2]:Array(m.k||3).fill(m.tile);
+  for(const r of (m.reds||[])){const i=a.indexOf(r);if(i>=0)a[i]=r+0.5;}return a;};
 const isYakuhaiTile=(t,ctx)=>t>=31||(t>=27&&(t-27===ctx.roundWind||t-27===ctx.seatWind));
 
 /* ===== 役 & 符 評価 ===== */
@@ -555,6 +571,7 @@ function addExtra(y,ctx){
   if(ctx.haitei&&ctx.tsumo)y.push({n:'海底摸月',h:1});
   if(ctx.houtei&&!ctx.tsumo)y.push({n:'河底撈魚',h:1});
   if(ctx.rinshan&&ctx.tsumo)y.push({n:'嶺上開花',h:1});
+  if(ctx.chankan&&!ctx.tsumo)y.push({n:'槍槓',h:1});
 }
 function addFlags(y,allT,concealed){
   if(allT.every(t=>!isTermHon(t)))y.push({n:'断幺九',h:1});
@@ -570,9 +587,10 @@ function addFlags(y,allT,concealed){
   }
 }
 function addDora(y,allT,ctx){
-  let d=0;for(const dt of ctx.doraTiles)for(const t of allT)if(t===dt)d++;
+  let d=0;for(const dt of ctx.doraTiles)for(const t of allT)if(nt(t)===dt)d++;
   if(d)y.push({n:'ドラ',h:d,dora:true});
-  if(ctx.uraTiles){let u=0;for(const dt of ctx.uraTiles)for(const t of allT)if(t===dt)u++;if(u)y.push({n:'裏ドラ',h:u,dora:true});}
+  let r=0;for(const t of allT)if(isRed(t))r++;if(r)y.push({n:'赤ドラ',h:r,dora:true});
+  if(ctx.uraTiles){let u=0;for(const dt of ctx.uraTiles)for(const t of allT)if(nt(t)===dt)u++;if(u)y.push({n:'裏ドラ',h:u,dora:true});}
 }
 function pairFu(pair,ctx){let f=0;if(pair>=31)f+=2;else if(pair>=27){if(pair-27===ctx.roundWind)f+=2;if(pair-27===ctx.seatWind)f+=2;}return f;}
 function waitFu(cm,pair,w){
@@ -608,7 +626,7 @@ function ryanmenWin(seqs,pair,w){
   });
 }
 function evaluate(hand,om,ctx){
-  const counts=toCounts(hand),concealed=om.length===0;
+  const counts=toCounts(hand),concealed=om.every(m=>m.concealed);
   const allTiles=hand.concat(om.flatMap(expandMeld));
   let best=null;
   const consider=(yaku)=>{const real=yaku.filter(v=>!v.dora).reduce((a,b)=>a+b.h,0);if(real===0)return;
@@ -724,7 +742,7 @@ function newHand(keep,restart){
   let sticks=keep&&prev?(prev.riichiSticks||0):0;
   if(restart&&prev){scores=(prev.startScores||scores).slice();honba=prev.startHonba!=null?prev.startHonba:honba;sticks=prev.startSticks!=null?prev.startSticks:sticks;}
   else if(keep&&prev){if(prev.advance){dealer=(dealer+1)%4;if(dealer===0)round++;honba=prev.keepHonba?honba+1:0;}else honba=honba+1;}
-  let wall=[];for(let t=0;t<34;t++)for(let k=0;k<4;k++)wall.push(t);
+  let wall=[];for(let t=0;t<34;t++)for(let k=0;k<4;k++)wall.push(RED_ON&&REDABLE[t]&&k===0?t+0.5:t);
   for(let i=wall.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;[wall[i],wall[j]]=[wall[j],wall[i]];}
   const players=[0,1,2,3].map(i=>({id:i,hand:[],melds:[],discards:[],riichi:false,doubleRiichi:false,riichiIdx:-1,
     riichiFuriten:false,tempFuriten:false,score:scores[i],seatWind:(i-dealer+4)%4,isDealer:i===dealer,drawn:-1,pendingRiichi:false}));
@@ -732,9 +750,10 @@ function newHand(keep,restart){
   const dead=wall.splice(0,14);
   players.forEach(p=>p.hand.sort((a,b)=>a-b));
   // 相手の打ち方（局をまたいで維持、初回はランダム）
-  const cast=keep&&prev?prev.players.map(p=>({style:p.style,name:p.name,level:p.level})):null;
-  if(cast){players.forEach((p,i)=>{p.style=cast[i].style;p.name=cast[i].name;p.level=cast[i].level;});}
-  else{const st=['call','defense','riichi'].sort(()=>Math.random()-.5);for(let i=1;i<4;i++)players[i].style=st[i-1];}
+  const cast=keep&&prev?prev.players.map(p=>({style:p.style,name:p.name,level:p.level,charId:p.charId})):null;
+  if(cast){players.forEach((p,i)=>{p.style=cast[i].style;p.name=cast[i].name;p.level=cast[i].level;p.charId=cast[i].charId;});}
+  else{const pool=['hayato','shizuka','gen','master'];if(parseInt(lsGet('mjStage')||'0',10)>=4)pool.push('ren','kuroda');
+    pool.sort(()=>Math.random()-.5);for(let i=1;i<4;i++){const id=pool[i-1];players[i].charId=id;players[i].name=CHARS[id].n;players[i].style=CHAR_STYLE[id];players[i].level=1;}}
   const storyFinal=keep&&prev?prev.storyFinal:false;
   const stage=keep&&prev?prev.stage:null;const wager=keep&&prev?!!prev.wager:false;
   const stats=keep&&prev&&prev.stats?prev.stats:{dealIns:0,maxHan:0,ronBoss:false};
@@ -744,6 +763,8 @@ function newHand(keep,restart){
      tutorial:false,tutGate:null,gen:++GEN,skill:{foresight:false,peekTiles:null,god:false},storyFinal,stage,wager,stats,
      startScores:scores.slice(),startHonba:honba,startSticks:sticks};
   render();
+  if(!keep)later(()=>banterAll('start'),400);
+  else if(prev&&prev.round===0&&round===1)later(()=>banterAll('south'),300);
   later(drawStep,620);
 }
 
@@ -773,40 +794,67 @@ function drawStep(){
   if(G.turn===0)humanTurn();else later(cpuTurn,think());
 }
 
-function buildCtx(pid,tsumo,winTile){
+function buildCtx(pid,tsumo,winTile,chankan){
   const p=G.players[pid];
   return {seatWind:p.seatWind,roundWind:G.roundWind,tsumo,riichi:p.riichi,doubleRiichi:p.doubleRiichi,
-    ippatsu:G.ippatsu[pid],concealed:p.melds.length===0,winTile,
-    haitei:G.wall.length===0,houtei:G.wall.length===0,rinshan:G.rinshanFlag,
+    ippatsu:G.ippatsu[pid],concealed:p.melds.every(m=>m.concealed),winTile:nt(winTile),chankan:!!chankan,
+    haitei:G.wall.length===0,houtei:G.wall.length===0&&!chankan,rinshan:G.rinshanFlag,
     doraTiles:liveDora(),uraTiles:p.riichi?liveUra():null};
 }
 
 /* ===== 人間の番 ===== */
 function humanTurn(){
   G.offering=false;
-  const p=G.players[0];const acts=[];
+  const p=G.players[0];const acts=[];let tsumoAct=null;
   if(isAgari(p.hand,p.melds.length)){
     const ev=evaluate(p.hand,p.melds,buildCtx(0,true,p.drawn));
-    if(ev)acts.push({label:'ツモ',cls:'red',fn:()=>win(0,0,true,p.drawn)});
+    if(ev){tsumoAct={label:'ツモ',cls:'red',fn:()=>win(0,0,true,p.drawn)};acts.push(tsumoAct);}
   }
-  if(!p.riichi&&p.melds.length===0&&p.score>=1000&&G.wall.length>=4&&!(G.tutorial&&p.hand.includes(33))){
+  if(tsumoAct&&p.riichi&&!G.tutorial){ // リーチ中は自動ツモ
+    renderActions(acts,true);setGuide('<b>ツモ！</b> リーチ中なので自動であがります');
+    later(()=>{if(G.turn===0&&G.phase==='discard'&&!G.over)tsumoAct.fn();},900);return;
+  }
+  if(!p.riichi&&p.melds.every(m=>m.concealed)&&p.score>=1000&&G.wall.length>=4&&!(G.tutorial&&p.hand.includes(33))){
     const seen=new Set();let ok=false;
-    for(let i=0;i<p.hand.length;i++){const t=p.hand[i];if(seen.has(t))continue;seen.add(t);const r=p.hand.slice();r.splice(i,1);if(shanten(r,0)===0){ok=true;break;}}
+    for(let i=0;i<p.hand.length;i++){const t=p.hand[i];if(seen.has(t))continue;seen.add(t);const r=p.hand.slice();r.splice(i,1);if(shanten(r,p.melds.length)===0){ok=true;break;}}
     if(ok)acts.push({label:'立直',cls:'blue',fn:()=>{p.pendingRiichi=true;toast('立直する牌を選ぶ');renderActions([{label:'やめ',cls:'gray',fn:()=>{p.pendingRiichi=false;humanTurn();}}],false);if(G.tutorial)tutGuide();}});
   }
-  if(!p.riichi){const c=toCounts(p.hand),ks=[];for(let i=0;i<34;i++)if(c[i]===4)ks.push(i);
-    if(ks.length&&G.wall.length>0)acts.push({label:'カン',cls:'gray',fn:()=>ankan(ks[0])});}
+  if(!p.riichi&&G.wall.length>0&&!G.tutorial){const ks=kanOptions(p);
+    ks.forEach(k=>acts.push({label:'カン'+(ks.length>1?tileName(k.tile):''),cls:'gray',fn:()=>doKan(0,k.tile,k.kind)}));}
   renderActions(acts,true);
   if(G.tutorial)tutGuide();
 }
-function ankan(tile){
-  const p=G.players[0];
-  p.hand=p.hand.filter(t=>t!==tile);
-  p.melds.push({t:'trip',tile,k:4,concealed:true,kan:true});
-  revealKanDora();sfx.call();
-  const rt=G.wall.shift();p.hand.push(rt);p.drawn=rt;p.hand.sort((a,b)=>a-b);
-  G.rinshanFlag=true;clearIppatsu();G.callHappened=true;
-  render();humanTurn();
+/* カンの候補: 暗槓(4枚) / 加槓(ポンした牌を引いた) */
+function kanOptions(p){
+  const c=toCounts(p.hand),res=[];
+  for(let i=0;i<34;i++)if(c[i]===4)res.push({tile:i,kind:'an'});
+  p.melds.forEach(m=>{if(m.t==='trip'&&!m.kan&&!m.concealed&&c[m.tile]>0)res.push({tile:m.tile,kind:'ka'});});
+  return res;
+}
+function doKan(pid,tile,kind){
+  const p=G.players[pid];
+  if(kind==='an'){
+    const reds=p.hand.filter(t=>nt(t)===tile&&isRed(t)).map(nt);
+    p.hand=p.hand.filter(t=>nt(t)!==tile);
+    p.melds.push({t:'trip',tile,k:4,concealed:true,kan:true,reds});
+    flash(pname(pid)+'の暗槓');sfx.call();render();
+    return finishKan(pid);
+  }
+  // 加槓
+  let i=p.hand.findIndex(t=>t===tile);if(i<0)i=p.hand.findIndex(t=>nt(t)===tile);
+  const taken=p.hand[i];p.hand.splice(i,1);
+  const m=p.melds.find(m=>m.t==='trip'&&!m.kan&&m.tile===tile);m.k=4;m.kan=true;if(isRed(taken))m.reds=(m.reds||[]).concat([tile]);
+  flash(pname(pid)+'の加槓');sfx.call();render();
+  // 槍槓: 他家がこの牌でロンできる
+  ronPhase(pid,tile,()=>finishKan(pid),true);
+}
+function finishKan(pid){
+  const p=G.players[pid];
+  revealKanDora();
+  const rt=G.wall.shift();p.hand.push(rt);p.drawn=rt;
+  G.rinshanFlag=true;clearIppatsu();G.callHappened=true;G.turn=pid;G.phase='discard';G.offering=false;
+  render();
+  if(pid===0)humanTurn();else later(()=>cpuDiscardOnly(pid),think());
 }
 function humanDiscard(idx){
   const p=G.players[0];if(G.phase!=='discard'||G.turn!==0||G.over)return;
@@ -815,11 +863,11 @@ function humanDiscard(idx){
   if(p.riichi&&tile!==p.drawn)return;
   if(p.pendingRiichi){
     const r=p.hand.slice();r.splice(idx,1);
-    if(shanten(r,0)!==0){toast('その牌では聴牌しません');return;}
+    if(shanten(r,p.melds.length)!==0){toast('その牌では聴牌しません');return;}
     p.riichi=true;p.pendingRiichi=false;p.riichiIdx=p.discards.length;p.score-=1000;G.riichiSticks++;
     if(p.discards.length===0&&!G.callHappened)p.doubleRiichi=true;
-    G.pendingRiichiDeclarer=0;sfx.riichi();flash('リーチ');gaugeAdd(20);
-    if(isFuriten(p,waits(r,0)))setTimeout(()=>toast('フリテンリーチ：ロンはできません。ツモを待とう'),700);
+    G.pendingRiichiDeclarer=0;sfx.riichi();flash('リーチ');gaugeAdd(20);banterOne('myRiichi',900);
+    if(isFuriten(p,waits(r,p.melds.length)))setTimeout(()=>toast('フリテンリーチ：ロンはできません。ツモを待とう'),700);
   }
   doDiscard(0,idx);
 }
@@ -865,30 +913,35 @@ function doDiscard(pid,idx){
 }
 
 /* ===== 反応解決（ロン>ポン/カン>チー） ===== */
-function startResolve(fromPid,tile){ronPhase(fromPid,tile);}
-const discTiles=p=>p.discards.map(d=>typeof d==='object'?d.t:d);
+function startResolve(fromPid,tile){ronPhase(fromPid,nt(tile));}
+const discTiles=p=>p.discards.map(d=>nt(typeof d==='object'?d.t:d));
 const isFuriten=(p,w)=>{const d=discTiles(p);return w.some(t=>d.includes(t));};
-function canRon(pid,tile){
+function canRon(pid,tile,chankan){
   const p=G.players[pid];const h=p.hand.concat([tile]);
   if(!isAgari(h,p.melds.length))return false;
   const w=waits(p.hand,p.melds.length);
   if(p.riichiFuriten||p.tempFuriten)return false;
   if(isFuriten(p,w))return false;
-  const ctx=buildCtx(pid,false,tile);return !!evaluate(h,p.melds,ctx);
+  const ctx=buildCtx(pid,false,tile,chankan);return !!evaluate(h,p.melds,ctx);
 }
-function ronPhase(fromPid,tile){
-  const claim=[];for(let i=0;i<4;i++)if(i!==fromPid&&canRon(i,tile))claim.push(i);
+/* onNone: 誰もロンしなかった時の続き（省略時はポン/チーの確認へ） */
+function ronPhase(fromPid,tile,onNone,chankan){
+  onNone=onNone||(()=>ponPhase(fromPid,tile));
+  const order=(a,b)=>((a-fromPid+4)%4)-((b-fromPid+4)%4);
+  const claim=[];for(let i=0;i<4;i++)if(i!==fromPid&&canRon(i,tile,chankan))claim.push(i);
+  claim.sort(order);
   if(claim.includes(0)){
+    const cpus=claim.filter(x=>x!==0);
     renderActions([
-      {label:'ロン',cls:'red',fn:()=>win(0,fromPid,false,tile)},
+      {label:'ロン',cls:'red',fn:()=>winMulti(claim,fromPid,tile,chankan)},
       {label:'スルー',cls:'gray',fn:()=>{const p=G.players[0];if(p.riichi)p.riichiFuriten=true;p.tempFuriten=true;
-        const cpu=claim.find(x=>x!==0);if(cpu!==undefined)return win(cpu,fromPid,false,tile);ponPhase(fromPid,tile);}}
+        if(cpus.length)return winMulti(cpus,fromPid,tile,chankan);G.offering=false;onNone();}}
     ],false);
-    G.offering=true;setGuide('相手の捨て牌で<b>あがれます</b>！ <span class="tag">ロン</span>を押そう（見送るなら スルー）');
+    G.offering=true;setGuide(chankan?'相手が<b>加槓</b>した牌であがれます（<b>槍槓</b>）！ <span class="tag">ロン</span>を押そう':'相手の捨て牌で<b>あがれます</b>！ <span class="tag">ロン</span>を押そう（見送るなら スルー）');
     flash('ロン?');return;
   }
-  if(claim.length){claim.sort((a,b)=>((a-fromPid+4)%4)-((b-fromPid+4)%4));const w=claim[0];flash(pname(w)+'のロン');return later(()=>win(w,fromPid,false,tile),sp().call);}
-  ponPhase(fromPid,tile);
+  if(claim.length){flash(claim.map(pname).join('と')+'のロン');return later(()=>winMulti(claim,fromPid,tile,chankan),sp().call);}
+  onNone();
 }
 function ponPhase(fromPid,tile){
   let pid=null,canKan=false;
@@ -927,24 +980,25 @@ function chiPhase(fromPid,tile){
   advanceTurn(fromPid);
 }
 function clearIppatsu(){G.ippatsu=[false,false,false,false];}
+function takeDiscard(src){const raw=src.discards.pop();const rt=typeof raw==='object'?raw.t:raw;src.discards.push({claimed:true,t:rt});return rt;}
 function doPon(pid,fromPid,tile,kan){
   const p=G.players[pid],src=G.players[fromPid];
-  src.discards.pop();src.discards.push({claimed:true,t:tile});
-  let need=kan?3:2,rm=0;p.hand=p.hand.filter(t=>{if(t===tile&&rm<need){rm++;return false;}return true;});
-  p.melds.push({t:'trip',tile,k:kan?4:3,concealed:false,kan,from:fromPid,called:tile});
-  clearIppatsu();G.callHappened=true;G.offering=false;flash(pname(pid)+(kan?'のカン':'のポン'));sfx.call();
-  if(kan){revealKanDora();const rt=G.wall.shift();p.hand.push(rt);p.drawn=rt;p.hand.sort((a,b)=>a-b);G.rinshanFlag=true;}
+  const rt=takeDiscard(src);const reds=isRed(rt)?[tile]:[];
+  let need=kan?3:2,rm=0;p.hand=p.hand.filter(t=>{if(nt(t)===tile&&rm<need){rm++;if(isRed(t))reds.push(tile);return false;}return true;});
+  p.melds.push({t:'trip',tile,k:kan?4:3,concealed:false,kan,from:fromPid,called:tile,reds});
+  clearIppatsu();G.callHappened=true;G.offering=false;flash(pname(pid)+(kan?'のカン':'のポン'));sfx.call();if(pid!==0)banterOne('call',500,pid);
+  if(kan){revealKanDora();const rt2=G.wall.shift();p.hand.push(rt2);p.drawn=rt2;p.hand.sort((a,b)=>a-b);G.rinshanFlag=true;}
   G.turn=pid;G.phase='discard';p.drawn=kan?p.drawn:-1;
   render();
   if(pid===0)humanTurn();else later(()=>cpuDiscardOnly(pid),think());
 }
 function doChi(pid,fromPid,tile,combo){
   const p=G.players[pid],src=G.players[fromPid];
-  src.discards.pop();src.discards.push({claimed:true,t:tile});
-  for(const t of combo){const i=p.hand.indexOf(t);p.hand.splice(i,1);}
+  const rt=takeDiscard(src);const reds=isRed(rt)?[tile]:[];
+  for(const t of combo){let i=p.hand.findIndex(x=>x===t);if(i<0){i=p.hand.findIndex(x=>nt(x)===t);reds.push(t);}p.hand.splice(i,1);}
   const low=Math.min(tile,...combo);
-  p.melds.push({t:'seq',tile:low,k:3,concealed:false,from:fromPid,called:tile});
-  clearIppatsu();G.callHappened=true;G.offering=false;flash(pname(pid)+'のチー');sfx.call();
+  p.melds.push({t:'seq',tile:low,k:3,concealed:false,from:fromPid,called:tile,reds});
+  clearIppatsu();G.callHappened=true;G.offering=false;flash(pname(pid)+'のチー');sfx.call();if(pid!==0)banterOne('call',500,pid);
   G.turn=pid;G.phase='discard';p.drawn=-1;p.hand.sort((a,b)=>a-b);
   render();
   if(pid===0)humanTurn();else later(()=>cpuDiscardOnly(pid),think());
@@ -969,12 +1023,20 @@ function cpuTurn(){
     if(ev){G.ippatsu[pid]=false;flash(pname(pid)+'のツモ');return later(()=>win(pid,pid,true,p.drawn),sp().call);}
   }
   G.ippatsu[pid]=false; // 自分のツモ番を過ぎたので一発消滅
-  if(!p.riichi&&p.melds.length===0&&p.score>=1000&&G.wall.length>=4&&shanten(p.hand,0)===0){
+  if(!p.riichi&&G.wall.length>1&&!riichiOpponents(p).length){
+    const ks=kanOptions(p);
+    for(const k of ks){ // 手が進むのを邪魔しないカンだけ
+      const cur=shanten(p.hand,p.melds.length);
+      const r=k.kind==='an'?p.hand.filter(t=>nt(t)!==k.tile):(()=>{const h=p.hand.slice();const i=h.findIndex(t=>nt(t)===k.tile);h.splice(i,1);return h;})();
+      if(shanten(r,p.melds.length+(k.kind==='an'?1:0))<=cur)return later(()=>doKan(pid,k.tile,k.kind),sp().call);
+    }
+  }
+  if(!p.riichi&&p.melds.every(m=>m.concealed)&&p.score>=1000&&G.wall.length>=4&&shanten(p.hand,p.melds.length)===0){
     const idx=chooseTenpaiDiscard(p);
     const rr=idx>=0?p.hand.slice():null;if(rr)rr.splice(idx,1);
-    if(idx>=0&&!isFuriten(p,waits(rr,0))){p.riichi=true;p.riichiIdx=p.discards.length;p.score-=1000;G.riichiSticks++;
+    if(idx>=0&&!isFuriten(p,waits(rr,p.melds.length))){p.riichi=true;p.riichiIdx=p.discards.length;p.score-=1000;G.riichiSticks++;
       if(p.discards.length===0&&!G.callHappened)p.doubleRiichi=true;
-      G.pendingRiichiDeclarer=pid;sfx.riichi();flash(pname(pid)+'のリーチ');
+      G.pendingRiichiDeclarer=pid;sfx.riichi();flash(pname(pid)+'のリーチ');banterOne('riichi',300,pid,true);
       return later(()=>doDiscard(pid,idx),sp().call);}
   }
   if(p.riichi){const i=p.hand.indexOf(p.drawn);return doDiscard(pid,i>=0?i:0);}
@@ -986,9 +1048,19 @@ function cpuDiscardOnly(pid){
   if(isAgari(p.hand,p.melds.length)){const ev=evaluate(p.hand,p.melds,buildCtx(pid,true,p.drawn));if(ev)return win(pid,pid,true,p.drawn);}
   doDiscard(pid,chooseBestDiscard(p));
 }
+let REC={reason:''};
 function recommendDiscard(p){
   const hand=p.hand,c=toCounts(hand),seen=new Set();let cands=[];
-  for(let i=0;i<hand.length;i++){const t=hand[i];if(seen.has(t))continue;seen.add(t);
+  REC.reason='';
+  const opps=riichiOpponents(p);
+  if(opps.length&&shanten(hand,p.melds.length)>=1){
+    const safe=new Set();opps.forEach(o=>discTiles(o).forEach(d=>safe.add(d)));
+    let best=-1,bs=99;
+    for(let i=0;i<hand.length;i++){if(!safe.has(nt(hand[i])))continue;const r=hand.slice();r.splice(i,1);const sh=shanten(r,p.melds.length);if(sh<bs){bs=sh;best=i;}}
+    if(best>=0){REC.reason='safe';REC.tile=hand[best];return best;}
+    REC.reason='nosafe';
+  }else if(opps.length)REC.reason='push';
+  for(let i=0;i<hand.length;i++){const t=nt(hand[i]);if(seen.has(t))continue;seen.add(t);
     const r=hand.slice();r.splice(i,1);const sh=shanten(r,p.melds.length);
     const isolated=c[t]===1&&(t>=27||(!(t%9>0&&c[t-1])&&!(t%9>1&&c[t-2])&&!(t%9<8&&c[t+1])&&!(t%9<7&&c[t+2])));
     const cc=toCounts(r);let uke=0;for(let d=0;d<34;d++){if(cc[d]>=4)continue;if(shanten(r.concat([d]),p.melds.length)<sh)uke+=(4-cc[d]);}
@@ -1015,9 +1087,9 @@ function hasYakuhaiSource(p){
 function riichiOpponents(p){return G.players.filter(o=>o.id!==p.id&&o.riichi);}
 function safeDiscardIdx(p){
   const opps=riichiOpponents(p);if(!opps.length)return -1;
-  const safe=new Set();opps.forEach(o=>o.discards.forEach(d=>safe.add(typeof d==='object'?d.t:d)));
+  const safe=new Set();opps.forEach(o=>discTiles(o).forEach(d=>safe.add(d)));
   let best=-1,bestSh=99;
-  for(let i=0;i<p.hand.length;i++){if(!safe.has(p.hand[i]))continue;
+  for(let i=0;i<p.hand.length;i++){if(!safe.has(nt(p.hand[i])))continue;
     const r=p.hand.slice();r.splice(i,1);const sh=shanten(r,p.melds.length);
     if(sh<bestSh){bestSh=sh;best=i;}}
   return best;
@@ -1045,7 +1117,7 @@ function chooseBestDiscard(p){
 function cpuWantsPon(pid,tile){
   const p=G.players[pid];if(p.riichi)return false;
   const st=p.style||'normal';if(st==='riichi')return false;
-  let rm=0;const rest=p.hand.filter(t=>{if(t===tile&&rm<2){rm++;return false;}return true;});
+  let rm=0;const rest=p.hand.filter(t=>{if(nt(t)===tile&&rm<2){rm++;return false;}return true;});
   const before=shanten(p.hand,p.melds.length),after=shanten(rest,p.melds.length+1);
   const yakuhai=tile>=31||(tile>=27&&(tile-27===p.seatWind||tile-27===G.roundWind));
   if(st==='call'){ if(after>before)return false; if(yakuhai)return true; if(hasYakuhaiSource(p)&&after<before)return true; }
@@ -1061,7 +1133,7 @@ function cpuWantsChi(pid,tile,combos){
   const before=shanten(p.hand,p.melds.length);
   let best=null,bestSh=st==='call'?before+1:before;
   for(const cb of combos){
-    const rest=p.hand.slice();for(const t of cb){rest.splice(rest.indexOf(t),1);}
+    const rest=p.hand.slice();for(const t of cb){let i=rest.findIndex(x=>x===t);if(i<0)i=rest.findIndex(x=>nt(x)===t);rest.splice(i,1);}
     const after=shanten(rest,p.melds.length+1);
     const simple=rest.concat([tile]).every(t=>!isTermHon(t))&&!isTermHon(tile);
     const suits=new Set(p.hand.concat(p.melds.flatMap(expandMeld)).filter(t=>t<27).map(t=>(t/9)|0));
@@ -1080,29 +1152,56 @@ function showDeltas(before){
     const r=pill.getBoundingClientRect();const el=document.createElement('div');el.className='delta '+(d>0?'plus':'minus');el.textContent=(d>0?'+':'')+d.toLocaleString();
     el.style.left=(r.left+r.width/2)+'px';el.style.top=(r.top-6)+'px';document.body.appendChild(el);setTimeout(()=>el.remove(),1600);});
 }
-function win(pid,fromPid,tsumo,winTile){
-  if(G.over)return;G.over=true;
-  const before=G.players.map(p=>p.score);
+function applyWin(pid,fromPid,tsumo,ev,takeSticks){
   const p=G.players[pid];
-  const hand=tsumo?p.hand.slice():p.hand.concat([winTile]);
-  const ctx=buildCtx(pid,tsumo,winTile);
-  const ev=evaluate(hand,p.melds,ctx);
-  if(!ev){G.over=false;if(pid===0)toast('役がありません');return;}
   const pay=payments(ev.fu,ev.han,p.isDealer,tsumo);
-  const honbaAdd=(G.honba||0)*(tsumo?300:300);
-  let gained=pay.total;
+  let gained;
   if(tsumo){
     if(pay.dealer){for(let i=0;i<4;i++)if(i!==pid)G.players[i].score-=pay.each+(G.honba*100);}
     else{for(let i=0;i<4;i++){if(i===pid)continue;const sh=G.players[i].isDealer?pay.d:pay.nd;G.players[i].score-=sh+(G.honba*100);}}
     gained=pay.total+G.honba*300;
   }else{G.players[fromPid].score-=pay.total+G.honba*300;gained=pay.total+G.honba*300;}
-  const sticks=G.riichiSticks*1000;p.score+=gained+sticks;G.riichiSticks=0;
+  const sticks=takeSticks?G.riichiSticks*1000:0;p.score+=gained+sticks;if(takeSticks)G.riichiSticks=0;
   if(G.stats){if(pid===0){G.stats.maxHan=Math.max(G.stats.maxHan,ev.han);if(!tsumo&&fromPid===2)G.stats.ronBoss=true;}else if(!tsumo&&fromPid===0)G.stats.dealIns++;}
   if(pid===0)gaugeAdd(30);
-  tsumo?sfx.tsumo():sfx.ron();
-  render();showDeltas(before);
-  const show=()=>showResult(pid,fromPid,tsumo,hand,winTile,ev,pay,gained,sticks);
-  if(pid===0){flash(tsumo?'ツモ':'ロン');setTimeout(show,520);}else show();
+  return {pay,gained,sticks};
+}
+function afterWinners(winners){
+  G.advance=!winners.includes(G.dealer);G.keepHonba=!G.advance;endCheck();
+}
+function win(pid,fromPid,tsumo,winTile){
+  if(!tsumo)return winMulti([pid],fromPid,winTile,false);
+  if(G.over)return;
+  const p=G.players[pid];const hand=p.hand.slice();
+  const ev=evaluate(hand,p.melds,buildCtx(pid,true,winTile));
+  if(!ev){if(pid===0)toast('役がありません');return;}
+  G.over=true;const before=G.players.map(q=>q.score);
+  const r=applyWin(pid,pid,true,ev,true);
+  sfx.tsumo();render();showDeltas(before);
+  if(pid===0){banterOne('heroTsumo',600);}else banterOne('win',400,pid,true);
+  const show=()=>showResult(pid,pid,true,hand,winTile,ev,r.pay,r.gained,r.sticks);
+  if(pid===0){flash('ツモ');setTimeout(show,520);}else show();
+}
+/* ロン（複数ならダブロン/トリプルロン。供託は上家取り、本場は全員に付く） */
+function winMulti(winners,fromPid,tile,chankan){
+  if(G.over)return;
+  const list=[];
+  for(const pid of winners){const p=G.players[pid];const hand=p.hand.concat([tile]);
+    const ev=evaluate(hand,p.melds,buildCtx(pid,false,tile,chankan));if(ev)list.push({pid,hand,ev});}
+  if(!list.length){if(winners.includes(0))toast('役がありません');return;}
+  G.over=true;const before=G.players.map(q=>q.score);
+  list.forEach((w,k)=>{Object.assign(w,applyWin(w.pid,fromPid,false,w.ev,k===0));});
+  sfx.ron();render();showDeltas(before);
+  const heroWon=list.some(w=>w.pid===0);
+  if(heroWon)banterOne('lose',600,fromPid,true);
+  else{const w=list.find(w=>w.pid!==0);banterOne(fromPid===0?'winHero':'win',400,w.pid,true);}
+  const n=list.length;
+  const showK=(k)=>{const w=list[k];const after=k<n-1?()=>showK(k+1):null;
+    showResult(w.pid,fromPid,false,w.hand,tile,w.ev,w.pay,w.gained,w.sticks,after,n>1?`${k+1}/${n}`:'');};
+  const start=()=>showK(0);
+  if(heroWon){flash(n>1?'ダブロン':'ロン');setTimeout(start,520);}else start();
+  // 最後の結果画面のボタンで afterWinners が呼ばれる（showResult 側）
+  G._winners=list.map(w=>w.pid);
 }
 function ryuukyoku(){
   G.over=true;const before=G.players.map(p=>p.score);
@@ -1110,7 +1209,7 @@ function ryuukyoku(){
   const tn=tenpai.filter(Boolean).length;
   if(tn>0&&tn<4){const get=3000/tn,give=3000/(4-tn);G.players.forEach((p,i)=>p.score+=tenpai[i]?get:-give);}
   G.advance=!tenpai[G.dealer];G.keepHonba=true;
-  render();showDeltas(before);showDraw(tenpai);
+  render();showDeltas(before);banterOne('draw',300);showDraw(tenpai);
 }
 
 /* ===== 描画 ===== */
@@ -1157,19 +1256,27 @@ function guideForTurn(){
   for(let i=0;i<me.hand.length;i++){const t=me.hand[i];if(seen.has(t))continue;seen.add(t);const r=me.hand.slice();r.splice(i,1);const s=shanten(r,me.melds.length);if(s<best)best=s;}
   if(me.riichi){const r=me.hand.slice();const w=waits(me.hand.slice(0,13),me.melds.length);
     return setGuide(`リーチ中。引いた牌をそのまま切ります（あがり牌を引いたら<span class="tag">ツモ</span>ボタンが出ます）`);}
+  const idx=recommendDiscard(me);
+  if(REC.reason==='safe'){
+    return setGuide(`<b>相手がリーチ中！</b> あがりまで遠いので<b>降り</b>。相手が捨てた<b>現物 ${tileName(REC.tile)}</b>は絶対に当たらない。<span class="tag">おすすめ</span>を切ろう`);
+  }
+  if(REC.reason==='nosafe'){
+    return setGuide(`<b>相手がリーチ中。</b>現物がない…。字牌や1・9など、比較的当たりにくい牌から切ろう（<span class="tag">おすすめ</span>参照）`);
+  }
   if(best===0){
-    const idx=recommendDiscard(me);const r=me.hand.slice();r.splice(idx,1);
+    const r=me.hand.slice();r.splice(idx,1);
     const ws=waits(r,me.melds.length),w=ws.map(tileName).join(' ');
     const fur=isFuriten(me,ws)?'<br><b>フリテン注意：</b>待ち牌を自分で捨てているのでロンはできません（ツモならOK）':'';
-    setGuide(`<b>テンパイ！</b> あと1枚であがり（待ち: <b>${w||'―'}</b>）。<span class="tag">おすすめ</span>の牌を切ろう`+(me.melds.length===0?'。<b>立直</b>もできます':'')+fur);
+    const push=REC.reason==='push'?'<br>相手はリーチ中だけど、こちらもテンパイなら<b>押してOK</b>':'';
+    setGuide(`<b>テンパイ！</b> あと1枚であがり（待ち: <b>${w||'―'}</b>）。<span class="tag">おすすめ</span>の牌を切ろう`+(me.melds.length===0?'。<b>立直</b>もできます':'')+push+fur);
   }else{
     setGuide(`あがりまで あと <b>${best}</b> 歩。<span class="tag">おすすめ</span>の牌を切って手を進めよう`);
   }
 }
 function meldEl(m){
   const g=document.createElement('div');g.className='meldgroup';
-  if(m.t==='seq'){for(const t of [m.tile,m.tile+1,m.tile+2])g.appendChild(tileEl(t,'sm'+(t===m.called?' rotm':'')));}
-  else{const k=m.k||3;for(let i=0;i<k;i++){const concealedBack=m.concealed&&m.kan&&(i===0||i===k-1);g.appendChild(tileEl(concealedBack?-1:m.tile,'sm'));}}
+  if(m.t==='seq'){for(const t of expandMeld(m))g.appendChild(tileEl(t,'sm'+(nt(t)===m.called?' rotm':'')));}
+  else{const ts=expandMeld(m),k=ts.length;for(let i=0;i<k;i++){const concealedBack=m.concealed&&m.kan&&(i===0||i===k-1);g.appendChild(tileEl(concealedBack?-1:ts[i],'sm'));}}
   return g;
 }
 function discEl(d){if(typeof d==='object')return {tile:d.t,claimed:true};return{tile:d,claimed:false};}
@@ -1256,11 +1363,12 @@ function renderActions(acts,showTurn){
 let toastT;function toast(m){const e=document.getElementById('toast');e.textContent=m;e.style.display='block';clearTimeout(toastT);toastT=setTimeout(()=>e.style.display='none',1500);}
 let flashT;function flash(m){const e=document.getElementById('callflash');e.textContent=m;e.style.display='block';e.style.animation='none';e.offsetHeight;e.style.animation='flash .6s';clearTimeout(flashT);flashT=setTimeout(()=>e.style.display='none',900);}
 
-function showResult(pid,fromPid,tsumo,hand,winTile,ev,pay,gained,sticks){
+function showResult(pid,fromPid,tsumo,hand,winTile,ev,pay,gained,sticks,after,multi){
   const ov=document.getElementById('overlay');ov.style.display='flex';
   const m=document.getElementById('modal');const p=G.players[pid];
   const sorted=hand.slice().sort((a,b)=>a-b);
-  const hs=sorted.map((t,i)=>{const e=tileEl(t,'sm'+(t===winTile?' last':''));e.style.setProperty('--i',i);return e.outerHTML;}).join('')
+  let wi=sorted.lastIndexOf(winTile);if(wi<0)wi=sorted.findIndex(t=>nt(t)===nt(winTile));
+  const hs=sorted.map((t,i)=>{const e=tileEl(t,'sm'+(i===wi?' last':''));e.style.setProperty('--i',i);return e.outerHTML;}).join('')
     +(p.melds.length?' <span style="opacity:.5">／</span> '+p.melds.map(md=>meldEl(md).outerHTML).join(''):'');
   const rank=rankName(ev.fu,ev.han);
   let payStr;
@@ -1272,7 +1380,7 @@ function showResult(pid,fromPid,tsumo,hand,winTile,ev,pay,gained,sticks){
   const total=gained+sticks,handPts=pay.total,extra=total-handPts;
   const exParts=[];if(G.honba)exParts.push(`本場 +${(G.honba*300).toLocaleString()}`);if(sticks)exParts.push(`供託 +${sticks.toLocaleString()}`);
   const exStr=extra>0?`<div class="sub ex hidden">${exParts.join('　')}　＝ 計 <b>${total.toLocaleString()}</b>点</div>`:'';
-  m.innerHTML=`<h2>${nm(pid)} ${tsumo?'ツモ':'ロン'}</h2>
+  m.innerHTML=`${multi?`<div class="chap-num">ダブロン　${multi}</div>`:''}<h2>${nm(pid)} ${tsumo?'ツモ':'ロン'}</h2>
     <div class="sub">和了牌 ${tileName(winTile)}　${payStr}</div>
     <div class="handshow reveal">${hs}</div>
     <div class="yaku">${yl}</div>
@@ -1298,9 +1406,10 @@ function showResult(pid,fromPid,tsumo,hand,winTile,ev,pay,gained,sticks){
   m.onclick=(e)=>{if(e.target===nb)return;finish();};
   const wasTut=G.tutorial,lesId=tut.lesson,wasFinal=G.storyFinal;
   nb.onclick=()=>{m.onclick=null;ov.style.display='none';
+    if(after){after();return;}
     if(wasTut){lessonComplete(lesId);return;}
-    if(wasFinal){storyFinalEnd(pid===0);return;}
-    G.advance=(pid!==G.dealer);G.keepHonba=(pid===G.dealer);endCheck();};
+    if(wasFinal){storyFinalEnd((G._winners||[pid]).includes(0));return;}
+    afterWinners(G._winners||[pid]);G._winners=null;};
 }
 function showDraw(tenpai){
   {const _m=document.getElementById('modal');_m.classList.remove('done');_m.onclick=null;}
@@ -1447,6 +1556,7 @@ function rigGame(hand0,draws){
     riichiFuriten:false,tempFuriten:false,score:25000,seatWind:i,isDealer:i===0,drawn:-1,pendingRiichi:false}));
   players[0].hand.sort((a,b)=>a-b);
   if(storyCasting){for(let i=1;i<4;i++){players[i].name=SEATNAMES[i];players[i].style=SEATSTYLES[i];}}
+  wall=wall.map(nt);
   G={wall,dead,doraInd:[dead[4]],uraInd:[dead[5]],players,dealer:0,round:0,honba:0,turn:0,roundWind:0,
      phase:'draw',over:false,riichiSticks:0,ippatsu:[false,false,false,false],callHappened:false,
      rinshanFlag:false,lastDiscard:null,advance:false,keepHonba:false,pendingRiichiDeclarer:-1,offering:false,
@@ -1571,7 +1681,7 @@ function tutorialAfterDiscard(){
 }
 function nakiDefense(){
   clearHL();G.tutGate=null;
-  coachShow(`鳴くと手は早いけど<b>リーチはできない</b>ので、あがれる役に注意（今回は<b>中</b>が役）。<br><br><b>守り</b>：リーチした相手が捨てた牌と<b>同じ牌（現物）</b>は必ず安全。危ない時はそれを切ろう。`,
+  coachShow(`鳴くと手は早いけど<b>リーチはできない</b>ので、あがれる役に注意（今回は<b>中</b>が役）。<br>鳴きは他に、<b>チー</b>（上家＝左の人の捨て牌で順子を作る）と<b>カン</b>（同じ牌4枚）がある。<br><br><b>守り</b>：リーチした相手が捨てた牌と<b>同じ牌（現物）</b>は必ず安全。危ない時はそれを切ろう。`,
     [{label:'つづける',fn:()=>lessonComplete('naki')}],false);
 }
 function tutGuide(){
@@ -1704,6 +1814,70 @@ function lessonComplete(id){
   confetti();showCelebrate(id,allDone);
 }
 
+/* ===== 卓上の掛け合い ===== */
+const BANTER={
+ master:{start:['さあ、始めようか。急がなくていい。','卓は嘘をつかない。今日も楽しもう。'],
+  myRiichi:['……いい仕掛けだ。','来たね。受けて立とう。'],riichi:['リーチ。……久しぶりに、本気だ。','リーチだ。若い頃を思い出すよ。'],
+  win:['これで一局。','歳をとっても、手は覚えている。'],winHero:['……今のは、河を見ていれば止まった牌だ。','痛いだろう。だが、その痛みが君を強くする。'],
+  lose:['……見事。完全にやられた。','いい打ち回しだ。次は取り返す。'],heroTsumo:['ほう。','いいツモだ。'],
+  call:['もらうよ。'],draw:['流局か。こういう局もある。','焦らなくていい。次の局だ。'],
+  south:['さあ、南場だ。ここからが本番。','後半だ。点差を見て打つんだよ。']},
+ hayato:{start:['よっしゃ、速攻で終わらせるぜ！','俺の速さについてこれるか？','考えるな、感じろ！……って昔の映画で言ってた。'],
+  myRiichi:['げっ、リーチかよ！','おいおい、速いじゃねえか{n}！','ちっ、勝負するしかねえな'],riichi:['リーチ！ 待たねえぜ！','リーチだ、ほら来い！','先制リーチ！ 俺の勝ちだな'],
+  win:['っしゃあ！ 速さこそ正義！','はい終わり！ 次いこ次！','見たか、これが速攻だ'],winHero:['{n}、その牌は無いって！','わりぃな、俺の勝ち！','おっと、直撃いただき！'],
+  lose:['マジかよ、それ待ちかよ！','ちくしょう、読めなかった……','速さで負けた……悔しい！'],heroTsumo:['はえーな……','おいおい、ツモかよ'],
+  call:['ポン！ もらった！','チー！ 待ってらんねえ','鳴くぜ鳴くぜ！'],draw:['流局とか、つまんねー','あー、あがれなかった'],
+  south:['南場！ ここから巻き返す！','よーし、後半戦だ！']},
+ shizuka:{start:['……よろしくお願いします。','静かに、いきましょう。','今日も、振り込まないように。'],
+  myRiichi:['……降ります。','そう、来たのね。現物を探すわ。','焦らない。まだ手はある。'],riichi:['……リーチ。','リーチ、します。','珍しいでしょう。私からリーチ。'],
+  win:['……失礼します。','静かにあがるのが、私流。','これで、いいわ。'],winHero:['{n}、その牌は……危なかったのよ。','ごめんなさい。でも、河は見ていた？','守りを忘れると、こうなる。'],
+  lose:['……振り込んでしまった。','私が、振り込むなんて。','……お見事。読めなかった。'],heroTsumo:['きれいなツモね。','……いい引き。'],
+  call:['……もらいます。'],draw:['流局。……悪くない結果。','振り込まなければ、負けない。'],
+  south:['南場ね。ここからは守り重視。','後半。点差を大事に。']},
+ gen:{start:['さあ、勝負だ。','手加減はしねえぞ。','打つからには、勝ちにいく。'],
+  myRiichi:['上等だ。受けてやる。','俺のツモ番を待ちな。','リーチか。……面白くなってきた。'],riichi:['リーチ！ 勝負だ！','リーチ。逃げるなよ。','来い！ 一発で決める！'],
+  win:['これが勝負師の麻雀だ。','ふん、当然だ。','高い手で決める。それが俺だ。'],winHero:['{n}、押しすぎだ。','その牌は、俺のリーチに一番危なかったぞ。','痛いだろう。俺のリーチはこうなる。'],
+  lose:['……くそっ。','やるじゃねえか。','負けは負けだ。認める。'],heroTsumo:['引きが強えな。','……ツモか。'],
+  call:['鳴くか。珍しいだろ。'],draw:['流局……テンパイ料は俺のもんだ。','あがれねえ局もある。'],
+  south:['南場だ。勝負はここからだ。','後半だ。点差なんて関係ねえ。']},
+ ren:{start:['よろしくお願いします。基本通りに打ちます。','……勝ちにいきますよ。','どうぞ、お手柔らかに。'],
+  myRiichi:['……計算します。','リーチですね。降りるかどうか、判断します。','いい仕掛け。でも、私も降りません。'],riichi:['リーチ。教科書通りです。','リーチします。','先制。……教わった通りに。'],
+  win:['基本通り。','ありがとうございます。','淡々と、勝ちます。'],winHero:['{n}、その牌は本部の教材なら赤字です。','……すみません。でも、勝負なので。','その一打は、少し無理をしましたね。'],
+  lose:['……完敗です。','読めませんでした。','基本の外から来ましたね。'],heroTsumo:['……いいツモ。','速い。'],
+  call:['……もらいます。'],draw:['流局。基本通りです。','悪くない。'],
+  south:['南場です。ここから、点差を管理します。','後半戦。落ち着いていきましょう。']},
+ kuroda:{start:['期待値の高い方を選ぶだけです。','数字は嘘をつかない。','では、始めましょう。'],
+  myRiichi:['……計算上、押すべきですね。','リーチ。危険牌の期待値を出します。','なるほど。'],riichi:['リーチ。期待値、十分です。','リーチ。数字がそう言っている。'],
+  win:['計算通りです。','数字の勝ちです。','期待値通り。'],winHero:['{n}、その牌の放銃率は三割超えです。','数字にない一打でしたね。','惜しい。効率を忘れていましたね。'],
+  lose:['……計算外です。','数字にない打ち方だ。','……なるほど。データを更新します。'],heroTsumo:['確率の内側、ですね。','……いいツモだ。'],
+  call:['鳴きます。効率です。'],draw:['流局。期待値は取りました。','想定内です。'],
+  south:['南場。点差から逆算します。','後半。数字で詰めます。']}
+};
+let BANT_T=[0,0,0,0];
+function banterOne(ev,delay,pid,force){
+  if(!G||G.tutorial)return;
+  if(pid==null){const c=[1,2,3].filter(i=>G.players[i].charId&&BANTER[G.players[i].charId]);if(!c.length)return;pid=c[(Math.random()*c.length)|0];}
+  const id=G.players[pid].charId;const L=BANTER[id]&&BANTER[id][ev];if(!L||!L.length)return;
+  if(!force&&Math.random()>0.55)return;
+  const g=G.gen;setTimeout(()=>{if(!G||G.gen!==g)return;const now=Date.now();if(now-BANT_T[pid]<2400)return;BANT_T[pid]=now;
+    speakBubble(pid,fmt(L[(Math.random()*L.length)|0]));},delay||0);
+}
+function banterAll(ev){[1,2,3].forEach((i,k)=>banterOne(ev,k*900,i,true));}
+function speakBubble(pid,text){
+  const seat=document.getElementById('seat'+pid);const pill=seat&&seat.querySelector('.info');if(!pill)return;
+  const r=pill.getBoundingClientRect();const el=document.createElement('div');el.className='sb sb'+pid;el.textContent=text;
+  const id=G.players[pid].charId,P=PORTRAITS[id];if(P){el.style.borderColor=P.bg[1];el.style.color=P.bg[0];}
+  document.body.appendChild(el);
+  const w=el.offsetWidth,h=el.offsetHeight;let x,y;
+  if(pid===2){x=r.left+r.width/2-w/2;y=r.bottom+6;}
+  else if(pid===1){x=r.left-w-8;y=r.top+r.height/2-h/2;}
+  else{x=r.right+8;y=r.top+r.height/2-h/2;}
+  x=Math.max(6,Math.min(innerWidth-w-6,x));y=Math.max(6,y);
+  el.style.left=x+'px';el.style.top=y+'px';
+  requestAnimationFrame(()=>el.classList.add('in'));
+  setTimeout(()=>{el.classList.remove('in');setTimeout(()=>el.remove(),300);},2600);
+}
+
 /* ===== ストーリーモード「雀荘 翠」 ===== */
 const CHARS={
   coach:{n:'コーチ',ic:''},
@@ -1773,7 +1947,8 @@ function setSpeaker(id,pose){
     const P=PORTRAITS[id];if(P){w.style.background=P.bg[1];w.style.color='#1b2520';w.style.borderColor='transparent';w.querySelector('.av').style.background='#1b2520';w.querySelector('.av').style.color=P.bg[0];}}
   else{pt.hidden=true;pt.dataset.key='';w.style.background='';w.style.color='';w.style.borderColor='';w.querySelector('.av').style.background='';w.querySelector('.av').style.color='';}
 }
-function castSeats(){for(let i=1;i<4;i++){G.players[i].name=SEATNAMES[i];G.players[i].style=SEATSTYLES[i];}render();}
+const SEATIDS={1:'hayato',2:'gen',3:'shizuka'};
+function castSeats(){for(let i=1;i<4;i++){G.players[i].name=SEATNAMES[i];G.players[i].style=SEATSTYLES[i];G.players[i].charId=SEATIDS[i];}render();}
 
 /* ===== 主人公 ===== */
 const ORIGINS=[
@@ -1859,6 +2034,28 @@ const STORY=[
    outro:[{who:'master',pose:'point',t:'今日から君も、この店の一員だ。'},
      N('「一員」。その言葉が、思ったより重く胸に残った。')]}
 ];
+/* 章の会話を厚くする追加分（STORY本体は教える内容、こちらは人物と店の物語） */
+const STORY_EXTRA={
+ 0:{outro:[{who:'master',t:'常連は三人いる。速いのがハヤト、堅いのがシズカ、熱いのがゲン。癖は強いが、腕は本物だ。'},
+     {who:'master',t:'三人に認められたら、君もこの店の一員だ。'}]},
+ 1:{intro:[{who:'master',t:'あがった時の手の震えは、何年やっても消えない。それが麻雀のいいところだ。'}],
+    outro:[N('手のひらに、まだ牌の感触が残っていた。')]},
+ 2:{intro:[{who:'hayato',t:'麻雀はスピードだ。考えてる間に、誰かがあがっちまう。'},
+     {who:'hayato',t:'俺は考えない。……考えないことにしてる。',if:H=>true}],
+    outro:[{who:'shizuka',t:'……速いだけよ、あの子。',},{who:'hayato',pose:'point',t:'聞こえてるぞシズカさん！'}]},
+ 3:{intro:[{who:'shizuka',t:'振り込まなければ、負けない。……私はそれだけを守ってきたの。'}],
+    outro:[N('カウンターの奥に、色あせた男物の帽子が掛かっていた。誰のものかは、聞けなかった。')]},
+ 4:{intro:[{who:'gen',t:'マスターに一番長く教わったのは俺だ。……いや、なんでもねえ。'}],
+    outro:[{who:'gen',t:'{n}。お前、なんでこの店に来た？',},
+     {who:'gen',t:'……金か。悪くねえ理由だ。俺も昔はそうだった。',if:isO('gambler')},
+     {who:'gen',t:'……じいさんの店、か。マスターに聞いてみな。',if:isO('student')},
+     {who:'gen',t:'……偵察、ねえ。まあいい。卓の上じゃ、みんな同じだ。',if:isO('clerk')}]},
+ 5:{intro:[{who:'ren',t:'……いい店ですね。落ち着く。',if:H=>H.origin!=='clerk'}],
+    outro:[N('レンは帰り際、店の看板をしばらく見上げていた。')]},
+ 6:{outro:[N('「畳む」。その言葉を、聞かなかったことにした。')]},
+ 7:{intro:[{who:'master',t:'本気で打つのは、三人が君を仲間と認めるかどうかを見るためだ。'}],
+    outro:[{who:'master',t:'……咳が出るね。年かな。'},N('三人が目を見合わせた。誰も、何も言わなかった。')]}
+};
 function storyProgress(){return parseInt(lsGet('mjStory')||'0',10);}
 
 /* ===== 序章：主人公を決める ===== */
@@ -1877,14 +2074,14 @@ function showPrologue(){
   document.getElementById('proGo').onclick=()=>{
     const nm=document.getElementById('heroName').value.trim().slice(0,8);
     HERO=blankHero();HERO.name=nm;HERO.origin=sel;HERO.notes=['origin'];saveHero();
-    ['mjStory','mjStage','mjTitle','mjRoute','mjFlag_hayato','mjFlag_shizuka','mjFlag_gen','mjFlag_ren','mjFlag_kuroda'].forEach(k=>{try{localStorage.removeItem(k)}catch(e){}});
+    ['mjStory','mjStage','mjTitle','mjRoute','mjFlag_hayato','mjFlag_shizuka','mjFlag_gen','mjFlag_ren','mjFlag_kuroda','mjInter_hayato','mjInter_shizuka','mjInter_gen','mjInter_ren','mjInter_kuroda'].forEach(k=>{try{localStorage.removeItem(k)}catch(e){}});
     ov.style.display='none';storyStart(0);
   };
 }
 function resetStory(){
   if(!confirm('物語の進行をすべて消して、最初から始めますか？（道場の記録は残ります）'))return;
   HERO=blankHero();saveHero();
-  ['mjStory','mjStage','mjTitle','mjRoute','mjFlag_hayato','mjFlag_shizuka','mjFlag_gen','mjFlag_ren','mjFlag_kuroda','mjEnd_true','mjEnd_top','mjEnd_neo','mjEnd_close'].forEach(k=>{try{localStorage.removeItem(k)}catch(e){}});
+  ['mjStory','mjStage','mjTitle','mjRoute','mjFlag_hayato','mjFlag_shizuka','mjFlag_gen','mjFlag_ren','mjFlag_kuroda','mjEnd_true','mjEnd_top','mjEnd_neo','mjEnd_close','mjInter_hayato','mjInter_shizuka','mjInter_gen','mjInter_ren','mjInter_kuroda'].forEach(k=>{try{localStorage.removeItem(k)}catch(e){}});
   showStory();
 }
 
@@ -2019,6 +2216,48 @@ const ENDINGS={
    N('本社の名札を、川に投げた。',isO('clerk')),
    N('翌朝。扉が開く音がした。'),N('「いらっしゃい」。今度は、君が言う。')]}
 };
+/* 腕試しの幕間（突破後に一度だけ） */
+Object.assign(ST.hayato,{after:[N('翌日。ハヤトは珍しく黙って牌を積んでいた。'),
+  {who:'hayato',t:'……なあ。マスター、最近痩せたと思わねえか。'},
+  {who:'hayato',t:'俺はバカだから分かんねえけどさ。この店、無くなったら困るんだよ。'},
+  {who:'master',t:'誰が無くすと言った。ほら、卓に着け。'},
+  N('マスターの声は、いつもより少しだけ高かった。')]});
+Object.assign(ST.shizuka,{after:[N('閉店間際。シズカが茶を淹れてくれた。'),
+  {who:'shizuka',t:'ユウジ……先代が倒れたのも、このくらいの季節だった。'},
+  {who:'shizuka',t:'マスターは彼の弟弟子。店を継いで、二十年。'},
+  {who:'shizuka',t:'あの人、病院の紙をポケットに丸めて隠すの。昔のユウジと同じ。'},
+  {who:'shizuka',t:'{n}。あなたの祖父、ユウジと同じ写真に写っていたわ。……あの写真の三人目、誰だと思う？',if:isO('student')},
+  N('湯呑みの底に、小さな「翠」の文字があった。')]});
+Object.assign(ST.gen,{after:[N('深夜。ゲンが店の鍵を閉めるのを、初めて見た。'),
+  {who:'gen',t:'マスターから預かってる。……ここ半年な。'},
+  {who:'gen',t:'言っとくが、継ぐとは言ってねえ。俺には向いてねえ。'},
+  {who:'gen',pose:'point',t:'だが、お前が来てから店の空気が変わった。それは認める。'},
+  N('鍵束には、古い木札が付いていた。「翠」と、彫ってあった。')]});
+Object.assign(ST.ren,{after:[N('レンは辞表を出した。本部からの電話は、三回鳴って止んだ。'),
+  {who:'ren',t:'後悔はしてない。……ちょっとだけ、怖いけど。'},
+  {who:'ren',t:'{n}。あなたは本部に戻ってもいい。私は止めない。',if:isO('clerk')},
+  {who:'ren',t:'{n}が来てくれて、良かった。本当に。',if:H=>H.origin!=='clerk'},
+  {who:'master',t:'……レン。明日から開店準備を手伝ってくれ。時給は安いぞ。'},
+  N('レンが笑った。初めて見る顔だった。')]});
+Object.assign(ST.kuroda,{after:[N('クロダは契約書を鞄にしまい、初めてネクタイを緩めた。'),
+  {who:'kuroda',t:'本部には「条件交渉が長引いている」と報告します。……しばらくは。'},
+  {who:'kuroda',t:'一つだけ。この店の打ち方、本部の教材に使わせてください。効率では教えられないものがある。'},
+  {who:'master',t:'好きにしろ。ただし、監修料は取る。'},
+  N('二人が笑うのを、初めて見た。')]});
+ST.cross.lines=[N('腕試しから数日。マスターは、また少し痩せた。')].concat(ST.cross.lines);
+/* 結末の後日談 */
+const EPILOGUE={
+ close:[N('店の前を通ると、シャッターに小さな貼り紙。「ありがとう。翠」'),{who:'hayato',t:'……もう一回、やろうぜ。今度は勝つ。'},N('扉は閉まった。だが、もう一度開ける方法を、君は知っている。')],
+ neo:[N('看板は「マルヨシ翠店」。だが、常連の席は残った。'),{who:'kuroda',t:'本部の教材、第一章は「現物」にしました。'},{who:'shizuka',t:'……悪くないわね。'},N('新しい翠は、少しだけ明るくなった。')],
+ top:[{who:'master',t:'店はまだ渡せない。君はまだ、三人の全部を知らないからね。'},N('常連の秘密は、賭けの先にある。もう一度、卓に着こう。')],
+ true:[{who:'master',t:'{n}。君の祖父とユウジと私。三人でこの店を始めた。写真の三人目は、シャッターを押していた私だ。',if:isO('student')},
+   N('祖父の日記の最後の頁に、今日の日付を書き足した。',isO('student')),
+   {who:'master',t:'借金は、店の売上から返せ。……ただし、卓では二度と賭けるな。',if:isO('gambler')},
+   N('財布の千円札は、まだ二枚のままだった。それでよかった。',isO('gambler')),
+   {who:'ren',t:'名札、捨てたのね。',if:isO('clerk')},
+   N('新しい名札には、手書きで「翠」とだけ書いた。',isO('clerk')),
+   N('今度は君が「いらっしゃい」と言う番だ。')]
+};
 function storyPath(){const r=HERO.route;return [ST.hayato,ST.shizuka,ST.gen,ST.cross,r==='neo'?ST.kuroda:(r==='protect'?ST.ren:null),ST.master];}
 function stageProgress(){return parseInt(lsGet('mjStage')||'0',10);}
 function part1Done(){return storyProgress()>=STORY.length;}
@@ -2034,7 +2273,7 @@ function bossLevel(st,wager){
 function castStage(st,idx,wager){
   const lv=bossLevel(st,wager),sub=HERO.origin==='gambler'?2:1;
   for(const seat in st.cast){const id=st.cast[seat];const p=G.players[+seat];
-    p.name=CHARS[id].n;p.style=CHAR_STYLE[id];p.level=(id===st.boss)?lv:sub;}
+    p.name=CHARS[id].n;p.style=CHAR_STYLE[id];p.level=(id===st.boss)?lv:sub;p.charId=id;}
   if(HERO.origin==='gambler')G.players[0].score=20000;
   G.stage=idx;G.wager=!!wager;render();updateSkillbar();
 }
@@ -2111,7 +2350,9 @@ function showStageResult(){
     let lines=outcome==='win'?st.win:(outcome==='narrow'?st.narrow:st.lose);
     if(gotFlag)lines=lines.concat(hadFlag?[]:st.secret);
     else if(special&&st.condOnly)lines=lines.concat(st.condOnly);
-    say(lines,()=>{hide();if(outcome!=='lose')confetti();showStory();});};
+    const done=()=>{hide();if(outcome!=='lose')confetti();showStory();};
+    const inter=outcome!=='lose'&&st.after&&lsGet('mjInter_'+st.id)!=='1';
+    say(lines,()=>{if(!inter)return done();lsSet('mjInter_'+st.id,'1');say(st.after,done);});};
 }
 function showEnding(outcome,rows,idx){
   const ov=document.getElementById('overlay');
@@ -2125,7 +2366,7 @@ function showEnding(outcome,rows,idx){
   if(E.id==='true')lsSet('mjTitle','翠の主');
   lsSet('mjEnd_'+E.id,'1');addNote('end_'+E.id);
   hide();
-  say(E.lines,()=>{hide();ov.style.display='flex';
+  say(E.lines.concat(EPILOGUE[E.id]||[]),()=>{hide();ov.style.display='flex';
     const hint=E.id==='top'?'（賭けを受けて常連の流儀を制し、秘密を3つ以上聞くと結末が変わる）':E.id==='neo'?'（岐路をやり直せば、別の結末が見られる）':E.id==='close'?'':'';
     document.getElementById('modal').innerHTML=`<div class="chap-num">終章</div><h2>${E.t}</h2>
       <div class="port-big">${portraitSVG('master',E.id==='close'?'point':(E.id==='true'?'point':'calm'))}</div>
@@ -2162,6 +2403,7 @@ function showStory(){
   const rows3=[row(path[3],3,'岐路'),row(path[4],4,HERO.route?'第四戦':'第四戦')].join('');
   const rows4=row(path[5],5,'最終戦');
   const title=currentTitle();const ended=sprog>=path.length;
+  const inGame=!!(G&&!G.over&&!G.tutorial&&(G.wall.length<70||G.players.some(p=>p.discards.length)));
   m.innerHTML=`<h2>雀荘「翠」</h2>
     <div class="hero-card"><span class="hn">${heroName()}</span><span class="ho">${o?o.t:''}　<em>難易度 ${o?o.diff:''}</em></span>${title?`<span class="ttl-now">称号：${title}</span>`:''}${HERO.route?`<span class="ttl-now">${HERO.route==='neo'?'新しい翠の道':'翠を守る道'}</span>`:''}</div>
     <div class="dojo-sec">第一部　翠の教え</div><div id="dojo">${rows1}</div>
@@ -2171,8 +2413,11 @@ function showStory(){
     <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px">
       <button class="btn gray" id="stNotes">翠ノート ${HERO.notes.length}/${NOTES.length}</button>
       <button class="btn gray" id="stDojo">道場（復習）</button>
-      <button class="btn" id="stPlay">自由対局</button></div>
-    <button class="linkbtn" id="stReset">物語を最初から（主人公を変える）</button>`;
+      <button class="btn" id="stPlay">${inGame?'自由対局（新しく始める）':'自由対局'}</button></div>
+    ${inGame?'<button class="btn blue" id="stBack" style="margin-top:12px;min-width:200px">対局にもどる</button>':''}
+    <div><button class="linkbtn" id="stRed">赤ドラ：${RED_ON?'あり':'なし'}（次の局から）</button>　<button class="linkbtn" id="stReset">物語を最初から（主人公を変える）</button></div>`;
+  if(inGame)document.getElementById('stBack').onclick=()=>{ov.style.display='none';};
+  document.getElementById('stRed').onclick=()=>{RED_ON=!RED_ON;lsSet('mjRed',RED_ON?'1':'0');showStory();};
   m.querySelectorAll('.st-ch[data-id]:not(.lock)').forEach(b=>b.onclick=()=>{ov.style.display='none';storyStart(parseInt(b.dataset.id,10));});
   m.querySelectorAll('.st-ch[data-stage]:not(.lock)').forEach(b=>b.onclick=()=>startStage(parseInt(b.dataset.stage,10)));
   document.getElementById('stNotes').onclick=()=>showNotes();
@@ -2183,11 +2428,12 @@ function showStory(){
 function storyStart(ch){
   const c=STORY[ch];
   tut={lesson:'',mode:'',phase:'',i:0,story:ch};
-  if(c.final){say(c.intro,()=>c.run());return;}
+  const X=STORY_EXTRA[ch]||{};const intro=c.intro.concat(X.intro||[]);
+  if(c.final){say(intro,()=>c.run());return;}
   storyCasting=true;c.run();storyCasting=false;   // 場を仕込み、レッスン自身のイントロが表示される
   tut.story=ch;
   const resume=(tut.mode==='info')?()=>infoRun():()=>tutIntroStep();
-  say(c.intro,()=>{tut.story=ch;setSpeaker(c.who);resume();});
+  say(intro,()=>{tut.story=ch;setSpeaker(c.who);resume();});
 }
 function storyChapterDone(id){
   const ch=tut.story;const c=STORY[ch];
@@ -2204,7 +2450,7 @@ function storyChapterDone(id){
       <button class="btn" id="celBtn">雀荘へ</button>`;
     document.getElementById('celBtn').onclick=()=>showStory();};
   document.getElementById('coach').hidden=false;
-  say(c.outro,finish);
+  say(c.outro.concat((STORY_EXTRA[ch]||{}).outro||[]),finish);
 }
 function showChapterClear(ch){
   {const _m=document.getElementById('modal');_m.classList.remove('done');_m.onclick=null;}
@@ -2225,8 +2471,8 @@ function storyFinalStart(){
   // 1向聴のタンヤオ配牌を仕込む
   const good=[1,2,3,4,5,10,11,12,14,15,19,20,25];
   const me=G.players[0];const pool=G.wall.concat(me.hand);
-  const rm=t=>{const i=pool.indexOf(t);if(i>=0){pool.splice(i,1);return true;}return false;};
-  if(good.every(t=>pool.filter(x=>x===t).length>=1)){good.forEach(rm);me.hand=good.slice().sort((a,b)=>a-b);G.wall=pool;}
+  const rm=t=>{const i=pool.findIndex(x=>nt(x)===t);if(i>=0){pool.splice(i,1);return true;}return false;};
+  if(good.every(t=>pool.some(x=>nt(x)===t))){good.forEach(rm);me.hand=good.slice().sort((a,b)=>a-b);G.wall=pool;}
   render();
 }
 function storyFinalEnd(won){
