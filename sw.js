@@ -1,4 +1,4 @@
-const CACHE = 'mahjong-v3';
+const CACHE = 'mahjong-v4';
 const ASSETS = [
   './', './index.html', './manifest.json',
   './icon-192.png', './icon-512.png', './icon-512-maskable.png',
@@ -17,7 +17,7 @@ self.addEventListener('fetch', e => {
   if (isHTML) {
     // HTMLは常に最新をサーバーから（オフライン時のみキャッシュ）
     e.respondWith(
-      fetch(e.request).then(resp => {
+      fetch(e.request, { cache: 'no-cache' }).then(resp => {
         const cp = resp.clone();
         caches.open(CACHE).then(c => c.put('./index.html', cp));
         return resp;
