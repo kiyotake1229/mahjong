@@ -224,6 +224,19 @@
   #modal .score{font-size:24px;font-weight:700;margin:10px 0 4px;color:var(--gold-hi);font-variant-numeric:tabular-nums;letter-spacing:.02em}
   #modal .sub{font-size:12px;color:var(--muted);margin-bottom:6px;line-height:1.7}
   #modal .handshow{display:flex;gap:2px;justify-content:center;flex-wrap:wrap;margin:12px 0;align-items:flex-end}
+  #modal .handshow.reveal .tile{opacity:0;animation:tilein .38s cubic-bezier(.2,1.2,.4,1) forwards;animation-delay:calc(var(--i,0) * 55ms + 120ms)}
+  @keyframes tilein{from{opacity:0;transform:translateY(14px) rotateX(75deg)}to{opacity:1;transform:none}}
+  #modal .yl{opacity:0;animation:ylin .32s ease-out forwards}
+  @keyframes ylin{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:none}}
+  #modal .hidden{opacity:0;visibility:hidden}
+  #modal .score.pop{visibility:visible;opacity:1;animation:scorepop .45s cubic-bezier(.2,1.4,.4,1)}
+  @keyframes scorepop{from{transform:scale(.85);opacity:0}to{transform:none;opacity:1}}
+  #modal .rank{font-family:var(--f-mincho);font-size:30px;font-weight:700;color:var(--gold-hi);letter-spacing:.14em;margin:2px 0 8px;text-shadow:0 2px 12px rgba(0,0,0,.6)}
+  #modal .rank.pop{visibility:visible;opacity:1;animation:rankpop .5s cubic-bezier(.2,1.5,.4,1)}
+  @keyframes rankpop{0%{transform:scale(.4);opacity:0}60%{transform:scale(1.12);opacity:1}100%{transform:none;opacity:1}}
+  #modal #nextBtn{transition:opacity .25s}
+  #modal.done .handshow .tile,#modal.done .yl{animation:none;opacity:1}
+  #modal.done .hidden{opacity:1;visibility:visible}
   .toast{position:fixed;top:44px;left:50%;transform:translateX(-50%);background:#1e2a23;color:var(--gold-hi);font-weight:700;
     padding:9px 22px;border-radius:8px;font-size:16px;z-index:60;box-shadow:var(--sh2);border:1px solid var(--line2);display:none}
   .callflash{position:fixed;left:50%;top:44%;transform:translate(-50%,-50%);font-family:var(--f-mincho);font-size:52px;font-weight:700;
@@ -1038,7 +1051,8 @@ function win(pid,fromPid,tsumo,winTile){
   if(pid===0)gaugeAdd(30);
   tsumo?sfx.tsumo():sfx.ron();
   render();showDeltas(before);
-  showResult(pid,fromPid,tsumo,hand,winTile,ev,pay,gained,sticks);
+  const show=()=>showResult(pid,fromPid,tsumo,hand,winTile,ev,pay,gained,sticks);
+  if(pid===0){flash(tsumo?'ツモ':'ロン');setTimeout(show,520);}else show();
 }
 function ryuukyoku(){
   G.over=true;const before=G.players.map(p=>p.score);
@@ -1194,27 +1208,48 @@ let flashT;function flash(m){const e=document.getElementById('callflash');e.text
 function showResult(pid,fromPid,tsumo,hand,winTile,ev,pay,gained,sticks){
   const ov=document.getElementById('overlay');ov.style.display='flex';
   const m=document.getElementById('modal');const p=G.players[pid];
-  const hs=hand.slice().sort((a,b)=>a-b).map(t=>tileEl(t,'sm'+(t===winTile?' last':'')).outerHTML).join('')
+  const sorted=hand.slice().sort((a,b)=>a-b);
+  const hs=sorted.map((t,i)=>{const e=tileEl(t,'sm'+(t===winTile?' last':''));e.style.setProperty('--i',i);return e.outerHTML;}).join('')
     +(p.melds.length?' <span style="opacity:.5">／</span> '+p.melds.map(md=>meldEl(md).outerHTML).join(''):'');
   const rank=rankName(ev.fu,ev.han);
   let payStr;
   const nm=i=>G.players[i].name||POS[i];
   if(tsumo){payStr=pay.dealer?`${pay.each}オール`:`子${pay.nd}/親${pay.d}`;}else payStr=`${nm(fromPid)}から`;
-  m.innerHTML=`<h2>${nm(pid)} ${tsumo?'ツモ':'ロン'}${rank?' ・ '+rank:''}</h2>
+  const T0=sorted.length*55+380;               // 手牌が出そろう時刻
+  const yl=ev.yaku.map((v,i)=>`<div class="yl" style="animation-delay:${T0+i*150}ms">${v.n}<span class="h">${v.dora?v.h:v.h+'翻'}</span></div>`).join('');
+  const T1=T0+ev.yaku.length*150+250;          // 役が出そろう時刻
+  const total=gained+sticks;
+  m.innerHTML=`<h2>${nm(pid)} ${tsumo?'ツモ':'ロン'}</h2>
     <div class="sub">和了牌 ${tileName(winTile)}　${payStr}</div>
-    <div class="handshow">${hs}</div>
-    <div class="yaku">${ev.yaku.map(v=>`${v.n}<span class="h">${v.dora?v.h:v.h+'翻'}</span>`).join('<br>')}</div>
-    ${p.riichi&&G.uraInd.length?`<div class="sub">裏ドラ表示: ${liveUra().map(t=>tileName(t)).join(' ')}</div>`:''}
-    <div class="score">${ev.han}翻 ${ev.fu}符　${(gained+sticks).toLocaleString()}点</div>
+    <div class="handshow reveal">${hs}</div>
+    <div class="yaku">${yl}</div>
+    ${p.riichi&&G.uraInd.length?`<div class="sub yl" style="animation-delay:${T1-150}ms">裏ドラ表示: ${liveUra().map(t=>tileName(t)).join(' ')}</div>`:''}
+    <div class="score hidden"><span class="hf">${ev.han}翻 ${ev.fu}符</span>　<span class="pts">0</span>点</div>
+    ${rank?`<div class="rank hidden">${rank}</div>`:''}
     ${G.tutorial?'<div class="sub" style="color:var(--gold);font-size:14px;margin:8px 0">レッスンクリア。この調子で進めよう。</div>':''}
-    <button class="btn" id="nextBtn">${G.tutorial?'つづける':(G.storyFinal?'つづける':'次の局へ')}</button>`;
+    <button class="btn hidden" id="nextBtn">${G.tutorial?'つづける':(G.storyFinal?'つづける':'次の局へ')}</button>`;
+  // 役が出るたびに小さく音
+  const timers=[];
+  ev.yaku.forEach((v,i)=>timers.push(setTimeout(()=>sfx.draw(),T0+i*150)));
+  // 点数カウントアップ → 満貫などがポン → ボタン
+  const sc=m.querySelector('.score'),pts=m.querySelector('.pts'),rk=m.querySelector('.rank'),nb=document.getElementById('nextBtn');
+  let finished=false;
+  const finish=()=>{if(finished||!m.contains(sc))return;finished=true;timers.forEach(clearTimeout);m.classList.add('done');
+    sc.classList.remove('hidden');pts.textContent=total.toLocaleString();if(rk){rk.classList.remove('hidden');rk.classList.add('pop');}nb.classList.remove('hidden');};
+  timers.push(setTimeout(()=>{if(finished)return;sc.classList.remove('hidden');sc.classList.add('pop');
+    const t0=performance.now(),dur=650;
+    const step=(now)=>{if(finished)return;const k=Math.min(1,(now-t0)/dur);const e=1-Math.pow(1-k,3);pts.textContent=Math.round(total*e).toLocaleString();
+      if(k<1)requestAnimationFrame(step);else{if(rk){rk.classList.remove('hidden');rk.classList.add('pop');if(pid===0&&ev.han>=6)confetti();}setTimeout(()=>{if(!finished){nb.classList.remove('hidden');finished=true;m.classList.add('done');}},260);}};
+    requestAnimationFrame(step);},T1));
+  m.onclick=(e)=>{if(e.target===nb)return;finish();};
   const wasTut=G.tutorial,lesId=tut.lesson,wasFinal=G.storyFinal;
-  document.getElementById('nextBtn').onclick=()=>{ov.style.display='none';
+  nb.onclick=()=>{m.onclick=null;ov.style.display='none';
     if(wasTut){lessonComplete(lesId);return;}
     if(wasFinal){storyFinalEnd(pid===0);return;}
     G.advance=(pid!==G.dealer);G.keepHonba=(pid===G.dealer);endCheck();};
 }
 function showDraw(tenpai){
+  {const _m=document.getElementById('modal');_m.classList.remove('done');_m.onclick=null;}
   const ov=document.getElementById('overlay');ov.style.display='flex';const m=document.getElementById('modal');
   m.innerHTML=`<h2>流局</h2>
     <div class="yaku">${G.players.map((p,i)=>`${p.name||POS[i]} ${WINDS[p.seatWind]}${p.isDealer?'親':''}<span class="h">${tenpai[i]?'聴牌':'不聴'} ${p.score}</span>`).join('<br>')}</div>
@@ -1229,6 +1264,7 @@ function endCheck(){
   newHand(true);
 }
 function showFinal(){
+  {const _m=document.getElementById('modal');_m.classList.remove('done');_m.onclick=null;}
   if(G.stage!=null){return showStageResult();}
   const ov=document.getElementById('overlay');ov.style.display='flex';const m=document.getElementById('modal');
   const rank=G.players.map((p,i)=>({name:p.name||POS[i],score:p.score})).sort((a,b)=>b.score-a.score);
@@ -1247,6 +1283,7 @@ document.getElementById('speedBtn').onclick=()=>{
 updateSpeedBtn();
 
 function showHelp(){
+  {const _m=document.getElementById('modal');_m.classList.remove('done');_m.onclick=null;}
   const ov=document.getElementById('overlay');ov.style.display='flex';
   const m=document.getElementById('modal');
   m.innerHTML=`<h2>麻雀の遊び方</h2>
@@ -1390,6 +1427,7 @@ function confetti(){
   c.innerHTML=h;document.body.appendChild(c);setTimeout(()=>c.remove(),2800);
 }
 function showCelebrate(id,allDone){
+  {const _m=document.getElementById('modal');_m.classList.remove('done');_m.onclick=null;}
   const ov=document.getElementById('overlay');ov.style.display='flex';
   const m=document.getElementById('modal');const L=LESSONS.find(x=>x.id===id)||{};
   if(allDone){
@@ -1691,6 +1729,7 @@ const STORY=[
 ];
 function storyProgress(){return parseInt(lsGet('mjStory')||'0',10);}
 function showStory(){
+  {const _m=document.getElementById('modal');_m.classList.remove('done');_m.onclick=null;}
   const ov=document.getElementById('overlay');ov.style.display='flex';const m=document.getElementById('modal');
   const prog=storyProgress(),sprog=stageProgress(),p1=part1Done();
   const rows1=STORY.map(c=>{const done=c.id<prog,lock=c.id>prog;
@@ -1747,6 +1786,7 @@ function storyChapterDone(id){
 }
 /* 最終章：三人と本気の一局（配牌だけ少し良くする） */
 function showChapterClear(ch){
+  {const _m=document.getElementById('modal');_m.classList.remove('done');_m.onclick=null;}
   const c=STORY[ch];const ov=document.getElementById('overlay');ov.style.display='flex';
   document.getElementById('modal').innerHTML=`<div class="chap-num">第${['一','二','三','四','五','六','七'][ch]}章</div>
     <h2>${c.t}</h2>
@@ -1831,6 +1871,7 @@ const TRUE_END=[
 ];
 function flagCount(){return ['hayato','shizuka','gen','ren'].filter(id=>lsGet('mjFlag_'+id)==='1').length;}
 function showStageResult(){
+  {const _m=document.getElementById('modal');_m.classList.remove('done');_m.onclick=null;}
   const st=STAGES[G.stage];const bossSeat=2;
   const order=G.players.map((p,i)=>({i,score:p.score})).sort((a,b)=>b.score-a.score);
   const rank=order.findIndex(o=>o.i===0)+1,bossRank=order.findIndex(o=>o.i===bossSeat)+1;
@@ -1866,6 +1907,7 @@ function showStageResult(){
     say(lines,()=>{document.getElementById('coach').hidden=true;setSpeaker(null);if(outcome!=='lose')confetti();showStory();});};
 }
 function showDojo(){
+  {const _m=document.getElementById('modal');_m.classList.remove('done');_m.onclick=null;}
   const ov=document.getElementById('overlay');ov.style.display='flex';
   const m=document.getElementById('modal');
   const done=LESSONS.filter(L=>lsGet('mjLesson_'+L.id)==='1').length;
