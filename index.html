@@ -90,6 +90,8 @@
   .tile.settle{animation:settle .22s ease-out}
   @keyframes settle{0%{transform:scale(1.08)}100%{transform:none}}
   .cell .tile.settle{animation:settleR .22s ease-out}
+  .cell .tile.last{animation:justputR .34s cubic-bezier(.25,1.2,.4,1)}
+  @keyframes justputR{0%{transform:rotate(90deg) translateY(-9px) scale(1.1);opacity:.5}62%{transform:rotate(90deg) translateY(1px) scale(.99)}100%{transform:rotate(90deg);opacity:1}}
   @keyframes settleR{0%{transform:rotate(90deg) scale(1.08)}100%{transform:rotate(90deg)}}
   .tile.fly{border-radius:3px}
   .sb{position:fixed;z-index:47;max-width:min(240px,46vw);background:rgba(20,28,24,.94);border:1px solid var(--gold);border-radius:10px;padding:6px 10px;
@@ -760,7 +762,7 @@ function newHand(keep,restart){
   G={wall,dead,doraInd:[dead[4]],uraInd:[dead[5]],players,dealer,round,honba,turn:dealer,roundWind:round,
      phase:'draw',over:false,riichiSticks:sticks,ippatsu:[false,false,false,false],callHappened:false,
      rinshanFlag:false,lastDiscard:null,advance:false,keepHonba:false,pendingRiichiDeclarer:-1,offering:false,
-     tutorial:false,tutGate:null,gen:++GEN,skill:{foresight:false,peekTiles:null,god:false},storyFinal,stage,wager,stats,
+     tutorial:false,tutGate:null,gen:++GEN,skill:{foresight:false,peekTiles:null,god:false},storyFinal,stage,wager,stats,practice:null,
      startScores:scores.slice(),startHonba:honba,startSticks:sticks};
   render();
   if(!keep)later(()=>banterAll('start'),400);
@@ -1389,7 +1391,7 @@ function showResult(pid,fromPid,tsumo,hand,winTile,ev,pay,gained,sticks,after,mu
     ${exStr}
     ${rank?`<div class="rank hidden">${rank}</div>`:''}
     ${G.tutorial?'<div class="sub" style="color:var(--gold);font-size:14px;margin:8px 0">レッスンクリア。この調子で進めよう。</div>':''}
-    <button class="btn hidden" id="nextBtn">${G.tutorial?'つづける':(G.storyFinal?'つづける':'次の局へ')}</button>`;
+    <button class="btn hidden" id="nextBtn">${G.tutorial?'つづける':(G.storyFinal||G.practice!=null?'つづける':'次の局へ')}</button>`;
   // 役が出るたびに小さく音
   const timers=[];
   ev.yaku.forEach((v,i)=>timers.push(setTimeout(()=>sfx.draw(),T0+i*150)));
@@ -1404,11 +1406,12 @@ function showResult(pid,fromPid,tsumo,hand,winTile,ev,pay,gained,sticks,after,mu
       if(k<1)requestAnimationFrame(step);else{if(ex)ex.classList.remove('hidden');if(rk){rk.classList.remove('hidden');rk.classList.add('pop');if(pid===0&&ev.han>=6)confetti();}setTimeout(()=>{if(!finished){nb.classList.remove('hidden');finished=true;m.classList.add('done');}},260);}};
     requestAnimationFrame(step);},T1));
   m.onclick=(e)=>{if(e.target===nb)return;finish();};
-  const wasTut=G.tutorial,lesId=tut.lesson,wasFinal=G.storyFinal;
+  const wasTut=G.tutorial,lesId=tut.lesson,wasFinal=G.storyFinal,wasPrac=G.practice;
   nb.onclick=()=>{m.onclick=null;ov.style.display='none';
     if(after){after();return;}
     if(wasTut){lessonComplete(lesId);return;}
     if(wasFinal){storyFinalEnd((G._winners||[pid]).includes(0));return;}
+    if(wasPrac!=null){practiceEnd(wasPrac,(G._winners||[pid]).includes(0));return;}
     afterWinners(G._winners||[pid]);G._winners=null;};
 }
 function showDraw(tenpai){
@@ -1416,9 +1419,9 @@ function showDraw(tenpai){
   const ov=document.getElementById('overlay');ov.style.display='flex';const m=document.getElementById('modal');
   m.innerHTML=`<h2>流局</h2>
     <div class="yaku">${G.players.map((p,i)=>`${p.name||POS[i]} ${WINDS[p.seatWind]}${p.isDealer?'親':''}<span class="h">${tenpai[i]?'聴牌':'不聴'} ${p.score}</span>`).join('<br>')}</div>
-    <button class="btn" id="nextBtn">${G.storyFinal?'つづける':'次の局へ'}</button>`;
-  const wasFinal=G.storyFinal,meTen=tenpai[0];
-  document.getElementById('nextBtn').onclick=()=>{ov.style.display='none';if(wasFinal){storyFinalEnd(meTen);return;}endCheck();};
+    <button class="btn" id="nextBtn">${G.storyFinal||G.practice!=null?'つづける':'次の局へ'}</button>`;
+  const wasFinal=G.storyFinal,meTen=tenpai[0],wasPrac=G.practice;
+  document.getElementById('nextBtn').onclick=()=>{ov.style.display='none';if(wasFinal){storyFinalEnd(meTen);return;}if(wasPrac!=null){practiceEnd(wasPrac,meTen);return;}endCheck();};
 }
 function endCheck(){
   const bust=G.players.some(p=>p.score<0);
@@ -2074,14 +2077,14 @@ function showPrologue(){
   document.getElementById('proGo').onclick=()=>{
     const nm=document.getElementById('heroName').value.trim().slice(0,8);
     HERO=blankHero();HERO.name=nm;HERO.origin=sel;HERO.notes=['origin'];saveHero();
-    ['mjStory','mjStage','mjTitle','mjRoute','mjFlag_hayato','mjFlag_shizuka','mjFlag_gen','mjFlag_ren','mjFlag_kuroda','mjInter_hayato','mjInter_shizuka','mjInter_gen','mjInter_ren','mjInter_kuroda'].forEach(k=>{try{localStorage.removeItem(k)}catch(e){}});
+    ['mjStory','mjStage','mjTitle','mjRoute','mjFlag_hayato','mjFlag_shizuka','mjFlag_gen','mjFlag_ren','mjFlag_kuroda','mjInter_hayato','mjInter_shizuka','mjInter_gen','mjInter_ren','mjInter_kuroda','mjInter2_hayato','mjInter2_shizuka','mjInter2_gen','mjInter2_ren','mjInter2_kuroda'].forEach(k=>{try{localStorage.removeItem(k)}catch(e){}});
     ov.style.display='none';storyStart(0);
   };
 }
 function resetStory(){
   if(!confirm('物語の進行をすべて消して、最初から始めますか？（道場の記録は残ります）'))return;
   HERO=blankHero();saveHero();
-  ['mjStory','mjStage','mjTitle','mjRoute','mjFlag_hayato','mjFlag_shizuka','mjFlag_gen','mjFlag_ren','mjFlag_kuroda','mjEnd_true','mjEnd_top','mjEnd_neo','mjEnd_close','mjInter_hayato','mjInter_shizuka','mjInter_gen','mjInter_ren','mjInter_kuroda'].forEach(k=>{try{localStorage.removeItem(k)}catch(e){}});
+  ['mjStory','mjStage','mjTitle','mjRoute','mjFlag_hayato','mjFlag_shizuka','mjFlag_gen','mjFlag_ren','mjFlag_kuroda','mjEnd_true','mjEnd_top','mjEnd_neo','mjEnd_close','mjInter_hayato','mjInter_shizuka','mjInter_gen','mjInter_ren','mjInter_kuroda','mjInter2_hayato','mjInter2_shizuka','mjInter2_gen','mjInter2_ren','mjInter2_kuroda'].forEach(k=>{try{localStorage.removeItem(k)}catch(e){}});
   showStory();
 }
 
@@ -2244,6 +2247,32 @@ Object.assign(ST.kuroda,{after:[N('クロダは契約書を鞄にしまい、初
   {who:'kuroda',t:'一つだけ。この店の打ち方、本部の教材に使わせてください。効率では教えられないものがある。'},
   {who:'master',t:'好きにしろ。ただし、監修料は取る。'},
   N('二人が笑うのを、初めて見た。')]});
+/* 二度目に突破した時の幕間 */
+Object.assign(ST.hayato,{after2:[N('二度目の夜。ハヤトは牌を積む手を止めた。'),
+  {who:'hayato',t:'……{n}。お前さ、なんでまた俺と打った？'},
+  {who:'hayato',t:'俺なら、金の匂いがしないとこには来ねえ。……昔の話だ。',if:isO('gambler')},
+  {who:'hayato',t:'じいさんの店の常連と打ちたかった、ってか。……悪くねえな。',if:isO('student')},
+  {who:'hayato',t:'本部の人間と打つのは正直まだ慣れねえ。でもお前は別だ。',if:isO('clerk')},
+  {who:'hayato',pose:'point',t:'ま、いいや。次は俺が勝つ。それだけだ。'}]});
+Object.assign(ST.shizuka,{after2:[N('シズカは奥の帽子を手に取り、埃を払った。'),
+  {who:'shizuka',t:'ユウジの帽子。捨てられなくて。'},
+  {who:'shizuka',t:'あなたのおじいさま、この帽子を褒めてくれたことがあるの。',if:isO('student')},
+  {who:'shizuka',t:'借金は返せるわ。振り込まなければ。……冗談よ。',if:isO('gambler')},
+  {who:'shizuka',t:'レンから聞いた。本部は、この店の「守り」を数字にできないんですって。',if:isO('clerk')},
+  {who:'shizuka',t:'次に来るときは、お茶をもう一杯淹れるわ。'}]});
+Object.assign(ST.gen,{after2:[N('ゲンは珍しく、酒を飲んでいなかった。'),
+  {who:'gen',t:'……マスターの薬、増えてた。'},
+  {who:'gen',t:'お前がいるうちに、俺は決めなきゃならねえ。継ぐか、逃げるか。'},
+  {who:'gen',pose:'point',t:'{n}。お前がここに残るなら、俺も残る。それだけ言っとく。'}]});
+Object.assign(ST.ren,{after2:[N('レンは店の帳簿をつけていた。'),
+  {who:'ren',t:'時給は本当に安かった。でも、悪くない。'},
+  {who:'ren',t:'{n}。本部から、あなた宛の封筒が届いてる。……開けなくていいわ。',if:isO('clerk')},
+  {who:'ren',t:'この店の帳簿、赤字じゃないの。常連が支えてる。',if:H=>H.origin!=='clerk'},
+  {who:'ren',t:'次はもっと基本通りに打つ。……あなたに勝つために。'}]});
+Object.assign(ST.kuroda,{after2:[N('クロダは私服で来た。似合っていなかった。'),
+  {who:'kuroda',t:'……笑わないでください。'},
+  {who:'kuroda',t:'教材の第二章は「押し引き」にしました。あなたの打ち方を参考に。'},
+  {who:'kuroda',t:'数字の外に出るのは、まだ怖い。でも、来てしまった。'}]});
 ST.cross.lines=[N('腕試しから数日。マスターは、また少し痩せた。')].concat(ST.cross.lines);
 /* 結末の後日談 */
 const EPILOGUE={
@@ -2351,8 +2380,10 @@ function showStageResult(){
     if(gotFlag)lines=lines.concat(hadFlag?[]:st.secret);
     else if(special&&st.condOnly)lines=lines.concat(st.condOnly);
     const done=()=>{hide();if(outcome!=='lose')confetti();showStory();};
-    const inter=outcome!=='lose'&&st.after&&lsGet('mjInter_'+st.id)!=='1';
-    say(lines,()=>{if(!inter)return done();lsSet('mjInter_'+st.id,'1');say(st.after,done);});};
+    const first=lsGet('mjInter_'+st.id)!=='1',second=!first&&lsGet('mjInter2_'+st.id)!=='1';
+    const inter=outcome!=='lose'&&((first&&st.after)||(second&&st.after2));
+    say(lines,()=>{if(!inter)return done();
+      if(first){lsSet('mjInter_'+st.id,'1');say(st.after,done);}else{lsSet('mjInter2_'+st.id,'1');say(st.after2,done);}});};
 }
 function showEnding(outcome,rows,idx){
   const ov=document.getElementById('overlay');
@@ -2435,10 +2466,43 @@ function storyStart(ch){
   const resume=(tut.mode==='info')?()=>infoRun():()=>tutIntroStep();
   say(intro,()=>{tut.story=ch;setSpeaker(c.who);resume();});
 }
+/* 章の締めに1局だけ実戦（第三〜七章）。あがれなくても先に進める */
+const PRACTICE={
+ 2:{ask:'覚えたか？ じゃあ試しに一局、俺たちと打ってみろよ。あがれなくても気にすんな。',win:[{who:'hayato',pose:'point',t:'おっ、やるじゃん！ 鳴きも見えてたぜ。'}],lose:[{who:'hayato',t:'ま、最初はそんなもんだ。俺の速さ、少しは見えたろ？'}]},
+ 3:{ask:'……一局、打ってみる？ 私がリーチしたら、現物を思い出して。',win:[{who:'shizuka',t:'……きれいな一局だった。'}],lose:[{who:'shizuka',t:'振り込まなかった？ なら、それでいいの。'}]},
+ 4:{ask:'講釈はここまでだ。一局打て。テンパイしたらリーチ、忘れんなよ。',win:[{who:'gen',pose:'point',t:'いいリーチだった。それでいい。'}],lose:[{who:'gen',t:'あがれなくても、押した一局には意味がある。次だ。'}]},
+ 5:{ask:'効率は、頭で分かっただけでは身につかない。一局、打ってみるかい？',win:[{who:'master',t:'切り順が良かった。それが効率だ。'}],lose:[{who:'master',t:'あがれなくていい。繋がりを残す癖がつけば、次は違う。'}]},
+ 6:{ask:'最後に一局。相手がリーチしたら、押すか降りるか、自分で決めてごらん。',win:[{who:'master',pose:'point',t:'いい判断だった。攻めと守りの線が見えている。'}],lose:[{who:'master',t:'降りる時に降りられたか？ それができれば十分だ。'}]}
+};
+function practiceStart(ch){
+  document.getElementById('coach').hidden=true;setSpeaker(null);
+  G=null;newHand(false);castSeats();G.practice=ch;G.players.forEach(p=>p.level=1);
+  setTimeout(()=>toast('練習の一局。あがれなくても先に進めます'),700);
+  render();
+}
+function practiceEnd(ch,won){
+  const P=PRACTICE[ch]||{};
+  tut={story:ch,lesson:'',mode:'',phase:'',i:0};
+  document.getElementById('coach').hidden=false;
+  say((won?P.win:P.lose)||[],()=>storyOutro(ch));
+}
 function storyChapterDone(id){
   const ch=tut.story;const c=STORY[ch];
   if(storyProgress()<ch+1)lsSet('mjStory',String(ch+1));
   if(id)lsSet('mjLesson_'+id,'1');
+  const P=PRACTICE[ch];
+  if(P){
+    document.getElementById('coach').hidden=false;
+    choose(c.who,'point',P.ask,[
+      {label:'1局打ってみる',sub:'常連3人と実戦。あがれなくても先に進める',fn:()=>practiceStart(ch)},
+      {label:'今日はここまで',sub:'実戦は飛ばして先へ',fn:()=>storyOutro(ch)}
+    ]);
+    return;
+  }
+  storyOutro(ch);
+}
+function storyOutro(ch){
+  const c=STORY[ch];
   const finish=()=>{tut.story=null;setSpeaker(null);document.getElementById('coach').hidden=true;
     confetti();
     if(!c.final){showChapterClear(ch);return;}
