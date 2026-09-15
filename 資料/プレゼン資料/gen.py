@@ -1,10 +1,9 @@
 # 麻雀 4人打ち 社内説明資料（9枚）の生成。アプリ index.html の配色・書体をそのまま使う
 # Python 3.9 のため f-string を入れ子にしない（部品を先に変数へ）
-# 使い方: python3 tools/slides/gen.py  → このフォルダに Main.dc.html / S02〜.dc.html / canvas.json / deck.html、docs/ に PDF
-#         そのあと docs/manager/generate_docs_json.sh を実行する
+# 使い方: python3 資料/プレゼン資料/gen.py  → このフォルダに Main.dc.html / S02〜.dc.html / canvas.json / deck.html / PDF
 import json, os
 OUT = os.path.dirname(os.path.abspath(__file__))
-PDF_NAME = '20260915_DOC_0001_ALL_社内説明資料（麻雀4人打ち）.pdf'  # docs/ の命名規則（YYYYMMDD_種別_連番_場所_内容）
+PDF_NAME = '麻雀_社内説明.pdf'
 APP, DATE, N = '麻雀 4人打ち', '2026-09-15', 9
 
 BG, BG1, BG2, FELT = '#111713', '#18211c', '#212d26', '#234535'
@@ -244,10 +243,10 @@ deck = '<!doctype html><html><head><meta charset="utf-8"><title>%s 社内説明<
 open(os.path.join(OUT, 'deck.html'), 'w', encoding='utf-8').write(deck)
 print('written', len(files))
 
-# PDF（docs/ に書き出す。Chrome が無い環境ではスキップ）
+# PDF（このフォルダに書き出す。Chrome が無い環境ではスキップ）
 import subprocess
 CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
-PDF = os.path.normpath(os.path.join(OUT, '..', '..', 'docs', PDF_NAME))
+PDF = os.path.join(OUT, PDF_NAME)
 if os.path.exists(CHROME):
     subprocess.run([CHROME, '--headless=new', '--disable-gpu', '--no-pdf-header-footer', '--virtual-time-budget=8000',
                     '--print-to-pdf=' + PDF, 'file://' + os.path.join(OUT, 'deck.html')],
