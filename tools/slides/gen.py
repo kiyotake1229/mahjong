@@ -1,9 +1,11 @@
 # 麻雀 4人打ち 社内説明資料（9枚）の生成。アプリ index.html の配色・書体をそのまま使う
 # Python 3.9 のため f-string を入れ子にしない（部品を先に変数へ）
-# 使い方: python3 gen.py  → Main.dc.html / S02〜S09.dc.html / canvas.json / deck.html（PDF用）
+# 使い方: python3 tools/slides/gen.py  → このフォルダに Main.dc.html / S02〜.dc.html / canvas.json / deck.html、docs/ に PDF
+#         そのあと docs/manager/generate_docs_json.sh を実行する
 import json, os
 OUT = os.path.dirname(os.path.abspath(__file__))
-APP, DATE, N = '麻雀 4人打ち', '2026-09-14', 9
+PDF_NAME = '20260915_DOC_0001_ALL_社内説明資料（麻雀4人打ち）.pdf'  # docs/ の命名規則（YYYYMMDD_種別_連番_場所_内容）
+APP, DATE, N = '麻雀 4人打ち', '2026-09-15', 9
 
 BG, BG1, BG2, FELT = '#111713', '#18211c', '#212d26', '#234535'
 GOLD, GOLDH, GOLDD, TEAL, SHU = '#c9a961', '#e3cd97', '#8a7440', '#4fbfa8', '#b8524a'
@@ -107,7 +109,7 @@ cover_body = ('<div style="flex:1;padding:40px 52px;display:flex;flex-direction:
               '<div class="fd" style="font-size:92px;font-weight:700;line-height:1.05;letter-spacing:.02em;color:%s">麻雀 4人打ち</div>'
               '<div class="fd" style="font-size:26px;font-weight:700;line-height:1.5;color:%s">「雀荘 翠」で覚える、初心者から遊べる本格麻雀</div>'
               '<div class="fm" style="display:flex;gap:28px;font-size:14px;color:%s;border-top:1px solid %s;padding-top:16px;margin-top:6px">'
-              '<span>SINGLE HTML · OFFLINE</span><span>PWA 対応</span><span>kiyotake1229.github.io/mahjong</span></div></div>') % (GOLD, DATE, GOLDH, INK, MUTED, LINE2)
+              '<span>SINGLE HTML · ひとり用はオフライン</span><span>PWA 対応</span><span>kiyotake1229.github.io/mahjong</span></div></div>') % (GOLD, DATE, GOLDH, INK, MUTED, LINE2)
 cover = ('<div style="display:flex;align-items:center;justify-content:center;flex:1">'
          '<div style="display:flex;width:1060px;background:%s;border:1px solid %s;border-radius:14px;box-shadow:0 30px 70px rgba(0,0,0,.6);overflow:hidden">'
          '%s%s</div></div>') % (FELT, LINE2, stack, cover_body)
@@ -127,13 +129,13 @@ files['S02.dc.html'] = slide(2, body, '01 · ねらい', '麻雀は「覚える�
 doors = [
  ('book', '道場', '8レッスン。牌のきほん／初あがり／リーチとロン／鳴きと守り／役とドラ／上級（フリテン・点数・七対子）。クイズとクリア称号つき。', '初めての人はここから'),
  ('story', 'ストーリー「雀荘 翠」', '店主と常連に教わりながら、会話で学び、対局で試す。全6章。出自で難易度が変わり、結末は4つ。', '遊びながら覚える本体'),
- ('table', '自由対局', 'CPU3人と半荘。相手には性格（鳴き派・守り派・リーチ派）があり、物語で出会った常連が卓に着いて掛け合う。', '覚えたら腕試し'),
+ ('table', '自由対局・みんなで対戦', 'CPU3人と半荘（強さは4段階）。「みんなで対戦」なら1台を回して、またはオンラインで友だちと最大4人。空いた席にはCPUが入る。', '覚えたら腕試し'),
 ]
 items = [felt(head_row(ICON[i], t, 26) + p(d, 16, INK, 1.8) + '<div style="margin-top:auto">%s</div>' % tag(k), 'min-height:300px') for i, t, d, k in doors]
 body = grid(3, items, 22) + ('<div style="display:flex;align-items:center;gap:16px;background:%s;color:#1b1a16;border-radius:10px;padding:18px 26px">'
                              '<span class="fd" style="font-size:24px;font-weight:700">どこから入っても、同じ卓に戻る。</span>'
                              '<span style="font-size:17px;color:#5e5c54">初心者モード・おたすけモード・画面の見方ツアーが3つの入口すべてを支える。</span></div>') % IVORY
-files['S03.dc.html'] = slide(3, body, '02 · 全体像', '道場・物語・自由対局、3つの入口')
+files['S03.dc.html'] = slide(3, body, '02 · 全体像', '道場・物語・自由対局／対戦、3つの入口')
 
 # ---------- 04 物語 ----------
 chapters = [
@@ -182,7 +184,7 @@ rules = [
  'ポン・チー・カン（暗槓・加槓・大明槓）、槍槓、ダブロン、赤ドラ（ON/OFF）',
  '符計算と点数、本場・供託、フリテン（鳴かれた捨て牌も判定）',
  '対応役 30種以上。国士無双・四暗刻・大三元・字一色・清老頭まで',
- 'CPUに性格3種（鳴き派・守り派・リーチ派）、対局速度3段階',
+ 'CPUに性格3種と強さ4段階（やさしい〜鬼）、対局速度3段階',
  '物語のボスだけ特別なAI。人間の待ちを読んで振り込まない、配牌を積み込む（千里眼で封じる）',
 ]
 right = '<div style="display:flex;flex-direction:column;gap:10px">' + ''.join(check_line(r, 15.5) for r in rules) + '</div>'
@@ -197,17 +199,17 @@ fx = [
 ]
 items = [paper(head_row(ICON[i], t, 28, '#1b1a16', GOLDD) + p(d, 16.5, '#3b3a34', 1.85), 'min-height:250px') for i, t, d in fx]
 body = grid(3, items, 20) + ('<div style="display:flex;gap:24px;align-items:center">'
-    '<div style="flex:1;font-size:18px;color:%s;line-height:1.7">これらすべてが <b style="color:%s">1つのHTML（約270KB）</b> に入っている。画像・音源ファイルは0、通信も0。</div>'
+    '<div style="flex:1;font-size:18px;color:%s;line-height:1.7">これらすべてが <b style="color:%s">1つのHTML（約380KB）</b> に入っている。画像・音源ファイルは0。ひとりで遊ぶ間は通信も0。</div>'
     '<div style="font-size:14px;color:%s;line-height:1.7;max-width:420px;border-left:1px solid %s;padding-left:20px">背景・立ち絵・牌はSVGとCSSで描画。差し替えも追加もテキストの編集だけで済む。</div></div>') % (MUTED, INK, MUTED, LINE2)
 files['S07.dc.html'] = slide(7, body, '06 · 演出と音', '手応えは、音と動きで作る')
 
 # ---------- 08 現状 ----------
-done = ['Web版 完成・公開中（GitHub Pages）', 'PWA対応。ホーム画面に追加すればアプリとして起動、オフラインで動く', '通信なし。進捗・設定は端末内（localStorage）のみ', '道場8レッスン、物語6章、自由対局、翠ノート16ページ', '初心者向け：ツアー・おたすけモード・いまの手を見る・ルールブック', 'スマホ幅（375px）で14枚の手牌が収まるよう調整済み', 'プレイテストで見つかった点数・フリテン・符の不具合を修正済み']
+done = ['Web版 完成・公開中（GitHub Pages）', 'PWA対応。ホーム画面に追加すればアプリとして起動、オフラインで動く', '進捗・設定は端末内（localStorage）のみ。ひとり用は通信なし', 'みんなで対戦：1台で交代（2〜4人）／オンライン（部屋コードで最大4人。端末どうしで直接通信、部屋主が抜けても続行）', '道場8レッスン、物語6章、自由対局、翠ノート16ページ', '初心者向け：ツアー・おたすけモード・いまの手を見る・ルールブック', 'スマホ幅（375px）で14枚の手牌が収まるよう調整済み', 'プレイテストで見つかった点数・フリテン・符の不具合を修正済み']
 left = '<div style="display:flex;flex-direction:column;gap:9px">' + ''.join(check_line(d) for d in done) + '</div>'
 right = paper('<div class="fm" style="font-size:13px;color:#5e5c54">いま触れる</div>'
               '<div class="fd" style="font-size:22px;font-weight:700;line-height:1.3">kiyotake1229.github.io/mahjong/</div>'
               '<div style="font-size:15px;line-height:1.8;color:#3b3a34">iPhone の Safari で開き、共有メニューから「ホーム画面に追加」。はじめての人は道場かストーリーの序章から。</div>'
-              '<div class="fm" style="display:flex;flex-wrap:wrap;gap:8px;border-top:1px dashed #cfc7b3;padding-top:14px;font-size:13px;color:#5e5c54"><span>単一 HTML</span><span>·</span><span>通信なし</span><span>·</span><span>端末内保存</span><span>·</span><span>約 270KB</span></div>', 'min-height:300px;justify-content:center')
+              '<div class="fm" style="display:flex;flex-wrap:wrap;gap:8px;border-top:1px dashed #cfc7b3;padding-top:14px;font-size:13px;color:#5e5c54"><span>単一 HTML</span><span>·</span><span>ひとり用は通信なし</span><span>·</span><span>端末内保存</span><span>·</span><span>約 380KB</span></div>', 'min-height:300px;justify-content:center')
 body = '<div style="display:grid;grid-template-columns:minmax(0,1fr) 440px;gap:40px;flex:1;align-content:start">%s%s</div>' % (left, right)
 files['S08.dc.html'] = slide(8, body, '07 · 現状', 'Web版は完成。いま触れる')
 
@@ -215,10 +217,10 @@ files['S08.dc.html'] = slide(8, body, '07 · 現状', 'Web版は完成。いま�
 road = [
  ('1', 'iOS 化', 'Capacitor で包む。コツコツの ios-app を雛形にすれば構築は半日。触覚フィードバックを追加', '半日'),
  ('2', '実機確認', '対局の速度、音、ホーム画面からの起動、データの永続化。スマホ幅での表示', '1〜2日'),
- ('3', '申請', '年齢制限 4+、カテゴリ「ゲーム／カード」、「データを収集しません」、スクリーンショット3サイズ。申請文面はコツコツと同じ形で下書き', '—'),
+ ('3', '申請', '年齢制限 4+、カテゴリ「ゲーム／カード」、プライバシー欄（オンライン対戦で仲介サーバーと相手にIPアドレスが渡る点を踏まえて選ぶ）、スクリーンショット3サイズ。申請文面はコツコツと同じ形で下書き', '—'),
 ]
 items = [card('<div class="fd" style="font-size:44px;font-weight:700;line-height:1;color:%s">%s</div><div class="fd" style="font-size:22px;font-weight:700">%s</div>%s<div class="fm" style="font-size:13px;color:%s;border-top:1px solid %s;padding-top:10px">目安 %s</div>' % (GOLD, n, t, p(d, 15, MUTED, 1.75).replace('<p style="', '<p style="flex:1;'), MUTED, LINE, w), 'min-height:270px') for n, t, d, w in road]
-cost = paper('<div class="fm" style="font-size:12px;color:#5e5c54">費用</div><div style="display:flex;align-items:baseline;gap:10px"><span class="fd" style="font-size:36px;font-weight:700">¥12,800</span><span style="font-size:15px;color:#5e5c54">/ 年 · Apple Developer Program のみ</span></div><div style="font-size:14px;color:#3b3a34">サーバー・外部サービスは使っていないので、他の維持費は0</div>', 'flex:1;padding:18px 24px;gap:6px')
+cost = paper('<div class="fm" style="font-size:12px;color:#5e5c54">費用</div><div style="display:flex;align-items:baseline;gap:10px"><span class="fd" style="font-size:36px;font-weight:700">¥12,800</span><span style="font-size:15px;color:#5e5c54">/ 年 · Apple Developer Program のみ</span></div><div style="font-size:14px;color:#3b3a34">自前のサーバーなし。他の維持費は0（中継サーバーを契約する時だけ別途）</div>', 'flex:1;padding:18px 24px;gap:6px')
 decide = felt('<div class="fm" style="font-size:12px;color:%s">今日決めたいこと</div><div style="font-size:18px;font-weight:700;line-height:1.6">コツコツの次に、麻雀を iOS 化するか。PWA対応済みで、いちばん早く申請に進められる。</div>' % GOLD, 'flex:1;padding:18px 24px;gap:6px;justify-content:center')
 body = grid(3, items) + '<div style="display:flex;gap:20px">%s%s</div>' % (cost, decide)
 files['S09.dc.html'] = slide(9, body, '08 · 次のステップ', 'iOS 化は半日。今日決めたいこと')
@@ -241,3 +243,15 @@ pages = ''.join('<div style="width:1280px;height:720px;page-break-after:always;o
 deck = '<!doctype html><html><head><meta charset="utf-8"><title>%s 社内説明</title>%s<style>@page{size:1280px 720px;margin:0}html,body{margin:0}</style></head><body>%s</body></html>' % (APP, helmet, pages)
 open(os.path.join(OUT, 'deck.html'), 'w', encoding='utf-8').write(deck)
 print('written', len(files))
+
+# PDF（docs/ に書き出す。Chrome が無い環境ではスキップ）
+import subprocess
+CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+PDF = os.path.normpath(os.path.join(OUT, '..', '..', 'docs', PDF_NAME))
+if os.path.exists(CHROME):
+    subprocess.run([CHROME, '--headless=new', '--disable-gpu', '--no-pdf-header-footer', '--virtual-time-budget=8000',
+                    '--print-to-pdf=' + PDF, 'file://' + os.path.join(OUT, 'deck.html')],
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+    print('pdf', PDF)
+else:
+    print('Chrome が見つからないため PDF は作っていません')
