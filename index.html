@@ -102,6 +102,23 @@
   .sb.sb2::before{top:-5px;left:50%;margin-left:-4px}
   .sb.sb1::before{right:-5px;top:50%;margin-top:-4px;transform:rotate(135deg)}
   .sb.sb3::before{left:-5px;top:50%;margin-top:-4px;transform:rotate(-45deg)}
+  .sb.sb1.below::before{right:16px;top:-5px;margin-top:0;transform:rotate(45deg)}
+  .sb.sb3.below::before{left:16px;top:-5px;margin-top:0;transform:rotate(45deg)}
+  .sb.sb0::before{left:-5px;top:50%;margin-top:-4px;transform:rotate(-45deg)}
+  .sb.sb0.flip::before{left:auto;right:-5px;transform:rotate(135deg)}
+  .sb.sb0.up::before{top:auto;bottom:-5px;left:50%;margin:0 0 0 -4px;transform:rotate(225deg)}
+  #newGame.dim{opacity:.45}
+  .chat-panel{position:fixed;z-index:46;width:min(260px,calc(100vw - 24px));box-sizing:border-box;display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:8px;background:rgba(14,22,17,.97);border:1px solid var(--line2);border-radius:12px;box-shadow:0 10px 24px rgba(0,0,0,.5);animation:vnfade .16s ease-out}
+  .chat-panel[hidden]{display:none}
+  .chat-panel .hd{grid-column:1/3;font-size:11px;color:var(--muted);text-align:center;padding:2px 0 2px}
+  .chat-panel button,.mchat button{background:none;border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:0 8px;min-height:40px;font-size:13px;cursor:pointer;font-family:var(--f-ui);white-space:nowrap;transition:border-color .15s,color .15s,opacity .2s}
+  .chat-panel button:hover,.mchat button:hover{border-color:var(--gold);color:var(--gold-hi)}
+  .mchat{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;margin:10px 0 4px}
+  .mchat button{min-height:32px;font-size:12px;padding:0 9px}
+  body.chat-cool .chat-panel button,body.chat-cool .mchat button{opacity:.4;pointer-events:none}
+  #ovChat{position:absolute;left:0;right:0;bottom:calc(12px + env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;gap:4px;pointer-events:none;z-index:2}
+  #ovChat .sb{position:static;opacity:1;transform:none;animation:vnfade .18s ease-out}
+  #ovChat .sb::before{display:none}
   .tile.red{box-shadow:inset 0 1px 0 rgba(255,255,255,.9),inset 0 0 0 1px rgba(184,57,46,.25),0 2px 0 #b3ac99,0 3px 3px rgba(0,0,0,.4),0 7px 12px rgba(0,0,0,.3)}
   .tour-hl{outline:2px solid var(--gold-hi) !important;outline-offset:4px;box-shadow:0 0 0 6px rgba(201,169,97,.18),0 0 26px rgba(227,205,151,.55) !important;border-radius:8px;position:relative;z-index:6;animation:breathe 1.6s ease-in-out infinite}
   #coachMsg .tile{display:inline-flex;vertical-align:middle}
@@ -121,6 +138,9 @@
   .vs-row{display:flex;gap:8px;align-items:center;margin:6px 0;flex-wrap:wrap}
   .vs-row label{font-size:12px;color:var(--muted);min-width:64px}
   .vs-row input{flex:1;min-width:120px;background:rgba(0,0,0,.25);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:8px 10px;font-size:14px;font-family:var(--f-ui)}
+  details.ice{margin-top:8px;border-top:1px solid var(--line);padding-top:8px}
+  details.ice summary{cursor:pointer;font-size:12px;color:var(--gold-hi)}
+  details.ice textarea{width:100%;box-sizing:border-box;background:rgba(0,0,0,.25);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:8px;font-size:12px;font-family:ui-monospace,Menlo,monospace;margin:6px 0;resize:vertical}
   .room-code{font-family:ui-monospace,Menlo,monospace;font-size:34px;letter-spacing:.24em;color:var(--gold-hi);text-align:center;margin:6px 0}
   .lobby li{list-style:none;padding:6px 0;border-top:1px solid var(--line);font-size:13px;display:flex;justify-content:space-between}
   .lobby{padding:0;margin:8px 0}
@@ -516,7 +536,8 @@
   <div id="actions"></div>
 </div>
 
-<div id="overlay"><div id="modal"></div></div>
+<div id="overlay"><div id="modal"></div><div id="ovChat" aria-live="polite"></div></div>
+<div class="chat-panel" id="chatPanel" hidden></div>
 <div id="curtain" hidden><div class="cur-box">
   <div class="cur-sub">次は</div><div class="cur-name" id="curName"></div>
   <div class="cur-msg">この人に端末を渡してください。<br>ほかの人は画面を見ないように。</div>
@@ -842,6 +863,7 @@ const sfx={
   tsumo:()=>{beep(520,.18,'triangle',.18);setTimeout(()=>beep(780,.35,'triangle',.18),150);},
   sting:()=>{beep(440,.22,'triangle',.14);setTimeout(()=>beep(659.25,.42,'triangle',.14),120);},
   blip:()=>beep(1500,.025,'sine',.018),
+  chat:()=>beep(1175,.05,'sine',.05),
   select:()=>{beep(660,.07,'sine',.09);setTimeout(()=>beep(990,.12,'sine',.09),70);},
   whoosh:()=>{if(!SOUND_ON)return;try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();const n=AC.sampleRate*0.7|0;const b=AC.createBuffer(1,n,AC.sampleRate);const d=b.getChannelData(0);for(let i=0;i<n;i++){const k=i/n;d[i]=(Math.random()*2-1)*Math.sin(Math.PI*k)*Math.pow(1-k,1.5);}const src=AC.createBufferSource();src.buffer=b;const f=AC.createBiquadFilter();f.type='lowpass';f.frequency.setValueAtTime(400,AC.currentTime);f.frequency.exponentialRampToValueAtTime(3000,AC.currentTime+0.5);const g=AC.createGain();g.gain.value=.18;src.connect(f);f.connect(g);g.connect(AC.destination);src.start();}catch(e){}}
 };
@@ -1603,7 +1625,7 @@ function win(pid,fromPid,tsumo,winTile){
   const ev=evaluate(hand,p.melds,buildCtx(pid,true,winTile));
   if(!ev){if(ctlOf(pid)==='local'){toast('役がありません');renderActions([],true);}return;}
   G.over=true;const before=G.players.map(q=>q.score);
-  const r=applyWin(pid,pid,true,ev,true);
+  const r=applyWin(pid,pid,true,ev,true);netSnapNext([pid]);
   sfx.tsumo();render();showDeltas(before);
   if(pid===0){banterOne('heroTsumo',600);}else banterOne('win',400,pid,true);
   const show=()=>showResult(pid,pid,true,hand,winTile,ev,r.pay,r.gained,r.sticks);
@@ -1622,6 +1644,7 @@ function winMulti(winners,fromPid,tile,chankan){
     G.pendingRiichiDeclarer=-1;}
   G.over=true;
   list.forEach((w,k)=>{Object.assign(w,applyWin(w.pid,fromPid,false,w.ev,k===0));});
+  netSnapNext(list.map(w=>w.pid));
   sfx.ron();render();showDeltas(before);
   const heroWon=list.some(w=>isHuman(w.pid));
   if(heroWon)banterOne('lose',600,fromPid,true);
@@ -1639,7 +1662,7 @@ function ryuukyoku(){
   const tenpai=G.players.map(p=>shanten(p.hand,p.melds.length)===0);
   const tn=tenpai.filter(Boolean).length;
   if(tn>0&&tn<4){const get=3000/tn,give=3000/(4-tn);G.players.forEach((p,i)=>p.score+=tenpai[i]?get:-give);}
-  G.advance=!tenpai[G.dealer];G.keepHonba=true;
+  G.advance=!tenpai[G.dealer];G.keepHonba=true;netSnapNext(null,tenpai);
   render();showDeltas(before);banterOne('draw',300);showDraw(tenpai);
 }
 
@@ -1673,7 +1696,7 @@ function render(){
     if(i===recIdx)el.classList.add('rec');
     el.onclick=()=>humanDiscard(i);mh.appendChild(el);});
   const mm=document.getElementById('myMelds');mm.innerHTML='';me.melds.forEach(m=>mm.appendChild(meldEl(m)));
-  renderPeek();updateSkillbar();
+  renderPeek();updateSkillbar();updateChatBtn();
   if(beg&&!G.offering)guideForTurn();
   if(typeof netAfterRender==='function')netAfterRender();
 }
@@ -1879,7 +1902,9 @@ function showResult(pid,fromPid,tsumo,hand,winTile,ev,pay,gained,sticks,after,mu
     ${exStr}
     ${rank?`<div class="rank hidden">${rank}</div>`:''}
     ${G.tutorial?'<div class="sub" style="color:var(--gold);font-size:14px;margin:8px 0">レッスンクリア。この調子で進めよう。</div>':''}
+    ${chatRowHtml()}
     <button class="btn hidden" id="nextBtn">${G.tutorial?'つづける':(G.storyFinal||G.practice!=null?'つづける':'次の局へ')}</button>`;
+  wireChatRow(m);
   // 役が出るたびに小さく音
   const timers=[];
   ev.yaku.forEach((v,i)=>timers.push(setTimeout(()=>sfx.draw(),T0+i*150)));
@@ -1909,7 +1934,9 @@ function showDraw(tenpai){
   const ov=document.getElementById('overlay');ov.style.display='flex';const m=document.getElementById('modal');
   m.innerHTML=`<h2>流局</h2>
     <div class="yaku">${G.players.map((p,i)=>`${esc(p.name||POS[(i-VIEW+4)%4])} ${WINDS[p.seatWind]}${p.isDealer?'親':''}<span class="h">${tenpai[i]?'聴牌':'不聴'} ${p.score}</span>`).join('<br>')}</div>
+    ${chatRowHtml()}
     <button class="btn" id="nextBtn">${G.storyFinal||G.practice!=null?'つづける':'次の局へ'}</button>`;
+  wireChatRow(m);
   const wasFinal=G.storyFinal,meTen=tenpai[0],wasPrac=G.practice;
   document.getElementById('nextBtn').onclick=()=>{ov.style.display='none';if(wasFinal){storyFinalEnd(meTen);return;}if(wasPrac!=null){practiceEnd(wasPrac,meTen);return;}endCheck();};
 }
@@ -1931,7 +1958,7 @@ function showFinal(){
   document.getElementById('nextBtn').onclick=()=>{ov.style.display='none';G=null;newHand(false);};
 }
 
-document.getElementById('newGame').onclick=()=>{if(MP.active){mpMenu();return;}if(!G||G.tutorial){showChooser();return;}if(confirm('この局を配り直しますか？（点数・本場は局の開始時に戻ります）'))newHand(true,true);};
+document.getElementById('newGame').onclick=(e)=>{if(chatOn()){e.stopPropagation();chatPanelToggle();return;}if(MP.active){mpMenu();return;}if(!G||G.tutorial){showChooser();return;}if(confirm('この局を配り直しますか？（点数・本場は局の開始時に戻ります）'))newHand(true,true);};
 document.getElementById('begChk').onchange=()=>render();
 function updateSpeedBtn(){document.getElementById('speedBtn').textContent='速度 '+sp().label;}
 document.getElementById('speedBtn').onclick=()=>{
@@ -2129,11 +2156,17 @@ function showVersus(pre){
       ${n<4?`<div class="vs-row"><label>CPUの強さ</label><div class="seg" id="hotLv">${CPU_LEVELS.map(L=>`<button data-lv="${L.id}" class="${lv===L.id?'on':''}">${L.t}</button>`).join('')}</div></div>`:''}
       <div style="text-align:center;margin-top:8px"><button class="btn ${pre?'gray':''}" id="hotGo">はじめる</button></div></div>`;
     const netCard=`<div class="vs-card" id="netCard"><h3>オンラインで遊ぶ</h3>
-      <p>それぞれのスマホやPCから同じ部屋に入って打つ。部屋を作った人の端末がゲームを進める。足りない席にはCPUが入る。</p>
+      <p>それぞれのスマホやPCから同じ部屋に入って打つ。部屋を作った人の端末がゲームを進める（途中で抜けても、残った人の端末が引き継ぐ）。足りない席にはCPUが入る。対局中は上の「ひとこと」から定型文を送れる。</p>
       <div class="vs-row"><label>あなたの名前</label><input id="netName" maxlength="10" value="${esc(myName)}" placeholder="10文字まで"></div>
       <div style="text-align:center;margin:8px 0"><button class="btn" id="netHost">部屋を作る</button></div>
       <div class="vs-row"><label>部屋コード</label><input id="netCode" maxlength="6" value="${esc(codeV)}" placeholder="6文字" autocapitalize="off" autocomplete="off" style="text-transform:uppercase;letter-spacing:.2em"><button class="btn ${pre?'':'gray'}" id="netJoin">部屋に入る</button></div>
-      <p style="font-size:11px">インターネットを使います（接続の仲介に無料の公開サーバーを使い、対局の中身は端末どうしで直接やりとりします。仲介サーバーと相手の端末には、あなたの端末のIPアドレスなど接続に必要な情報が伝わります）。会社や学校のネットワーク、一部のモバイル回線ではつながらないことがあります。</p></div>`;
+      <p style="font-size:11px">インターネットを使います（接続の仲介に無料の公開サーバーを使い、対局の中身は端末どうしで直接やりとりします。仲介サーバーと相手の端末には、あなたの端末のIPアドレスなど接続に必要な情報が伝わります）。会社や学校のネットワーク、一部のモバイル回線ではつながらないことがあります。その時は下の「つながりにくい時」を開いてください。</p>
+      <details class="ice"${lsGet('mjIce')?' open':''}><summary>つながりにくい時（中継サーバーの設定）</summary>
+        <p style="font-size:11px">標準でも PeerJS の無料の公開中継を使いますが、混み合うと使えないことがあります。自分で契約した中継サーバー（TURN）を設定すると、直接つながらない回線でもより確実に対局できます。利用には中継サービスの登録が必要です。<br>・<b>Metered</b>（無料枠あり）：管理画面で発行される「認証情報を取得するURL」（〇〇.metered.live/api/v1/turn/credentials?apiKey=…）を貼る<br>・<b>そのほかの事業者</b>：取得した接続情報のJSON（urls・username・credential）を貼る。有効期限が切れたら貼り直し<br>部屋主が設定すると、ふつうの家庭回線やスマホ回線の参加者はつながりやすくなり、部屋主が交代した後も同じ中継を使います（参加者の端末にも中継の接続情報が渡り、使用量は部屋主の契約に数えられます。知っている人とだけ遊んでください）。<b>会社・学校・公共のWi-Fiの人がつながらない時は、その人の端末にも設定が必要</b>です（TLS・443番の中継を含めてください）。<br>設定すると、中継事業者にもIPアドレスと通信量が伝わります（対局の中身は暗号化されたまま）。ホーム画面から開くアプリとブラウザでは設定が別々です。</p>
+        <textarea id="iceIn" rows="3" placeholder='https://〇〇.metered.live/api/v1/turn/credentials?apiKey=… または [{"urls":["turns:…:443?transport=tcp"],"username":"…","credential":"…"}]'>${esc(lsGet('mjIce')||'')}</textarea>
+        <div class="seg"><button id="iceSave">保存</button><button id="iceTest">接続テスト</button><button id="iceClear">消す</button></div>
+        <div class="sub" id="iceResult" style="font-size:12px;line-height:1.7;text-align:left"></div>
+      </details></div>`;
     m.innerHTML=`<h2>みんなで対戦</h2>${pre?`<div class="sub" style="margin-bottom:6px">招待された部屋に入るには、名前を入れて「部屋に入る」</div>${netCard}${hotCard}`:hotCard+netCard}
     <div style="text-align:center"><button class="btn gray" id="vsBack">もどる</button></div>`;
     if(pre){const nc=document.getElementById('netCard');if(nc&&nc.scrollIntoView)nc.scrollIntoView({block:'start'});}
@@ -2146,6 +2179,14 @@ function showVersus(pre){
       const code=String(document.getElementById('netCode').value||'').toLowerCase().replace(/[^a-z0-9]/g,'');
       if(code.length!==6){toast('部屋コードは6文字です');return;}NET_LAST_CODE=code;joinRoom(code,nm);};
     document.getElementById('vsBack').onclick=()=>{ov.style.display='none';showStory();};
+    const iceIn=document.getElementById('iceIn'),iceRes=document.getElementById('iceResult');
+    const iceValidate=v=>{if(!v)return '';
+      if(/^https:\/\//i.test(v))return METERED_RE.test(v)?'':'URLは Metered の「認証情報を取得するURL」だけ使えます（〇〇.metered.live/api/v1/turn/credentials?apiKey=…）。ほかの事業者はJSONを貼ってください';
+      try{return normIce(JSON.parse(v)).length?'':'使える中継サーバーが見つかりませんでした（turn: または turns: で始まり、username と credential がある項目が必要です）';}catch(e){return 'JSONの形が正しくありません';}};
+    document.getElementById('iceSave').onclick=()=>{const v=iceIn.value.trim();const err=iceValidate(v);if(err){iceRes.textContent=err;return;}
+      ICE_CACHE=null;lsSet('mjIce',v);iceRes.textContent=v?'保存しました。「接続テスト」で確かめられます':'消しました';};
+    document.getElementById('iceClear').onclick=()=>{iceIn.value='';try{localStorage.removeItem('mjIce');}catch(e){}iceRes.textContent='消しました';};
+    document.getElementById('iceTest').onclick=()=>{const v=iceIn.value.trim();const err=iceValidate(v);if(err){iceRes.textContent=err;return;}if(v!==(lsGet('mjIce')||'')){ICE_CACHE=null;lsSet('mjIce',v);}iceTest(iceRes);};
   };
   const keep=()=>{m.querySelectorAll('input[data-ni]').forEach(i=>{saved[+i.dataset.ni]=cleanName(i.value);});lsSet('mjHotNames',JSON.stringify(saved));
     const ni=document.getElementById('netName');if(ni)lsSet('mjNetName',cleanName(ni.value));
@@ -2168,11 +2209,13 @@ function mpMenu(){
       <button class="btn blue" id="mpBack" style="min-width:220px">対戦にもどる</button>
       <button class="btn gray" id="mpRules" style="min-width:220px">ルールブック</button>
       <button class="btn gray" id="mpSound" style="min-width:220px">音楽・効果音：${SOUND_ON?'あり':'なし'}</button>
+      ${MODE==='host'||MODE==='guest'?`<button class="btn gray" id="mpChat" style="min-width:220px">ひとことチャット：${lsGet('mjChatOff')==='1'?'表示しない':'表示する'}</button>`:''}
       <button class="btn gray" id="mpQuit" style="min-width:220px">${MODE==='guest'?'部屋から抜ける':'対戦をやめる'}</button></div>
-    ${MODE==='host'?'<div class="sub" style="font-size:11px;margin-top:8px">やめると、参加している全員の対戦が終わります</div>':''}`;
+    ${MODE==='host'?`<div class="sub" style="font-size:11px;margin-top:8px">${NET.started&&!NET.final&&MIG_OK&&NET.conns.some(c=>c&&c.open)?'やめても、ほかの人は新しい部屋主のもとで対局を続けられます':'やめると、参加している全員の対戦が終わります'}</div>`:''}`;
   document.getElementById('mpBack').onclick=()=>{ov.style.display='none';};
   document.getElementById('mpRules').onclick=()=>showHelp(mpMenu);
   document.getElementById('mpSound').onclick=()=>{setSound(!SOUND_ON);mpMenu();};
+  {const mc=document.getElementById('mpChat');if(mc)mc.onclick=()=>{lsSet('mjChatOff',lsGet('mjChatOff')==='1'?'0':'1');updateChatBtn();mpMenu();};}
   document.getElementById('mpQuit').onclick=(e)=>{const b=e.currentTarget;
     if(!b.dataset.sure){b.dataset.sure='1';b.classList.remove('gray');b.classList.add('red');b.textContent=MODE==='guest'?'本当に抜ける（席はCPUが引き継ぐ）':'本当にやめる';return;}
     mpLeave();showStory();};
@@ -2180,25 +2223,33 @@ function mpMenu(){
 function mpFinal(){
   const ov=document.getElementById('overlay');ov.style.display='flex';const m=document.getElementById('modal');
   const rank=G.players.map((p,i)=>({i,name:p.name||POS[i],score:p.score})).sort((a,b)=>b.score-a.score);
-  if(MODE==='host')netSendAll({t:'final'},true);
+  if(MODE==='host'){NET.final=true;netSendAll({t:'final',scores:G.players.map(p=>p.score)},true);}
   m.innerHTML=`<h2>終局</h2>
     <div class="yaku">${rank.map((r,k)=>`${k+1}位 ${esc(r.name)}${r.i===VIEW&&MODE!=='hot'?'（あなた）':''}<span class="h">${r.score}</span>`).join('<br>')}</div>
     ${MODE==='guest'?'<div class="sub">部屋主が次のゲームを始めるのを待っています</div>':''}
+    ${chatRowHtml()}
     <div style="display:flex;gap:8px;justify-content:center;margin-top:10px">
       ${MODE==='guest'?'':'<button class="btn" id="mpAgain">同じメンバーでもう一度</button>'}
       <button class="btn gray" id="mpEnd">${MODE==='guest'?'部屋から抜ける':'やめる'}</button></div>`;
+  wireChatRow(m);
   if(rank[0].i===VIEW||MODE==='hot')confetti();
   const ag=document.getElementById('mpAgain');if(ag)ag.onclick=()=>{ov.style.display='none';G=null;newHand(false);};
   document.getElementById('mpEnd').onclick=()=>{mpLeave();showStory();};
 }
 function mpLeave(){
-  const wasMatch=MP.active||MODE==='hot';
-  if(MODE==='host')netSendAll({t:'bye'});
-  if(MODE==='guest'&&NET.host&&NET.host.open){try{NET.host.send({t:'leave'});}catch(e){}}
-  netShutdown();mpResetGlobals();
+  if(NET_MIG)migDispose(NET_MIG);NET_MIG=null;
+  const wasMatch=MP.active||MODE==='hot';let delay=0;
+  if(MODE==='host'){
+    // 対局の途中なら、ほかの人に部屋主を引き継いでもらう。ロビー・終局の後なら部屋を閉じる
+    const hand=NET.started&&!NET.final&&MIG_OK&&NET.conns.some(c=>c&&c.open);
+    netSendAll({t:hand?'handover':'bye'});delay=400;clearRejoin(NET.code);}
+  if(MODE==='guest'&&NET.host&&NET.host.open){try{NET.host.send({t:'leave'});}catch(e){}delay=400;}
+  if(MODE==='guest'&&NET.inLobby&&!NET.started)clearRejoin(NET.code); // 待合室で抜けた合言葉は残さない（つなぎ直し中は消さない）
+  netShutdown(delay);mpResetGlobals();
   if(wasMatch){if(G){G.over=true;G.gen++;}G=null;renderActions([],false);clearTableDom();}
 }
 function mpResetGlobals(){
+  setTimeout(updateChatBtn,0);
   MODE=null;MP={active:false,seats:null,calls:true,me:0};VIEW=0;HIDE=false;HIDE_BY=-1;
   RED_ON=lsGet('mjRed')!=='0';
   document.getElementById('curtain').hidden=true;stopAskBar();
@@ -2206,27 +2257,171 @@ function mpResetGlobals(){
 function clearTableDom(){['seat0','seat1','seat2','seat3','center','myHand','myMelds'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML='';});
   const g=document.getElementById('guide');if(g)g.style.display='none';}
 
+/* ===== ひとことチャット（オンライン対戦中。定型文の番号だけを送る＝自由入力なし） ===== */
+const CHAT=['よろしく','ナイス！','おしい！','うわー','考え中…','ごめん','ありがとう','おつかれ']; // 並びは変えない（版の違う端末どうしで文がずれる）。足す時は末尾に
+const CHAT_COLOR=[['#c9a961','#e3cd97'],['#4fbfa8','#a8e3d6'],['#d0736a','#f1b9b2'],['#8d9dd6','#c9d1f2']]; // 席ごとの色（どの端末でも同じ人は同じ色）
+const CHAT_ICON='<svg class="ic" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3.5h12v8.5H7.5L3 15.5z"/><path d="M6 7h6M6 9.5h3.5"/></svg>';
+let CHAT_LAST=0,NEWGAME_HTML=null;
+const chatOk=k=>Number.isInteger(k)&&k>=0&&k<CHAT.length;
+function chatOn(){return (MODE==='host'||MODE==='guest')&&MP.active&&NET.started&&lsGet('mjChatOff')!=='1';}
+function chatReady(){return chatOn()&&!NET_MIG&&!NET.resuming&&(MODE==='host'||!!(NET.host&&NET.host.open));}
+function chatPanelClose(){const pn=document.getElementById('chatPanel');if(pn)pn.hidden=true;}
+function chatPanelToggle(){
+  const pn=document.getElementById('chatPanel'),b=document.getElementById('newGame');if(!pn||!b)return;
+  if(!pn.hidden){pn.hidden=true;return;}
+  pn.innerHTML='<div class="hd">ひとこと（定型文だけ送れます）</div>'+CHAT.map((t,k)=>`<button data-ck="${k}">${t}</button>`).join('');
+  pn.querySelectorAll('button[data-ck]').forEach(x=>x.onclick=e=>{e.stopPropagation();chatSend(+x.dataset.ck);});
+  pn.hidden=false;
+  const r=b.getBoundingClientRect(),w=pn.offsetWidth;
+  pn.style.top=Math.round(r.bottom+6)+'px';pn.style.left=Math.round(Math.max(12,Math.min(r.right-w,innerWidth-w-12)))+'px';
+}
+document.addEventListener('click',e=>{const pn=document.getElementById('chatPanel');if(pn&&!pn.hidden&&!e.target.closest('#chatPanel'))pn.hidden=true;});
+function chatRowHtml(){return chatOn()?`<div class="mchat" aria-label="ひとこと">${CHAT.map((t,k)=>`<button data-ck="${k}">${t}</button>`).join('')}</div>`:'';}
+function wireChatRow(root){root.querySelectorAll('.mchat button[data-ck]').forEach(x=>x.onclick=e=>{e.stopPropagation();chatSend(+x.dataset.ck);});}
+function chatSend(k){
+  if(!chatOk(k)||!chatOn())return;
+  if(!chatReady()){toast('いまは送れません（つなぎ直し中）',1500);return;}
+  const now=Date.now();if(now-CHAT_LAST<2000)return;CHAT_LAST=now;
+  document.body.classList.add('chat-cool');setTimeout(()=>{if(Date.now()-CHAT_LAST>=1900)document.body.classList.remove('chat-cool');},2000);
+  chatPanelClose();
+  if(MODE==='host')hostRelayChat(NET.me,k);
+  else{try{NET.host.send({t:'chat',k});}catch(e){}chatShow(NET.seat,k);}
+}
+/* 部屋主：席ごとに1.5秒に1回まで。送り主以外に配る（送り主は自分の画面にもう出している） */
+function hostRelayChat(seat,k){
+  const now=Date.now();if(now-NET.chatAt[seat]<1500)return;NET.chatAt[seat]=now;
+  NET.conns.forEach((c,i)=>{if(i!==seat&&c&&c.open){try{c.send({t:'chat',pid:seat,k});}catch(e){}}});
+  chatShow(seat,k);
+}
+function chatShow(pid,k){
+  if(!G||!chatOn()||!chatOk(k)||!G.players||!G.players[pid])return;
+  const ov=document.getElementById('overlay');
+  if(ov&&getComputedStyle(ov).display!=='none')ovChatShow(pid,CHAT[k]);else speakBubble(pid,CHAT[k],true);
+  if(pid!==VIEW)sfx.chat();
+}
+function ovChatShow(pid,text){
+  const box=document.getElementById('ovChat');if(!box)return;
+  const el=document.createElement('div');el.className='sb';el.textContent=(G.players[pid].name||'')+'：'+text;
+  el.style.borderColor=CHAT_COLOR[pid][0];el.style.color=CHAT_COLOR[pid][1];
+  box.appendChild(el);while(box.children.length>3)box.firstChild.remove();
+  setTimeout(()=>el.remove(),2600);
+}
+/* オンライン対戦中は、上の「新局」ボタンを「ひとこと」にする（オンラインでは新局はメニューと同じ動きだったため） */
+function updateChatBtn(){
+  const b=document.getElementById('newGame');if(!b)return;
+  if(NEWGAME_HTML==null)NEWGAME_HTML=b.innerHTML;
+  const on=chatOn();
+  if(b.dataset.chat!==(on?'1':'0')){b.dataset.chat=on?'1':'0';b.innerHTML=on?CHAT_ICON+'<span>ひとこと</span>':NEWGAME_HTML;if(on)b.setAttribute('aria-label','ひとことを送る');else b.removeAttribute('aria-label');}
+  b.classList.toggle('dim',on&&!chatReady());
+  if(!on)chatPanelClose();
+  const sp=document.getElementById('speedBtn');if(sp)sp.style.display=(MODE==='guest'&&MP.active)?'none':''; // 参加者の端末では速度は変わらない
+}
+
 /* ===== オンライン通信（PeerJS。部屋主の端末がゲームを進め、参加者は操作だけ送る） ===== */
 const PEER_URL='https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.5/peerjs.min.js';
 const PEER_SRI='sha512-XEKeWX+mI3Ov+tg2evDlVQFzVOIp4T8J3cNcCEPaEUGpxJV3eZaN8rHuvnFPvQpGJBHPmrozJDMpm2xcDvtmyQ==';
 const ROOM_PREFIX='suimj-room-';
-const NET_PROTO=1;
+/* 端末どうしをつなぐための情報。STUN は無料・登録不要（運営の違う2つ）。TURN（中継）は「つながりにくい時」の設定で貼る */
+const PEERJS_TURN={urls:['turn:eu-0.turn.peerjs.com:3478','turn:us-0.turn.peerjs.com:3478'],username:'peerjs',credential:'peerjsp'}; // PeerJS が標準で使う無料の公開中継
+const ICE_BASE=[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun.cloudflare.com:3478'},PEERJS_TURN];
+let ICE_NOTE='',ICE_CACHE=null;
+/* いろいろな形（配列 / {iceServers} / {ice_servers} / {v:{iceServers}} / url→urls）を、ブラウザが受け付ける TURN の一覧にそろえる */
+function normIce(j){
+  let a=Array.isArray(j)?j:(j&&Array.isArray(j.iceServers)?j.iceServers:(j&&Array.isArray(j.ice_servers)?j.ice_servers:(j&&j.v&&Array.isArray(j.v.iceServers)?j.v.iceServers:(j&&j.v&&j.v.iceServers&&typeof j.v.iceServers==='object'?[j.v.iceServers]:[]))));
+  const out=[],seen=new Set();
+  for(const x of a){if(!x||typeof x!=='object')continue;
+    let u=x.urls||x.url;u=(Array.isArray(u)?u:[u]).filter(v=>typeof v==='string'&&/^turns?:/i.test(v)&&!/:53(\?|$)/.test(v));
+    if(!u.length||typeof x.username!=='string'||typeof x.credential!=='string')continue;
+    u=u.filter(v=>!seen.has(v+'|'+x.username));u.forEach(v=>seen.add(v+'|'+x.username));if(!u.length)continue;
+    out.push({urls:u,username:x.username,credential:x.credential});}
+  if(out.length){try{new RTCPeerConnection({iceServers:out}).close();}catch(e){return [];}}
+  return out;
+}
+const METERED_RE=/^https:\/\/[a-z0-9-]+\.metered\.live\/api\/v1\/turn\/credentials\?(.*&)?apiKey=[^&]+/i;
+async function fetchTurn(url){
+  const ac=new AbortController();const to=setTimeout(()=>ac.abort(),6000);
+  try{const r=await fetch(url,{signal:ac.signal,cache:'no-store'});const j=await r.json().catch(()=>null);
+    if(!r.ok)throw new Error((j&&j.error)||('HTTP '+r.status));
+    if(!Array.isArray(j))throw new Error('形式が違います');return normIce(j);}
+  finally{clearTimeout(to);}
+}
+/* 返り値: {iceServers, turn, hasTurn}。URL 方式は10分キャッシュ。extraTurn は部屋主から受け取った中継 */
+async function iceConfig(extraTurn){
+  ICE_NOTE='';const raw=String(lsGet('mjIce')||'').trim();let turn=[];
+  if(raw){
+    if(/^https:\/\//i.test(raw)){
+      if(ICE_CACHE&&ICE_CACHE.key===raw&&Date.now()-ICE_CACHE.at<600000)turn=ICE_CACHE.turn.slice();
+      else{try{turn=await fetchTurn(raw);ICE_CACHE={key:raw,turn:turn.slice(),at:Date.now()};if(!turn.length)ICE_NOTE='中継サーバーの情報が空でした';}
+        catch(e){ICE_NOTE='中継サーバーの認証情報を取得できませんでした（'+String(e&&e.message||e).slice(0,60)+'）。直接接続だけで続けます';}}
+    }else{try{turn=normIce(JSON.parse(raw));if(!turn.length)ICE_NOTE='中継サーバーの設定が読めませんでした';}catch(e){ICE_NOTE='中継サーバーの設定が読めませんでした（JSONの形を確認してください）';}}
+  }
+  if(Array.isArray(extraTurn)&&extraTurn.length){const add=normIce(extraTurn);const keys=new Set(turn.map(x=>x.urls.join()+x.username));add.forEach(x=>{if(!keys.has(x.urls.join()+x.username))turn.push(x);});}
+  return {iceServers:ICE_BASE.concat(turn),turn,hasTurn:turn.length>0};
+}
+/* 候補の種類を調べる。policy='relay' で中継だけを試す */
+function iceProbe(iceServers,policy,ms){
+  return new Promise(res=>{let pc;const seen={host:0,srflx:0,prflx:0,relay:0},errs=[];
+    try{pc=new RTCPeerConnection({iceServers,iceTransportPolicy:policy||'all'});}catch(e){return res({seen,errs:['作成できません']});}
+    pc.createDataChannel('probe');
+    let done=false,t=null;const end=()=>{if(done)return;done=true;clearTimeout(t);try{pc.close();}catch(e){}res({seen,errs});};
+    t=setTimeout(end,ms||8000);
+    pc.onicecandidate=e=>{const c=e.candidate;if(!c||!c.candidate)return end();const m=/ typ (\w+)/.exec(c.candidate);const ty=c.type||(m&&m[1]);if(ty in seen)seen[ty]++;};
+    pc.onicegatheringstatechange=()=>{if(pc.iceGatheringState==='complete')end();};
+    pc.onicecandidateerror=e=>{if(e&&e.errorCode)errs.push(e.errorCode);};
+    pc.createOffer().then(o=>pc.setLocalDescription(o)).catch(end);
+  });
+}
+async function iceTest(outEl){
+  outEl.textContent='調べています…（最大30秒）';
+  const cfg=await iceConfig();const lines=[];
+  const base=await iceProbe(ICE_BASE,'all',6000);
+  lines.push((base.seen.srflx?'○':'×')+' 直接接続の準備'+(base.seen.srflx?'（ふつうの家庭回線ならこれでつながります）':'（この回線では直接つながりにくいかもしれません）'));
+  const pub=await iceProbe([PEERJS_TURN],'relay',8000);
+  lines.push((pub.seen.relay?'○':'×')+' 無料の公開中継（PeerJS）'+(pub.seen.relay?'':'（混み合っているか、この回線では使えません）'));
+  if(!cfg.hasTurn){lines.push('－ 自分で設定した中継サーバーはありません');if(ICE_NOTE)lines.push(esc(ICE_NOTE));outEl.innerHTML=lines.join('<br>');return;}
+  const pick=re=>cfg.turn.map(x=>({urls:x.urls.filter(u=>re.test(u)),username:x.username,credential:x.credential})).filter(x=>x.urls.length);
+  const kinds=[['UDP',pick(/^turn:(?!.*transport=tcp)/i)],['TCP',pick(/^turn:.*transport=tcp/i)],['TLS(443)',pick(/^turns:/i)]];
+  for(const [label,list] of kinds){
+    if(!list.length){lines.push('－ 中継 '+label+'：設定なし');continue;}
+    const r=await iceProbe(list,'relay',8000);
+    lines.push((r.seen.relay?'○':'×')+' 中継 '+label+(r.seen.relay?'':(r.errs.includes(401)?'（認証に失敗。期限切れかも）':'（届きませんでした）')));
+  }
+  lines.push('<span style="opacity:.75">会社・学校・公共のWi-Fiにいる人は、TLS(443)の中継が○になる設定を、その人の端末にもしてください</span>');
+  if(ICE_NOTE)lines.push(esc(ICE_NOTE));
+  outEl.innerHTML=lines.join('<br>');
+}
+const NET_PROTO=2;
 let NET=netBlank();
 let NET_TRY=0;          // 部屋を作る／入る試行の世代。やめたら古い続きを捨てる
 let NET_LAST_CODE='';
 const BROKER_SOFT=['network','disconnected'];   // 仲介サーバーだけが切れた（端末どうしの接続は生きている）
-function netBlank(){return {peer:null,conns:[null,null,null,null],host:null,code:'',seats:null,started:false,askId:0,pending:null,ask:null,syncT:null,timerT:null,seat:0,lv:'normal',closing:false,hb:null,seen:[0,0,0,0],hostSeen:0,tokens:[null,null,null,null],srvOpen:false};}
+function netBlank(){return {peer:null,conns:[null,null,null,null],host:null,code:'',seats:null,started:false,askId:0,pending:null,ask:null,syncT:null,timerT:null,seat:0,lv:'normal',closing:false,hb:null,seen:[0,0,0,0],hostSeen:0,tokens:[null,null,null,null],srvOpen:false,
+  gen:0,me:0,th:[null,null,null,null],snap:null,snapSeq:0,lastSnap:null,resuming:false,resumeT:null,migrating:false,final:false,
+  hostAway:false,seatAway:[false,false,false,false],lostAt:0,seekAt:0,seeking:false,moving:false,moveSent:false,lastData:[0,0,0,0],inLobby:false,chatAt:[0,0,0,0],iceAt:0,ownTurn:false};}
+const roomId=(code,gen)=>ROOM_PREFIX+code+(gen?'-'+gen:'');
+async function sha256hex(t){try{const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(t)));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');}catch(e){return null;}}
 function rejoinKey(code){return 'mjRejoin_'+code;}
+function saveRejoin(code,obj){const v=JSON.stringify(obj);lsSet(rejoinKey(code),v);try{sessionStorage.setItem(rejoinKey(code),v);}catch(e){}}
+function loadRejoin(code){let v=null;try{v=sessionStorage.getItem(rejoinKey(code));}catch(e){}if(!v)v=lsGet(rejoinKey(code));try{return JSON.parse(v||'null');}catch(e){return null;}}
 function newToken(){const r=new Uint32Array(2);crypto.getRandomValues(r);return r[0].toString(36)+r[1].toString(36);}
-/* 画面が裏に回っていた間は、戻った時点で猶予をやり直す（止まっていただけで切断扱いにしない） */
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState!=='visible')return;const now=Date.now();
-  if(MODE==='host')NET.seen=NET.seen.map((v,i)=>NET.conns[i]?now:v);else if(MODE==='guest'&&NET.hostSeen)NET.hostSeen=now;});
+/* 画面が裏に回った・戻ったことを相手に知らせる（裏にいる間は切断とみなすまでの猶予を90秒に延ばす） */
+document.addEventListener('visibilitychange',()=>{const vis=document.visibilityState==='visible',now=Date.now();
+  if(MODE==='host'){if(vis)NET.seen=NET.seen.map((v,i)=>NET.conns[i]?now:v);if(NET.started)netSendAll({t:vis?'back':'away'});
+    if(vis&&NET.started&&NET.lostAt&&netMissing()){NET.lostAt=now;NET.seekAt=0;setTimeout(hostSeek,2000);}} // 長く眠っていた後も探し直す
+  else if(MODE==='guest'){if(vis&&NET.hostSeen)NET.hostSeen=now;if(NET.started&&NET.host&&NET.host.open){try{NET.host.send({t:vis?'back':'away'});}catch(e){}}}});
 function netHeartbeat(){
   clearInterval(NET.hb);
   NET.hb=setInterval(()=>{
     const now=Date.now();
-    if(MODE==='host'){NET.conns.forEach((c,i)=>{if(!c)return;if(NET.seen[i]&&now-NET.seen[i]>45000){try{c.close();}catch(e){}hostOnClose(c);return;}if(c.open){try{c.send({t:'ping'});}catch(e){}}});}
-    else if(MODE==='guest'){if(NET.hostSeen&&now-NET.hostSeen>45000)guestOnClose();}
+    if(MODE==='host'&&NET.peer&&Date.now()-(NET.iceAt||0)>600000&&/^https:/i.test(lsGet('mjIce')||'')){ // 期限付きの中継情報を取り直す
+      NET.iceAt=Date.now();ICE_CACHE=null;const own=!!NET.ownTurn,net0=NET;
+      // 部屋を作った端末：自分の中継を配り直す。交代で部屋主になった端末：自分の接続にだけ使い、配るのは引き継いだ中継のまま
+      iceConfig([]).then(o=>{if(NET!==net0||MODE!=='host'||!NET.peer||!NET.peer.options||!NET.peer.options.config||!o.hasTurn)return; // 取れなかった時は今の設定のまま
+        let t=o.turn;if(!own){const ks=new Set(t.map(x=>x.urls.join()+x.username));t=t.concat(normIce(NET.turn||[]).filter(x=>!ks.has(x.urls.join()+x.username)));}
+        NET.peer.options.config.iceServers=ICE_BASE.concat(t);if(own)NET.turn=o.turn;}).catch(()=>{});}
+    if(MODE==='host'){NET.conns.forEach((c,i)=>{if(!c)return;if(NET.seen[i]&&now-NET.seen[i]>(NET.seatAway[i]?90000:45000)){try{c.close();}catch(e){}hostOnClose(c);return;}if(c.open){try{c.send({t:'ping'});}catch(e){}}});
+      if(NET.started&&NET.lostAt&&!NET.seeking&&now-NET.seekAt>20000)hostSeek();}
+    else if(MODE==='guest'){if(NET.hostSeen&&now-NET.hostSeen>(NET.hostAway?90000:45000))guestOnClose();}
   },5000);
 }
 function loadPeer(){
@@ -2235,12 +2430,13 @@ function loadPeer(){
     sc.onload=()=>window.Peer?res():rej(new Error('noPeer'));sc.onerror=()=>rej(new Error('load'));document.head.appendChild(sc);});
 }
 function genCode(){const A='abcdefghjkmnpqrstuvwxyz23456789';let c='';const r=new Uint32Array(6);(crypto.getRandomValues?crypto.getRandomValues(r):r.forEach((_,i)=>r[i]=Math.random()*1e9));for(let i=0;i<6;i++)c+=A[r[i]%A.length];return c;}
-function netShutdown(){
+function netShutdown(delay){
   NET_TRY++;
-  NET.closing=true;clearTimeout(NET.timerT);clearTimeout(NET.syncT);clearInterval(NET.hb);
-  try{NET.conns.forEach(c=>c&&c.close());}catch(e){}
-  try{NET.host&&NET.host.close();}catch(e){}
-  try{NET.peer&&NET.peer.destroy();}catch(e){}
+  const old=NET;
+  old.closing=true;clearTimeout(old.timerT);clearTimeout(old.syncT);clearInterval(old.hb);clearTimeout(old.resumeT);
+  // delay：直前に送った「抜けます」が届くよう、少し待ってから切る
+  const kill=()=>{try{old.conns.forEach(c=>c&&c.close());}catch(e){}try{old.host&&old.host.close();}catch(e){}try{old.peer&&old.peer.destroy();}catch(e){}};
+  if(delay)setTimeout(kill,delay);else kill();
   unwrapSfx();NET=netBlank();
 }
 function netStatus(html){const el=document.getElementById('netStatus');if(el)el.innerHTML=html;}
@@ -2260,7 +2456,7 @@ const PEER_ERR={
   'socket-error':'仲介サーバーとの通信が切れました。',
   'socket-closed':'仲介サーバーとの通信が切れました。',
   'ssl-unavailable':'安全な接続が使えませんでした。',
-  'webrtc':'端末どうしの直接接続に失敗しました。同じWi-Fiに入るか、別のネットワークで試してください。',
+  'webrtc':'端末どうしの直接接続に失敗しました。同じWi-Fiに入るか、別のネットワークで試してください。「つながりにくい時（中継サーバーの設定）」も使えます。',
   'peer-unavailable':'その部屋は見つかりませんでした。部屋コードを確かめてください。'
 };
 /* ---- 部屋主 ---- */
@@ -2275,7 +2471,11 @@ async function hostRoom(name){
   if(tok!==NET_TRY)return;
   NET=netBlank();MODE='host';NET.lv=lsGet('mjVsLv')||CPU_LV;
   NET.code=genCode();NET.seats=[{kind:'host',name},{kind:'open'},{kind:'open'},{kind:'open'}];
-  let peer;try{peer=new Peer(ROOM_PREFIX+NET.code,{debug:0});}catch(e){return netFail(PEER_ERR['browser-incompatible']);}
+  {const myTok=newToken();NET.tokens[0]=myTok;NET.myToken=myTok;saveRejoin(NET.code,{token:myTok,seat:0,gen:0,at:Date.now(),host:true});
+   const code0=NET.code;sha256hex(myTok).then(h=>{if(NET.code===code0)NET.th[0]=h;});}
+  const ice=await iceConfig();if(tok!==NET_TRY)return;
+  NET.hasTurn=ice.hasTurn;NET.iceNote=ICE_NOTE;NET.turn=ice.turn;NET.ownTurn=true;NET.iceAt=Date.now();
+  let peer;try{peer=new Peer(roomId(NET.code,0),{debug:0,config:{iceServers:ice.iceServers}});}catch(e){return netFail(PEER_ERR['browser-incompatible']);}
   NET.peer=peer;
   const openTo=setTimeout(()=>{if(NET.peer===peer&&!NET.srvOpen)netFail('仲介サーバーにつながりませんでした。インターネット接続を確認するか、時間をおいて試してください。');},20000);
   peer.on('open',()=>{if(NET.peer!==peer)return;clearTimeout(openTo);
@@ -2307,6 +2507,7 @@ function renderLobby(){
     <div class="seg"><button id="lbCopy">コードをコピー</button><button id="lbLink">招待リンクをコピー</button>${navigator.share?'<button id="lbShare">共有する</button>':''}</div>
     <ul class="lobby">${rows}</ul>
     <div class="vs-row" style="justify-content:center"><label style="min-width:auto">CPUの強さ</label><div class="seg" id="lbLv">${CPU_LEVELS.map(L=>`<button data-lv="${L.id}" class="${NET.lv===L.id?'on':''}">${L.t}</button>`).join('')}</div></div>
+    <div class="sub" style="font-size:11px;opacity:.75">${NET.hasTurn?'中継サーバー：設定あり':'中継サーバー：公開の中継のみ'}${NET.iceNote?'（'+esc(NET.iceNote)+'）':''}</div>
     <div class="sub" id="netStatus" style="font-size:11px">${humans<2?'参加者を待っています…（ひとりでも始められます）':'準備ができたら始めましょう'}</div>
     <div style="display:flex;gap:8px;justify-content:center;margin-top:10px"><button class="btn" id="lbStart">この人数で始める</button><button class="btn gray" id="lbClose">部屋を閉じる</button></div>`;
   const copy=t=>{(navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast('コピーしました')).catch(()=>prompt('コピーしてください',t));};
@@ -2320,59 +2521,101 @@ function renderLobby(){
 function lobbyBroadcast(){netSendAll({t:'lobby',seats:NET.seats.map(st=>({kind:st.kind,name:st.name||''}))});}
 function hostOnData(conn,msg){
   if(!msg||typeof msg!=='object'||MODE!=='host')return;
-  if(conn._seat!=null)NET.seen[conn._seat]=Date.now();
+  if(conn._seat!=null){NET.seen[conn._seat]=Date.now();NET.lastData[conn._seat]=Date.now();}
   if(msg.t==='pong')return;
-  if(msg.t==='hello'){
-    if(conn._seat!=null)return;
-    if(msg.v!==NET_PROTO){conn.send({t:'reject',why:'version'});setTimeout(()=>conn.close(),400);return;}
-    // 抜けた人が同じ端末から戻ってきた（合言葉が一致）→ 元の席に戻す
-    const back=(NET.started&&typeof msg.token==='string')?NET.tokens.findIndex((t,k)=>k>0&&t===msg.token):-1;
-    if(back>0){
-      const old=NET.conns[back];if(old&&old!==conn){old._seat=null;try{old.close();}catch(e){}}
-      const nm=cleanName(msg.name)||(NET.seats[back]&&NET.seats[back].name)||('プレイヤー'+(back+1));
-      NET.conns[back]=conn;conn._seat=back;NET.seen[back]=Date.now();NET.seats[back]={kind:'remote',name:nm};
-      conn.send({t:'welcome',seat:back,code:NET.code,token:msg.token});
-      MP.seats[back]={kind:'human',name:nm};
-      if(G&&G.ctl){G.ctl[back]='remote';const p=G.players[back];p.name=nm;p.ai=null;p.level=1;}
-      conn.send({t:'start',seat:back,seats:MP.seats,red:RED_ON,rejoin:true});
-      const t=nm+'が戻りました';toast(t,2500);netSendAll({t:'toast',v:t});
-      if(G){render();netFlush();}
-      const P=NET.pending;if(P&&P.pid===back){try{conn.send({t:'ask',id:P.id,req:P.req,ms:15000});}catch(e){}}
-      return;
-    }
-    if(NET.started){conn.send({t:'reject',why:'started'});setTimeout(()=>conn.close(),400);return;}
-    const i=NET.seats.findIndex(st=>st.kind==='open');
-    if(i<0){conn.send({t:'reject',why:'full'});setTimeout(()=>conn.close(),400);return;}
-    const token=newToken();NET.tokens[i]=token;
-    NET.seats[i]={kind:'remote',name:cleanName(msg.name)||('プレイヤー'+(i+1))};NET.conns[i]=conn;conn._seat=i;NET.seen[i]=Date.now();
-    conn.send({t:'welcome',seat:i,code:NET.code,token});
-    lobbyBroadcast();renderLobby();sfx.select();return;
+  if(msg.t==='hello'||msg.t==='probe'){
+    if(conn._seat!=null||conn._hello)return;conn._hello=true;
+    if(msg.t==='probe')hostProbe(conn,msg);else hostHello(conn,msg);
+    return;
   }
   const seat=conn._seat;if(seat==null||NET.conns[seat]!==conn)return;
   if(msg.t==='act')return hostOnAct(seat,msg);
-  if(msg.t==='leave')return hostOnClose(conn);
+  if(msg.t==='leave')return hostOnClose(conn,true);
+  if(msg.t==='away'||msg.t==='back'){NET.seatAway[seat]=msg.t==='away';NET.seen[seat]=Date.now();return;}
+  if(msg.t==='chat'){if(NET.started&&chatOk(msg.k))hostRelayChat(seat,msg.k);return;}
 }
-function hostOnClose(conn){
-  const seat=conn._seat;if(seat==null||NET.conns[seat]!==conn||MODE!=='host')return;
+async function hostHello(conn,msg){
+  if(msg.v!==NET_PROTO){conn.send({t:'reject',why:'version'});setTimeout(()=>conn.close(),400);return;}
+  const net0=NET;
+  // 抜けた人・前の部屋主が同じ端末から戻ってきた（合言葉が一致）→ 元の席に戻す
+  const back=NET.started?await hostFindSeat(msg.token):-1;
+  if(NET!==net0||MODE!=='host'||conn._seat!=null||!conn.open)return;
+  if(back>=0){
+    const old=NET.conns[back];if(old&&old!==conn){old._seat=null;try{old.close();}catch(e){}}
+    const nm=(NET.seats[back]&&NET.seats[back].name)||cleanName(msg.name)||('プレイヤー'+(back+1));
+    NET.conns[back]=conn;conn._seat=back;NET.seen[back]=Date.now();NET.lastData[back]=Date.now();NET.seatAway[back]=false;NET.tokens[back]=msg.token;NET.seats[back]={kind:'remote',name:nm};
+    conn.send({t:'welcome',seat:back,code:NET.code,gen:NET.gen,token:msg.token,migr:NET.resuming});
+    if(NET.resuming){if(!NET.seats.some(x=>x.kind==='wait'))setTimeout(resumeGame,300);return;}
+    MP.seats[back]={kind:'human',name:nm};
+    if(G&&G.ctl){G.ctl[back]='remote';const p=G.players[back];p.name=nm;p.ai=null;p.level=1;p.style='normal';p.charId=null;}
+    conn.send({t:'start',seat:back,seats:MP.seats,red:RED_ON,rejoin:true,turn:NET.turn||[]});
+    const t=nm+'が戻りました';toast(t,2500);netSendAll({t:'toast',v:t});
+    if(G&&G.ctl){render();netFlush();}
+    const P=NET.pending;if(P&&P.pid===back){try{conn.send({t:'ask',id:P.id,req:P.req,ms:15000});}catch(e){}}
+    if(NET.final&&G){try{conn.send({t:'final',scores:G.players.map(p=>p.score)});}catch(e){}}
+    netSnapRefresh();
+    return;
+  }
+  if(NET.started){conn.send({t:'reject',why:'started'});setTimeout(()=>conn.close(),400);return;}
+  const i=NET.seats.findIndex(st=>st.kind==='open');
+  if(i<0){conn.send({t:'reject',why:'full'});setTimeout(()=>conn.close(),400);return;}
+  const token=newToken();NET.tokens[i]=token;if(MIG_OK)sha256hex(token).then(hh=>{if(NET.tokens[i]===token)NET.th[i]=hh;});
+  NET.seats[i]={kind:'remote',name:cleanName(msg.name)||('プレイヤー'+(i+1))};NET.conns[i]=conn;conn._seat=i;NET.seen[i]=Date.now();NET.lastData[i]=Date.now();
+  conn.send({t:'welcome',seat:i,code:NET.code,gen:NET.gen,token});
+  lobbyBroadcast();renderLobby();sfx.select();
+}
+function hostOnClose(conn,left){
+  const seat=conn._seat;if(seat==null||NET.conns[seat]!==conn||MODE!=='host'||NET.closing||!NET.peer||NET.peer.destroyed)return;
   conn._seat=null;
-  if(!NET.started)NET.tokens[seat]=null;
-  NET.conns[seat]=null;const nm=NET.seats[seat]&&NET.seats[seat].name;
+  if(!NET.started){NET.tokens[seat]=null;NET.th[seat]=null;}
+  NET.conns[seat]=null;NET.seatAway[seat]=false;
+  if(NET.moveSent)return; // 別の部屋へまとめて移ると決まった後
+  const nm=NET.seats[seat]&&NET.seats[seat].name;
   if(!NET.started){NET.seats[seat]={kind:'open'};lobbyBroadcast();renderLobby();return;}
-  NET.seats[seat]={kind:'cpu',name:nm};
+  if(NET.resuming){NET.seats[seat]={kind:'wait',name:nm};return;}
+  NET.seats[seat]={kind:'cpu',name:nm,wasHuman:true};
   if(MP.seats)MP.seats[seat]={kind:'cpu'};
   if(G&&G.ctl){G.ctl[seat]='cpu';const p=G.players[seat];p.name=(nm||'参加者')+'（CPU）';p.ai=NET.lv;p.level=CPU_LV_LEVEL[NET.lv]||1;p.style='normal';}
-  const t=(nm||'参加者')+'が抜けました。CPUが引き継ぎます';toast(t,3000);netSendAll({t:'toast',v:t});
+  const t=(nm||'参加者')+(left?'が抜けました。CPUが引き継ぎます':'との接続が切れました。戻るまでCPUが引き継ぎます');toast(t,3000);netSendAll({t:'toast',v:t});
+  if(!left)NET.lostAt=Date.now();
   const P=NET.pending;if(P&&P.pid===seat){NET.pending=null;clearTimeout(NET.timerT);P.timeout();}
-  if(G)render();
+  netSnapRefresh();
+  if(G&&G.ctl)render();
+  if(!left&&!NET.conns.some(c=>c&&c.open)){NET.seekAt=0;setTimeout(hostSeek,1500);}
+}
+/* ---- 部屋主が抜けた時のための控え（全員に公開済みの情報だけ） ---- */
+function netOrder(){return NET.conns.map((c,i)=>(c&&c.open&&i!==NET.me)?i:-1).filter(i=>i>=0);}
+function netSnap(phase,nx){
+  if(MODE!=='host'||!NET.started||!G||!G.players||!MP.seats||!MIG_OK)return null;
+  const base=nx||{scores:G.startScores.slice(),dealer:G.dealer,round:G.round,honba:G.startHonba|0,sticks:G.startSticks|0,over:false};
+  return Object.assign({seq:++NET.snapSeq,code:NET.code,gen:NET.gen,hostSeat:NET.me,red:RED_ON,lv:NET.lv,phase},base,{
+    seats:G.players.map((q,i)=>({th:NET.th[i]||null,human:MP.seats[i].kind==='human'||!!NET.th[i],name:(NET.seats[i]&&NET.seats[i].name)||'',
+      pname:q.name||'',charId:q.charId||null})),
+    order:netOrder()});
+}
+function netSnapSend(sn){if(!sn)return;NET.lastSnap=sn;netSendAll({t:'snap',s:sn});}
+/* 和了・流局で点数が動いた直後：次の局の親・本場と、終局かどうかを先に決めて控える */
+function netSnapNext(winners,tenpai){
+  if(MODE!=='host'||!NET.started||!G||!G.players)return;
+  const adv=winners?!winners.includes(G.dealer):!tenpai[G.dealer];const keepHonba=winners?!adv:true;
+  let dealer=G.dealer,round=G.round,honba=G.honba|0;
+  if(adv){dealer=(dealer+1)%4;if(dealer===0)round++;honba=keepHonba?honba+1:0;}else honba=honba+1;
+  const over=G.players.some(p=>p.score<0)||(G.roundWind>=1&&G.dealer===3&&adv);
+  netSnapSend(netSnap('next',{scores:G.players.map(p=>p.score),dealer,round,honba,sticks:G.riichiSticks|0,over}));
+}
+function netSnapRefresh(){
+  if(MODE!=='host'||!NET.started||!NET.lastSnap)return;
+  netSnapSend(Object.assign({},NET.lastSnap,{seq:++NET.snapSeq,order:netOrder(),seats:NET.lastSnap.seats.map((x,i)=>Object.assign({},x,{th:NET.th[i]||x.th,human:x.human||!!NET.th[i]}))}));
 }
 function hostStart(){
   if(NET.started)return;
   NET.started=true;
+  NET.me=0;
   MP={active:true,seats:NET.seats.map(st=>st.kind==='open'?{kind:'cpu'}:{kind:'human',name:st.name}),calls:true,me:0,lv:NET.lv};
   NET.seats=NET.seats.map(st=>st.kind==='open'?{kind:'cpu'}:st);
   wrapSfx();
   document.getElementById('overlay').style.display='none';
-  for(let i=1;i<4;i++){const c=NET.conns[i];if(c&&c.open)c.send({t:'start',seat:i,seats:MP.seats,red:RED_ON});}
+  for(let i=1;i<4;i++){const c=NET.conns[i];if(c&&c.open)c.send({t:'start',seat:i,seats:MP.seats,red:RED_ON,turn:NET.turn||[]});}
   VIEW=0;G=null;newHand(false);
 }
 function netSendAll(msg,flush){
@@ -2380,7 +2623,7 @@ function netSendAll(msg,flush){
   if(flush)netFlush();
   NET.conns.forEach((c,i)=>{if(c&&c.open){try{c.send(msg);}catch(e){}}});
 }
-function netNewHand(){if(MODE==='host'&&NET.started){NET.pending=null;clearTimeout(NET.timerT);netSendAll({t:'newhand'});}}
+function netNewHand(){if(MODE==='host'&&NET.started){NET.pending=null;clearTimeout(NET.timerT);NET.final=false;netSendAll({t:'newhand'});netSnapSend(netSnap('hand'));}}
 function netAfterRender(){if(MODE!=='host'||!NET.started||NET.syncT)return;NET.syncT=setTimeout(netFlush,25);}
 function netFlush(){
   clearTimeout(NET.syncT);NET.syncT=null;
@@ -2447,39 +2690,62 @@ function netAsk(pid,req,cb){
   },()=>cb({a:'pass'}));
 }
 /* ---- 参加者 ---- */
-async function joinRoom(code,name){
+async function joinRoom(code,name,opts){
+  opts=opts||{};
   netShutdown();
   const ov=document.getElementById('overlay');ov.style.display='flex';
-  document.getElementById('modal').innerHTML=`<h2>部屋に入っています</h2><div class="room-code">${code.toUpperCase()}</div><div class="sub" id="netStatus">接続の準備中…</div>
-    <div style="text-align:center;margin-top:10px"><button class="btn gray" id="jnCancel">やめる</button></div>`;
-  document.getElementById('jnCancel').onclick=()=>{mpLeave();showVersus(code);};
+  if(!opts.migrating){
+    document.getElementById('modal').innerHTML=`<h2>部屋に入っています</h2><div class="room-code">${code.toUpperCase()}</div><div class="sub" id="netStatus">接続の準備中…</div>
+      <div style="text-align:center;margin-top:10px"><button class="btn gray" id="jnCancel">やめる</button></div>`;
+    document.getElementById('jnCancel').onclick=()=>{mpLeave();showVersus(code);};
+  }
   const tok=NET_TRY;
   try{await loadPeer();}catch(e){if(tok!==NET_TRY)return;return netFail('通信用の部品を読み込めませんでした。インターネットにつながっているか確認してください。');}
   if(tok!==NET_TRY)return;
-  NET=netBlank();MODE='guest';NET.code=code;NET_LAST_CODE=code;
-  let saved=null;try{saved=JSON.parse(lsGet(rejoinKey(code))||'null');}catch(e){}
-  let peer;try{peer=new Peer({debug:0});}catch(e){return netFail(PEER_ERR['browser-incompatible']);}
+  NET=netBlank();MODE='guest';NET.code=code;NET_LAST_CODE=code;NET.migrating=!!opts.migrating;
+  if(opts.snap&&snapValid(opts.snap))NET.snap=opts.snap;
+  const saved=opts.token?{token:opts.token}:loadRejoin(code);
+  const ice=await iceConfig(opts.turn);if(tok!==NET_TRY)return;
+  let peer;try{peer=new Peer({debug:0,config:{iceServers:ice.iceServers}});}catch(e){return netFail(PEER_ERR['browser-incompatible']);}
   NET.peer=peer;
-  const giveUp=setTimeout(()=>{if(NET.peer===peer&&!NET.seats)netFail('部屋主の端末に届きませんでした。部屋コードを確かめるか、同じWi-Fiで試してください。');},20000);
-  peer.on('open',()=>{if(NET.peer!==peer||NET.host)return; // 仲介サーバーに再接続した時は、つなぎ直さない
-    netStatus('部屋主の端末を探しています…');
-    const conn=peer.connect(ROOM_PREFIX+code,{reliable:true,serialization:'json'});NET.host=conn;
-    conn.on('open',()=>{netStatus('あいさつを送っています…');conn.send({t:'hello',name,v:NET_PROTO,token:saved&&saved.token});});
+  const giveUp=setTimeout(()=>{if(NET.peer===peer&&!NET.seats){if(opts.migrating){NET.migrating=false;return guestLost(code);}netFail('部屋主の端末に届きませんでした。部屋コードを確かめるか、同じWi-Fiで試してください。<br>回線の相性でつながらない時は、「みんなで対戦」→「つながりにくい時（中継サーバーの設定）」を部屋主の端末で設定すると改善することがあります。');}},opts.deadline||25000);
+  const ids=opts.ids||rejoinIds(code,saved);let ai=0,attemptT=null;
+  const attempt=()=>{
+    if(NET.peer!==peer||NET.seats||peer.destroyed)return;
+    clearTimeout(attemptT);
+    if(peer.disconnected){attemptT=setTimeout(attempt,2000);return;} // 仲介サーバーにつなぎ直している間は待つ
+    const id=ids[ai%ids.length];ai++;
+    netStatus(ai>ids.length?'部屋主の端末を探しています…（もう一度）':'部屋主の端末を探しています…');
+    const conn=peer.connect(id,{reliable:true,serialization:'json'});
+    if(!conn){attemptT=setTimeout(attempt,2000);return;}
+    NET.host=conn;
+    // 登録だけ残っている相手には開かないので、時間で次を試す
+    attemptT=setTimeout(()=>{if(NET.host===conn&&!conn.open&&!NET.seats){try{conn.close();}catch(e){}attempt();}},6000);
+    conn.on('open',()=>{clearTimeout(attemptT);netStatus('あいさつを送っています…');conn.send({t:'hello',name,v:NET_PROTO,token:saved&&saved.token});});
     conn.on('data',m=>{if(NET.host===conn)guestOnData(m,giveUp);});
-    conn.on('close',()=>{if(NET.host===conn)guestOnClose();});
-    conn.on('error',()=>{if(NET.host===conn)guestOnClose();});});
+    conn.on('close',()=>{if(NET.host===conn&&NET.seats)guestOnClose();});
+    conn.on('error',()=>{if(NET.host===conn&&NET.seats)guestOnClose();});
+  };
+  NET.retryJoin=()=>setTimeout(attempt,ai%ids.length===0?2000:250);
+  peer.on('open',()=>{if(NET.peer!==peer||NET.host)return; // 仲介サーバーに再接続した時は、つなぎ直さない
+    attempt();});
   peer.on('error',e=>{if(NET.peer!==peer)return;
     const linked=!!(NET.host&&NET.host.open&&NET.seats);
     const ty=String(e.type||'');
+    if(ty==='peer-unavailable'){ // その部屋IDはない → 次を試す（前に試したIDの知らせなら無視）
+      if(NET.seats)return;const mid=String(e.message||'').split(' ').pop();if(NET.host&&mid&&NET.host.peer!==mid)return;
+      clearTimeout(attemptT);try{NET.host&&NET.host.close();}catch(_){}return NET.retryJoin();}
     if(linked&&(BROKER_SOFT.includes(ty)||ty.startsWith('socket')||ty==='server-error'))return; // 部屋主とはつながったまま
-    clearTimeout(giveUp);
-    if(!MP.active)return netFail(PEER_ERR[e.type]||('接続でエラーが起きました（'+esc(e.type)+'）'));});
+    if(!MP.active){clearTimeout(giveUp);return netFail(PEER_ERR[e.type]||('接続でエラーが起きました（'+esc(e.type)+'）'));}
+    // 交代中：締め切り（giveUp）は残す。端末IDの取得に失敗して Peer が壊れた時だけ、すぐにあきらめる
+    if(opts.migrating&&!NET.seats)setTimeout(()=>{if(NET.peer===peer&&peer.destroyed&&!NET.seats){clearTimeout(giveUp);NET.migrating=false;guestLost(code);}},0);});
   peer.on('disconnected',()=>{if(NET.peer!==peer||NET.closing)return;
     if(NET.host&&NET.host.open)return; // 対局の通信は端末どうしなので、仲介サーバーにつなぎ直す必要はない
     setTimeout(()=>{try{if(NET.peer===peer&&!peer.destroyed&&peer.disconnected)peer.reconnect();}catch(_){}},3000);});
 }
 function guestLobby(seats){
   if(MP.active)return;
+  NET.inLobby=true;
   const ov=document.getElementById('overlay');ov.style.display='flex';const m=document.getElementById('modal');
   const W=['東','南','西','北'];
   m.innerHTML=`<h2>部屋に入りました</h2><div class="room-code">${NET.code.toUpperCase()}</div>
@@ -2493,15 +2759,18 @@ function guestOnData(m,giveUp){
   NET.hostSeen=Date.now();
   if(m.t==='ping'){try{NET.host.send({t:'pong'});}catch(e){}return;}
   switch(m.t){
-    case 'welcome':clearTimeout(giveUp);NET.seat=m.seat|0;NET.seats=[];VIEW=NET.seat;netHeartbeat();sfx.select();
-      if(m.token)lsSet(rejoinKey(NET.code),JSON.stringify({token:m.token,seat:NET.seat,at:Date.now()}));
-      guestLobby([]);break;
+    case 'welcome':clearTimeout(giveUp);NET.seat=m.seat|0;NET.seats=[];NET.gen=Math.max(0,m.gen|0);VIEW=NET.seat;netHeartbeat();sfx.select();
+      if(NET.snap&&(NET.snap.gen|0)>NET.gen)NET.snap=null; // 入った部屋より新しい世代の控えは、別の部屋のもの
+      if(typeof m.token==='string'){NET.myToken=m.token;saveRejoin(NET.code,{token:m.token,seat:NET.seat,gen:NET.gen,at:Date.now()});}
+      if(m.migr||NET.migrating)showMigrating('つながりました。部屋主が再開するのを待っています…');else guestLobby([]);break;
     case 'reject':clearTimeout(giveUp);netFail(m.why==='full'?'部屋が満員でした。':m.why==='started'?'この部屋はもう対局を始めています。':'アプリの版が違います。どちらも画面を再読み込みしてから試してください。');break;
     case 'lobby':NET.seats=m.seats;guestLobby(m.seats);break;
     case 'start':
-      MP={active:true,seats:m.seats,calls:true,me:m.seat|0,lv:'normal'};NET.started=true;VIEW=m.seat|0;HIDE=false;
+      MP={active:true,seats:m.seats,calls:true,me:m.seat|0,lv:'normal'};NET.started=true;VIEW=m.seat|0;HIDE=false;NET.migrating=false;NET.hostAway=false;NET.inLobby=false;
       if(typeof m.red==='boolean')RED_ON=m.red;
-      document.getElementById('overlay').style.display='none';hideTalk();bgmPlay('match');toast(m.rejoin?'対局にもどりました':'対局開始',1600);break;
+      if(Array.isArray(m.turn))NET.hostTurn=normIce(m.turn);
+      {const md=document.getElementById('modal');md.onclick=null;md.classList.remove('done');}
+      document.getElementById('overlay').style.display='none';hideTalk();bgmPlay('match');updateChatBtn();toast(m.rejoin?'対局にもどりました':'対局開始',1600);break;
     case 'state':guestApply(m.g);break;
     case 'ask':guestOnAsk(m);break;
     case 'fx':
@@ -2514,10 +2783,18 @@ function guestOnData(m,giveUp){
       if(!G)break;NET.ask=null;stopAskBar();renderActions([],false);G.uraInd=m.ura||[];
       showResult.apply(null,m.a);guestWaitButton();break;
     case 'draw':if(!G)break;NET.ask=null;stopAskBar();renderActions([],false);showDraw(m.tenpai);guestWaitButton();break;
-    case 'final':if(!G)break;NET.ask=null;stopAskBar();mpFinal();break;
+    case 'final':if(!G)break;NET.ask=null;stopAskBar();renderActions([],false);NET.snap=null;
+      if(Array.isArray(m.scores))m.scores.forEach((v,i)=>{if(G.players[i]&&typeof v==='number'&&isFinite(v))G.players[i].score=v;});
+      mpFinal();break;
+    case 'snap':if(snapValid(m.s)&&(m.s.gen|0)===NET.gen&&(!NET.snap||(NET.snap.gen|0)!==NET.gen||(m.s.seq|0)>(NET.snap.seq|0)))NET.snap=m.s;break;
+    case 'moveto':if(MP.active&&Number.isInteger(m.gen)&&m.gen>=0&&m.gen!==NET.gen)guestMoveTo(m.gen);break;
+    case 'handover':if(migCanStart())guestMigrate(true);else guestOnClose(true);break;
+    case 'away':NET.hostAway=true;toast('部屋主が画面を離れています',2200);break;
+    case 'back':NET.hostAway=false;break;
     case 'newhand':NET.ask=null;stopAskBar();renderActions([],false);document.getElementById('overlay').style.display='none';break;
     case 'toast':toast(String(m.v||''),3000);break;
-    case 'bye':try{localStorage.removeItem(rejoinKey(NET.code));}catch(e){}guestOnClose(true);break;
+    case 'chat':if(MP.active&&G&&Number.isInteger(m.pid)&&m.pid>=0&&m.pid<4&&m.pid!==NET.seat&&chatOk(m.k))chatShow(m.pid,m.k);break;
+    case 'bye':clearRejoin(NET.code);guestOnClose(true);break;
   }
 }
 function guestWaitButton(){
@@ -2551,7 +2828,8 @@ function netAct(ch){
 }
 function guestOnClose(bye){
   if(MODE!=='guest'||NET.closing)return;
-  const wasStarted=MP.active,code=NET.code,canBack=!bye&&!!lsGet(rejoinKey(code));
+  if(!bye&&migCanStart()&&!NET.migrating)return guestMigrate(false);
+  const wasStarted=MP.active,code=NET.code,canBack=!bye&&!!loadRejoin(code);
   netShutdown();mpResetGlobals();
   if(wasStarted){if(G){G.over=true;G.gen++;}G=null;renderActions([],false);clearTableDom();}
   const ov=document.getElementById('overlay');ov.style.display='flex';const m=document.getElementById('modal');
@@ -2561,6 +2839,271 @@ function guestOnClose(bye){
   const rj=document.getElementById('gcRejoin');if(rj)rj.onclick=()=>joinRoom(code,lsGet('mjNetName')||'参加者');
   document.getElementById('gcBack').onclick=()=>{G=null;showVersus(code);};document.getElementById('gcMenu').onclick=()=>{G=null;showStory();};
 }
+/* ===== 部屋主の交代（部屋主が抜けても、残った人で続ける） =====
+   ・部屋主は、局の開始時と点数が決まった直後に「全員に公開済みの情報だけ」の控え（snap）を送る。手牌や山は入れない
+   ・参加者は部屋主との接続が切れたら、まず今の部屋と次の部屋に問い合わせる。今の部屋が答えれば、そのまま戻る（交代しない）
+   ・どちらも答えなければ、控えの順番で少しずつ時間をずらして次の部屋IDを取りに行く。仲介サーバーは同じIDを1人にしか渡さないので、部屋主は必ず1人になる
+   ・新しい部屋主は、局の途中なら局の始めから配り直し、点数が決まっていたら次の局から始める */
+const MIG_OK=!!(window.crypto&&crypto.subtle);
+let NET_MIG=null;
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+function clearRejoin(code){if(!code)return;try{localStorage.removeItem(rejoinKey(code));}catch(e){}try{sessionStorage.removeItem(rejoinKey(code));}catch(e){}}
+function rejoinIds(code,saved){if(!saved||!saved.token)return [roomId(code,0)];const g=Math.max(0,saved.gen|0);return [g,g+1,g+2,g-1,g-2].filter(x=>x>=0).map(x=>roomId(code,x));}
+function snapValid(s){return !!s&&typeof s==='object'&&Array.isArray(s.seats)&&s.seats.length===4&&s.seats.every(x=>x&&typeof x==='object')&&Array.isArray(s.scores)&&s.scores.length===4&&s.scores.every(v=>typeof v==='number'&&isFinite(v))
+  &&[0,1,2,3].includes(s.dealer)&&Number.isInteger(s.round)&&s.round>=0&&[0,1,2,3].includes(s.hostSeat)&&Number.isInteger(s.honba)&&Number.isInteger(s.sticks);}
+function snapNewer(a,b){return (a.gen|0)>(b.gen|0)||((a.gen|0)===(b.gen|0)&&(a.seq|0)>(b.seq|0));}
+function migCanStart(){return MIG_OK&&MP.active&&!!NET.snap;}
+function setMigMsg(t){const e=document.getElementById('migMsg');if(e)e.innerHTML=t;}
+function guestLost(code){
+  if(NET_MIG)migDispose(NET_MIG);
+  netShutdown();mpResetGlobals();if(G){G.over=true;G.gen++;}G=null;renderActions([],false);clearTableDom();
+  const ov=document.getElementById('overlay');ov.style.display='flex';const m=document.getElementById('modal');m.onclick=null;m.classList.remove('done');
+  m.innerHTML=`<h2>つなぎ直せませんでした</h2><div class="sub" style="line-height:1.8">新しい部屋主につなぎ直せませんでした。<br>部屋主の画面が開いていれば、もう一度入れます。</div>
+    <div style="display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap"><button class="btn" id="glRe">もう一度入る</button><button class="btn gray" id="glMenu">メニュー</button></div>`;
+  document.getElementById('glRe').onclick=()=>joinRoom(code,lsGet('mjNetName')||'参加者');
+  document.getElementById('glMenu').onclick=()=>showStory();
+}
+function showMigrating(msg){
+  const ov=document.getElementById('overlay');ov.style.display='flex';const m=document.getElementById('modal');
+  m.onclick=null;m.classList.remove('done');chatPanelClose();
+  m.innerHTML=`<h2>部屋主が交代します</h2><div class="sub" style="font-size:13px;line-height:1.8" id="migMsg">${msg}</div>
+    <div class="sub" style="font-size:11px;opacity:.7">局の途中だった場合は、その局を配り直します（点数は局の始めに戻ります）</div>
+    <div style="text-align:center;margin-top:12px"><button class="btn gray" id="mgQuit">やめる</button></div>`;
+  document.getElementById('mgQuit').onclick=()=>{mpLeave();showStory();};
+}
+function guestMigrate(handover){
+  const snap=NET.snap,me=NET.seat,code=NET.code,gen=NET.gen|0;
+  const name=(snap.seats[me]&&snap.seats[me].name)||lsGet('mjNetName')||'参加者';
+  const token=NET.myToken||((loadRejoin(code)||{}).token);
+  const turn=NET.hostTurn||[];
+  // 画面を止める（古い局の操作をさせない）
+  NET.ask=null;stopAskBar();renderActions([],false);chatPanelClose();
+  if(G){G.over=true;G.gen++;G.offering=false;}HIDE=false;
+  netShutdown();updateChatBtn();
+  if(!token)return guestLost(code);
+  const order=(Array.isArray(snap.order)?snap.order:[]).filter(i=>i!==snap.hostSeat);
+  const r=order.indexOf(me);
+  const mg={code,gen,me,name,token,snap,turn,rank:r<0?3:Math.min(r,3),t0:Date.now(),handover:!!handover,pk:null,claim:null,claimed:false,ice:null};
+  NET_MIG=mg;
+  showMigrating(handover?'部屋主が対局から抜けました。新しい部屋主を決めています…':'部屋主との接続が切れました。つなぎ直しています…');
+  migRun(mg);
+}
+function migAlive(mg){return NET_MIG===mg;}
+function migDispose(mg){
+  if(!mg)return;
+  try{mg.pk&&mg.pk.destroy();}catch(e){}
+  if(mg.claim&&!mg.claimed){try{mg.claim.destroy();}catch(e){}}
+  mg.pk=null;mg.claim=null;if(NET_MIG===mg)NET_MIG=null;
+}
+/* 問い合わせ用の端末ID（名前なし）を仲介サーバーに登録する */
+function migPeer(mg){
+  return new Promise(res=>{let pk=null,done=false,to=null;
+    const fin=v=>{if(done)return;done=true;clearTimeout(to);if(!v){try{pk&&pk.destroy();}catch(e){}}res(v);};
+    try{pk=new Peer({debug:0,config:{iceServers:mg.ice.iceServers}});}catch(e){return res(null);}
+    to=setTimeout(()=>fin(null),10000);
+    pk.on('open',()=>{if(!migAlive(mg))return fin(null);mg.pk=pk;fin(pk);});
+    pk.on('error',()=>{if(!pk.open)fin(null);});
+  });
+}
+/* 部屋に「まだありますか」と聞く。部屋主は合言葉を確かめて {t:'here'} だけ返し、席には入れない。
+   答え：[{id,gen,known,n,final}]。部屋が無い（仲介サーバーの EXPIRE）・時間切れの部屋は入らない */
+function probeIds(peer,ids,token,ms,host){
+  return new Promise(res=>{
+    const out=[],ended=new Set(),conns=[];let done=false,to=null;
+    const onErr=e=>{if(!e||e.type!=='peer-unavailable')return;const mid=String(e.message||'').split(' ').pop();if(ids.includes(mid))end1(mid);};
+    const fin=()=>{if(done)return;done=true;clearTimeout(to);try{peer.off('error',onErr);}catch(e){}conns.forEach(c=>{try{c.close();}catch(e){}});res(out);};
+    const end1=id=>{if(ended.has(id))return;ended.add(id);if(ended.size>=ids.length)fin();};
+    if(!peer||peer.destroyed||peer.disconnected)return res(out);
+    peer.on('error',onErr);
+    to=setTimeout(fin,ms);
+    ids.forEach(id=>{
+      let c=null;try{c=peer.connect(id,{reliable:true,serialization:'json'});}catch(e){c=null;}
+      if(!c)return end1(id);
+      conns.push(c);
+      c.on('open',()=>{try{c.send({t:'probe',token,v:NET_PROTO,host});}catch(e){}});
+      c.on('data',m=>{if(m&&m.t==='here'&&!ended.has(id)){out.push({id,gen:m.gen|0,known:!!m.known,n:m.n|0,h:m.h|0,final:!!m.final,moving:!!m.moving});end1(id);}});
+      c.on('close',()=>end1(id));c.on('error',()=>end1(id));
+    });
+  });
+}
+async function migRun(mg){
+  try{await loadPeer();}catch(e){if(migAlive(mg))guestLost(mg.code);return;}
+  mg.ice=await iceConfig(mg.turn);if(!migAlive(mg))return;
+  let first=true;
+  while(migAlive(mg)){
+    const t1=Date.now();
+    if(t1-mg.t0>60000)return guestLost(mg.code);
+    if(!mg.pk||mg.pk.destroyed||mg.pk.disconnected){
+      if(mg.pk){try{mg.pk.destroy();}catch(e){}mg.pk=null;}
+      const pk=await migPeer(mg);if(!migAlive(mg))return;
+      if(!pk){setMigMsg('インターネットにつながるのを待っています…');await sleep(3000);continue;} // 自分の回線が切れている間は、部屋主に立候補しない
+    }
+    // 部屋主が「抜けます」と知らせてきた時は、いちばん手前の人がすぐ部屋を作る
+    const quick=first&&mg.handover&&mg.rank===0;first=false;
+    if(!quick){
+      const ids=[roomId(mg.code,mg.gen+1)];if(!mg.handover){ids.push(roomId(mg.code,mg.gen));if(mg.gen>0)ids.push(roomId(mg.code,mg.gen-1));}
+      const rs=await probeIds(mg.pk,ids,mg.token,7000);if(!migAlive(mg))return;
+      const hit=rs.filter(x=>x.known&&!x.moving).sort((a,b)=>(b.h-a.h)||(b.gen-a.gen))[0];
+      if(hit)return migJoin(mg,hit.gen);
+    }
+    if(Date.now()-mg.t0>=mg.rank*6000){ // 順番の遅い人ほど待つ（先に立った人の部屋に、次の問い合わせで入れる）
+      setMigMsg('新しい部屋主として部屋を用意しています…');
+      const r=await migClaim(mg);if(!migAlive(mg)||r==='host')return;
+      setMigMsg(r==='taken'?'ほかの人が新しい部屋主になりました。つないでいます…':'つなぎ直しています…');
+    }
+    const spent=Date.now()-t1;if(spent<1000)await sleep(1000-spent);
+  }
+}
+function migJoin(mg,gen){
+  const {code,name,token,turn,snap,me}=mg;migDispose(mg);
+  saveRejoin(code,{token,seat:me,gen,at:Date.now()});
+  joinRoom(code,name,{ids:[roomId(code,gen)],deadline:25000,migrating:true,token,turn,snap});
+}
+/* 次の部屋IDを取りに行く。取れたら部屋主、先に取られていたら 'taken' */
+function migClaim(mg){
+  return new Promise(res=>{
+    let pc=null,done=false,to=null;
+    try{pc=new Peer(roomId(mg.code,mg.gen+1),{debug:0,config:{iceServers:mg.ice.iceServers}});}catch(e){return res('fail');}
+    mg.claim=pc;
+    const stop=v=>{if(done)return;done=true;clearTimeout(to);try{pc.destroy();}catch(e){}if(mg.claim===pc)mg.claim=null;res(v);};
+    to=setTimeout(()=>stop('fail'),10000);
+    pc.on('open',()=>{if(done)return;
+      if(!migAlive(mg))return stop('gone');
+      done=true;clearTimeout(to);mg.claimed=true;hostTakeOver(mg,pc);res('host');});
+    pc.on('error',e=>{if(done||pc.open)return;stop(e&&e.type==='unavailable-id'?'taken':'fail');});
+  });
+}
+/* 対局中の部屋主の端末（交代して部屋主になった時） */
+function hostPeerWire(peer){
+  peer.on('error',()=>{});   // 対局中は、仲介サーバーの不調でも端末どうしの対局は続ける
+  peer.on('disconnected',()=>{if(NET.peer!==peer||NET.closing)return;setTimeout(()=>{try{if(NET.peer===peer&&!peer.destroyed&&peer.disconnected)peer.reconnect();}catch(_){}},3000);});
+  peer.on('connection',conn=>{
+    conn.on('data',msg=>hostOnData(conn,msg));
+    conn.on('close',()=>hostOnClose(conn));
+    conn.on('error',()=>hostOnClose(conn));
+  });
+}
+function hostTakeOver(mg,peer){
+  try{mg.pk&&mg.pk.destroy();}catch(e){}mg.pk=null;if(NET_MIG===mg)NET_MIG=null;
+  netShutdown();
+  const sn=mg.snap,me=mg.me,gen=mg.gen+1;
+  NET=netBlank();MODE='host';NET.code=mg.code;NET.gen=gen;NET.me=me;NET.myToken=mg.token;NET.tokens[me]=mg.token;
+  NET.turn=normIce(mg.turn||[]);NET.hasTurn=mg.ice.hasTurn;NET.ownTurn=false;NET.iceAt=Date.now();NET.lv=sn.lv||'normal';NET.th=sn.seats.map(x=>typeof x.th==='string'?x.th:null);NET.snap=sn;NET.snapSeq=sn.seq|0;
+  NET.started=true;NET.resuming=true;NET.srvOpen=true;NET.peer=peer;NET.lostAt=Date.now();NET.seekAt=Date.now();
+  const order=(Array.isArray(sn.order)?sn.order:[]).filter(i=>i!==sn.hostSeat&&i!==me);
+  NET.seats=sn.seats.map((st,i)=>i===me?{kind:'host',name:cleanName(st.name)||mg.name}:(order.includes(i)?{kind:'wait',name:cleanName(st.name)}:{kind:'cpu',name:cleanName(st.name),wasHuman:!!st.human}));
+  saveRejoin(mg.code,{token:mg.token,seat:me,gen,at:Date.now(),host:true});
+  hostPeerWire(peer);netHeartbeat();
+  if(!NET.seats.some(x=>x.kind==='wait'))return resumeGame();
+  showMigrating('<b>あなたが新しい部屋主です。</b>ほかの人がつなぎ直すのを待っています（最大20秒）…');
+  NET.resumeT=setTimeout(resumeGame,20000);
+}
+function resumeGame(){
+  if(MODE!=='host'||!NET.resuming)return;
+  NET.resuming=false;clearTimeout(NET.resumeT);
+  const sn=NET.snap,me=NET.me,lv=NET.lv,lvl=CPU_LV_LEVEL[lv]||1;
+  NET.seats=NET.seats.map(st=>st.kind==='wait'?{kind:'cpu',name:st.name,wasHuman:true}:st);
+  MP={active:true,seats:NET.seats.map(st=>st.kind==='cpu'?{kind:'cpu'}:{kind:'human',name:st.name}),calls:true,me,lv};
+  const players=sn.seats.map((st,i)=>{
+    const base={score:sn.scores[i],cheat:0,readHand:false};
+    if(MP.seats[i].kind==='human')return Object.assign(base,{name:NET.seats[i].name||('プレイヤー'+(i+1)),style:'normal',level:1,charId:null,ai:null});
+    if(st.human)return Object.assign(base,{name:(cleanName(st.name)||'参加者')+'（CPU）',style:'normal',level:lvl,charId:null,ai:lv});
+    const cid=CHARS[st.charId]?st.charId:null;
+    return Object.assign(base,{name:String(st.pname||'CPU').slice(0,16),style:CHAR_STYLE[cid]||'normal',level:lvl,charId:cid,ai:lv});});
+  const oldGen=(G&&G.gen)||0;if(G){G.over=true;G.gen++;}
+  GEN=Math.max(GEN,oldGen+1);
+  RED_ON=!!sn.red;wrapSfx();VIEW=me;HIDE=false;
+  const ov=document.getElementById('overlay');ov.style.display='none';document.getElementById('modal').onclick=null;
+  for(let i=0;i<4;i++){const c=NET.conns[i];if(c&&c.open&&i!==me)c.send({t:'start',seat:i,seats:MP.seats,red:RED_ON,rejoin:true,turn:NET.turn||[]});}
+  const fake={players,startScores:sn.scores.slice(),startHonba:sn.honba,startSticks:sn.sticks,dealer:sn.dealer,round:sn.round,roundWind:sn.round,
+    honba:sn.honba,riichiSticks:sn.sticks,storyFinal:false,stage:null,wager:false,dark:false,stats:null,practice:null,over:true,gen:++GEN,
+    wall:[],dead:[],doraInd:[],uraInd:[]};
+  if(sn.over){ // もう終局していた
+    G=fake;mpFinal();const t='部屋主が交代しました';toast(t,3000);netSendAll({t:'toast',v:t});return;}
+  G=fake;
+  newHand(true,true);
+  const t=sn.phase==='next'?'部屋主が交代しました。前の局の結果のまま、次の局から続けます':'部屋主が交代しました。この局は配り直します（点数は局の始めに戻ります）';
+  toast(t,3500);netSendAll({t:'toast',v:t});
+}
+/* 合言葉の持ち主の席（部屋主自身の席は除く） */
+async function hostFindSeat(token){
+  if(typeof token!=='string'||!token)return -1;
+  const k=NET.tokens.findIndex((t,i)=>i!==NET.me&&t&&t===token);if(k>=0)return k;
+  if(!MIG_OK)return -1;
+  const h=await sha256hex(token);if(!h)return -1;
+  return NET.th.findIndex((x,i)=>i!==NET.me&&x&&x===h);
+}
+async function hostProbe(conn,msg){
+  const net0=NET;
+  const k=NET.started?await hostFindSeat(msg.token):-1;
+  if(NET!==net0||MODE!=='host'||!conn.open)return;
+  if(k>=0&&NET.conns[k]&&NET.conns[k]!==conn){const old=NET.conns[k];try{old.close();}catch(e){}hostOnClose(old);} // 本人が別の所から問い合わせてきた＝その席の接続は死んでいる
+  const mine=roomHumans(k);
+  try{conn.send(k>=0?{t:'here',known:true,gen:NET.gen,n:mine-1,h:mine,final:!!NET.final,moving:!!NET.moving}:{t:'here',known:false});}catch(e){}
+  setTimeout(()=>{try{conn.close();}catch(e){}},600);
+  // 別の部屋の部屋主からの問い合わせ：どちらが移るかは両側で同じ規則で決める（見つけた側だけが判断すると、片方からしか見えない時にまとまらない）
+  const o=msg.host;
+  if(k>=0&&o&&Number.isInteger(o.gen)&&Number.isInteger(o.h)&&o.gen!==NET.gen&&!NET.final&&!NET.resuming&&!NET.moving&&netMissing()
+     &&(o.h>mine||(o.h===mine&&o.gen>NET.gen)))setTimeout(()=>{if(NET===net0&&MODE==='host')hostMoveTo(o.gen);},300);
+}
+/* 部屋が2つに割れた時に1つへ戻す。
+   ・席の誰かが通信切れのままの部屋主は、10分間、前後2世代の部屋を20秒ごとに探す（自分の部屋に参加者がいても探す）
+   ・人数は、20秒以内にデータが届いている席だけを数える。問い合わせを受けた部屋主も同じ規則で判断する
+   ・見つかったら「人の多い部屋、同じ人数なら世代の大きい部屋」に集まる。負けた側の部屋主だけが、参加者を連れて移る
+   ・両方が同時に「自分が移る」と判断しても、合流の鍵（仲介サーバーの名前）を取れた1人だけが移る */
+function roomHumans(skip){const now=Date.now();return 1+NET.conns.filter((c,i)=>i!==skip&&c&&c.open&&now-(NET.lastData[i]||0)<20000).length;}
+function netMissing(){return !!NET.seats&&NET.seats.some((st,i)=>i!==NET.me&&st&&st.kind==='cpu'&&st.wasHuman);}
+function hostSeek(){
+  if(MODE!=='host'||!NET.started||NET.resuming||NET.final||NET.seeking||NET.moving||!MIG_OK||!NET.myToken||!NET.peer||NET.peer.destroyed||NET.peer.disconnected)return;
+  if(!NET.lostAt||Date.now()-NET.lostAt>600000||!netMissing())return;
+  NET.seeking=true;NET.seekAt=Date.now();
+  const net0=NET,ids=[NET.gen+1,NET.gen+2,NET.gen-1,NET.gen-2].filter(g=>g>=0).map(g=>roomId(NET.code,g));
+  probeIds(NET.peer,ids,NET.myToken,7000,{gen:NET.gen,h:roomHumans()}).then(rs=>{
+    if(NET!==net0||MODE!=='host')return;
+    NET.seeking=false;NET.seekAt=Date.now();
+    if(NET.resuming||NET.final||NET.moving)return;
+    const mine=roomHumans();
+    const to=rs.filter(r=>r.known&&!r.final&&!r.moving&&r.gen!==NET.gen&&r.h>0&&(r.h>mine||(r.h===mine&&r.gen>NET.gen)))
+      .sort((a,b)=>(b.h-a.h)||(b.gen-a.gen))[0];
+    if(to)hostMoveTo(to.gen);
+  });
+}
+function hostMoveTo(gen){
+  if(NET.moving)return;
+  const net0=NET,hi=Math.max(gen,NET.gen);let lock=null,done=false,to=null;
+  NET.moving=true;
+  const fin=ok=>{if(done)return;done=true;clearTimeout(to);
+    if(!ok||NET!==net0||MODE!=='host'){try{lock&&lock.destroy();}catch(e){}if(NET===net0)NET.moving=false;return;}
+    NET.moveSent=true;netSendAll({t:'moveto',gen});    // 自分の参加者に行き先を知らせてから
+    setTimeout(()=>{if(NET===net0&&MODE==='host')hostJoinOther(gen);},500);   // 自分も移る
+    setTimeout(()=>{try{lock.destroy();}catch(e){}},30000);                    // 移り終わるまで鍵を持っておく
+  };
+  try{lock=new Peer(roomId(NET.code,hi)+'-merge',{debug:0,config:{iceServers:ICE_BASE}});}catch(e){NET.moving=false;return;}
+  to=setTimeout(()=>fin(false),8000);
+  lock.on('open',()=>fin(true));
+  lock.on('error',()=>fin(false));
+}
+/* 参加者：部屋主から「別の部屋にまとまる」と言われた */
+function guestMoveTo(gen){
+  const code=NET.code,me=NET.seat,token=NET.myToken||((loadRejoin(code)||{}).token),turn=NET.hostTurn||[];
+  const name=(MP.seats&&MP.seats[me]&&MP.seats[me].name)||lsGet('mjNetName')||'参加者';
+  if(!token)return;
+  NET.ask=null;stopAskBar();renderActions([],false);chatPanelClose();
+  if(G){G.over=true;G.gen++;G.offering=false;}HIDE=false;
+  showMigrating('別の部屋で続けていた人たちと合流します…');
+  saveRejoin(code,{token,seat:me,gen,at:Date.now()});
+  joinRoom(code,name,{ids:[roomId(code,gen)],deadline:25000,migrating:true,token,turn});
+}
+function hostJoinOther(gen){
+  const code=NET.code,me=NET.me,token=NET.myToken,snap=NET.lastSnap;
+  const name=(NET.seats&&NET.seats[me]&&NET.seats[me].name)||lsGet('mjNetName')||'参加者';
+  if(G){G.over=true;G.gen++;G.offering=false;}NET.pending=null;clearTimeout(NET.timerT);stopAskBar();renderActions([],false);
+  showMigrating('ほかの人たちは別の部屋主のもとで対局を続けていました。そちらに合流します…');
+  saveRejoin(code,{token,seat:me,gen,at:Date.now()});
+  joinRoom(code,name,{ids:[roomId(code,gen)],deadline:25000,migrating:true,token,turn:NET.turn||[],snap:(snapValid(snap)&&(snap.gen|0)<=gen)?snap:null});
+}
+window.addEventListener('pagehide',()=>{if(MODE==='host'&&NET.started&&!NET.final&&MIG_OK)netSendAll({t:'handover'});});
+
 /* 残り時間のバー */
 function startAskBar(ms){
   let bar=document.getElementById('askBar');
@@ -2933,15 +3476,24 @@ function banterOne(ev,delay,pid,force){
     speakBubble(pid,fmt(L[(Math.random()*L.length)|0]));},delay||0);
 }
 function banterAll(ev){[1,2,3].forEach((i,k)=>banterOne(ev,k*900,i,true));}
-function speakBubble(pid,text){
-  const seat=document.getElementById('seat'+pid);const pill=seat&&seat.querySelector('.info');if(!pill)return;
-  const r=pill.getBoundingClientRect();const el=document.createElement('div');el.className='sb sb'+pid;el.textContent=text;
-  const id=G.players[pid].charId,P=PORTRAITS[id];if(P){el.style.borderColor=P.bg[1];el.style.color=P.bg[0];}
+function speakBubble(pid,text,chat){
+  if(!G||!G.players||!G.players[pid])return;
+  const rs=relSeat(pid);   // 画面の上での位置（参加者の端末では自分が下）
+  const seat=document.getElementById('seat'+rs);const pill=seat&&seat.querySelector('.info');if(!pill)return;
+  document.querySelectorAll('body > .sb.sb'+rs).forEach(e=>e.remove());
+  const r=pill.getBoundingClientRect();const el=document.createElement('div');el.className='sb sb'+rs;el.textContent=text;
+  if(chat){el.style.borderColor=CHAT_COLOR[pid][0];el.style.color=CHAT_COLOR[pid][1];}
+  else{const id=G.players[pid].charId,P=PORTRAITS[id];if(P){el.style.borderColor=P.bg[1];el.style.color=P.bg[0];}}
   document.body.appendChild(el);
   const w=el.offsetWidth,h=el.offsetHeight;let x,y;
-  if(pid===2){x=r.left+r.width/2-w/2;y=r.bottom+6;}
-  else if(pid===1){x=r.left-w-8;y=r.top+r.height/2-h/2;}
-  else{x=r.right+8;y=r.top+r.height/2-h/2;}
+  if(rs===2){x=r.left+r.width/2-w/2;y=r.bottom+6;}
+  else if(rs===1){x=r.left-w-8;y=r.top+r.height/2-h/2;if(x<innerWidth/2){x=r.right-w;y=r.bottom+6;el.classList.add('below');}}   // 狭い画面では名札の下へ
+  else if(rs===3){x=r.right+8;y=r.top+r.height/2-h/2;if(x+w>innerWidth/2){x=r.left;y=r.bottom+6;el.classList.add('below');}}
+  else{ // 自分の席：名札の右 → 入らなければ左 → それもだめなら上。手牌にはかぶせない
+    x=r.right+10;y=r.top+r.height/2-h/2;
+    if(x+w>innerWidth-6){x=r.left-w-10;el.classList.add('flip');}
+    if(x<6){x=r.left+r.width/2-w/2;y=r.top-h-8;el.classList.remove('flip');el.classList.add('up');}
+    const bh=document.getElementById('bottomHand');if(bh)y=Math.min(y,bh.getBoundingClientRect().top-h-4);}
   x=Math.max(6,Math.min(innerWidth-w-6,x));y=Math.max(6,y);
   el.style.left=x+'px';el.style.top=y+'px';
   requestAnimationFrame(()=>el.classList.add('in'));
@@ -4112,5 +4664,5 @@ function showChooser(){if(MP.active)return mpMenu();showStory();}
   else if(lsGet('mjHelpSeen'))newHand(false);
   else setTimeout(showChooser,300);}
 
-if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+if('serviceWorker' in navigator&&!/^(localhost|127\.0\.0\.1)$/.test(location.hostname))window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); // 手元の確認用サーバーでは使わない（別のアプリの記憶と混ざるため）
 </script>
