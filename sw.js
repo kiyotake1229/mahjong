@@ -1,4 +1,4 @@
-const CACHE = 'mahjong-v5';
+const CACHE = 'mahjong-v6';   // v6: 横画面向け（manifest の向きを landscape に）
 const ASSETS = [
   './', './index.html', './manifest.json',
   './icon-192.png', './icon-512.png', './icon-512-maskable.png',
