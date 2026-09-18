@@ -4,7 +4,7 @@
 import json, os
 OUT = os.path.dirname(os.path.abspath(__file__))
 PDF_NAME = '麻雀_社内説明.pdf'
-APP, DATE, N = '麻雀 4人打ち', '2026-09-15', 9
+APP, DATE, N = '麻雀 4人打ち', '2026-09-18', 9
 
 BG, BG1, BG2, FELT = '#111713', '#18211c', '#212d26', '#234535'
 GOLD, GOLDH, GOLDD, TEAL, SHU = '#c9a961', '#e3cd97', '#8a7440', '#4fbfa8', '#b8524a'
@@ -132,7 +132,7 @@ doors = [
 ]
 items = [felt(head_row(ICON[i], t, 26) + p(d, 16, INK, 1.8) + '<div style="margin-top:auto">%s</div>' % tag(k), 'min-height:300px') for i, t, d, k in doors]
 body = grid(3, items, 22) + ('<div style="display:flex;align-items:center;gap:16px;background:%s;color:#1b1a16;border-radius:10px;padding:18px 26px">'
-                             '<span class="fd" style="font-size:24px;font-weight:700">どこから入っても、同じ卓に戻る。</span>'
+                             '<span class="fd" style="font-size:24px;font-weight:700">起動はタイトル → ホーム。どこから入っても、同じ卓に戻る。</span>'
                              '<span style="font-size:17px;color:#5e5c54">初心者モード・おたすけモード・画面の見方ツアーが3つの入口すべてを支える。</span></div>') % IVORY
 files['S03.dc.html'] = slide(3, body, '02 · 全体像', '道場・物語・自由対局／対戦、3つの入口')
 
@@ -151,7 +151,7 @@ for c, t, d, k in chapters:
              '<span class="fd" style="font-size:16px;font-weight:700;color:%s">%s</span>'
              '<span style="font-size:15px;line-height:1.55;color:%s"><b style="color:%s">%s</b>　%s</span>%s</div>') % (LINE, GOLD, c, MUTED, INK, t, d, tag(k, TEAL, 'rgba(79,191,168,.14)'))
 left = card('<div style="display:flex;flex-direction:column">%s</div>' % rows, 'padding:8px 24px 6px')
-vn = felt(head_row(ICON['eye'], 'ビジュアルノベル風の会話', 21) + p('場所ごとの背景（店内・閉店後・路地・白い塔・黒牌）をSVGで描画。立ち絵と名前札、一文字ずつ出るテキスト、選択肢。対局のときだけ雀卓に戻る。', 15, INK, 1.75), 'flex:1')
+vn = felt(head_row(ICON['eye'], 'ビジュアルノベル風の会話', 21) + p('場所ごとの背景（店内・閉店後・路地・白い塔・黒牌）をSVGで描画。10人の立ち絵（イラスト調・表情つき）と名前札、一文字ずつ出るテキスト、選択肢。対局のときだけ雀卓に戻る。', 15, INK, 1.75), 'flex:1')
 note = felt(head_row(ICON['heart'], '翠ノート', 21) + p('出自・秘密・結末を集める収集ページ（16ページ）。「物語を最初から」で主人公を変えて、別の結末を見に行ける。', 15, INK, 1.75), 'flex:1')
 right = '<div style="display:flex;flex-direction:column;gap:16px">%s%s</div>' % (vn, note)
 body = '<div style="display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:28px;flex:1;align-content:stretch">%s%s</div>' % (left, right)
@@ -159,7 +159,7 @@ files['S04.dc.html'] = slide(4, body, '03 · 物語', '雀荘 翠 ── 会話�
 
 # ---------- 05 初心者の助け ----------
 helps = [
- ('tour', '画面の見方ツアー', '10ステップ。手牌・河・名札・山・ドラ・ゲージ・ボタンを順に光らせて説明。第二節の冒頭で一度だけ自動、以後はメニューから'),
+ ('tour', '画面の見方ツアー', '11ステップ。手牌・河・名札・残り枚数・ドラ・ゲージ・ボタンを順に光らせて説明。第二節の冒頭で一度だけ自動、以後はホームやメニューから'),
  ('hand', '手番ガイドとおすすめ牌', '初心者モードでは自分の番に案内が出る。相手のリーチ中は「現物」に切り替わり、押し引きを説明'),
  ('eye', 'いまの手を見る', '何シャンテン・待ち・フリテン、できている組、狙える役とその理由、おすすめの捨て牌と理由'),
  ('tap', '役名をタップで説明', '和了画面で役名を押すと解説。「なぜ上がれたか」がその場でわかる'),
@@ -199,11 +199,11 @@ fx = [
 items = [paper(head_row(ICON[i], t, 28, '#1b1a16', GOLDD) + p(d, 16.5, '#3b3a34', 1.85), 'min-height:250px') for i, t, d in fx]
 body = grid(3, items, 20) + ('<div style="display:flex;gap:24px;align-items:center">'
     '<div style="flex:1;font-size:18px;color:%s;line-height:1.7">これらすべてが <b style="color:%s">1つのHTML（約380KB）</b> に入っている。画像・音源ファイルは0。ひとりで遊ぶ間は通信も0。</div>'
-    '<div style="font-size:14px;color:%s;line-height:1.7;max-width:420px;border-left:1px solid %s;padding-left:20px">背景・立ち絵・牌はSVGとCSSで描画。差し替えも追加もテキストの編集だけで済む。</div></div>') % (MUTED, INK, MUTED, LINE2)
+    '<div style="font-size:14px;color:%s;line-height:1.7;max-width:420px;border-left:1px solid %s;padding-left:20px">背景・立ち絵（10人・表情つき）・牌はSVGとCSSで描画。差し替えも追加もテキストの編集だけで済む。</div></div>') % (MUTED, INK, MUTED, LINE2)
 files['S07.dc.html'] = slide(7, body, '06 · 演出と音', '手応えは、音と動きで作る')
 
 # ---------- 08 現状 ----------
-done = ['Web版 完成・公開中（GitHub Pages）', 'PWA対応。ホーム画面に追加すればアプリとして起動、オフラインで動く', '進捗・設定は端末内（localStorage）のみ。ひとり用は通信なし', 'みんなで対戦：1台で交代（2〜4人）／オンライン（部屋コードで最大4人。端末どうしで直接通信、部屋主が抜けても続行）', '道場8レッスン、物語6章、自由対局、翠ノート16ページ', '初心者向け：ツアー・おたすけモード・いまの手を見る・ルールブック', 'スマホ幅（375px）で14枚の手牌が収まるよう調整済み', 'プレイテストで見つかった点数・フリテン・符の不具合を修正済み']
+done = ['Web版 完成・公開中（GitHub Pages）', 'タイトル画面 → ホーム画面から 物語・自由対局・対戦・道場へ。設定は1画面に', 'PWA対応。ホーム画面に追加すればアプリとして起動、オフラインで動く', '進捗・設定は端末内（localStorage）のみ。ひとり用は通信なし', 'みんなで対戦：1台で交代（2〜4人）／オンライン（部屋コードで最大4人。端末どうしで直接通信、部屋主が抜けても続行）', '道場8レッスン、物語6章、自由対局、翠ノート16ページ', '初心者向け：ツアー・おたすけモード・いまの手を見る・ルールブック', 'スマホ幅（375px）で14枚の手牌が収まるよう調整済み', 'プレイテストで見つかった点数・フリテン・符の不具合を修正済み']
 left = '<div style="display:flex;flex-direction:column;gap:9px">' + ''.join(check_line(d) for d in done) + '</div>'
 right = paper('<div class="fm" style="font-size:13px;color:#5e5c54">いま触れる</div>'
               '<div class="fd" style="font-size:22px;font-weight:700;line-height:1.3">kiyotake1229.github.io/mahjong/</div>'

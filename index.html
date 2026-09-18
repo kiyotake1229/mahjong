@@ -674,6 +674,17 @@
     .hm{overflow:auto;grid-template-rows:auto auto;height:auto;max-height:none;min-height:100%}
     .hm-body{grid-template-columns:1fr}.hm-story{min-height:150px}.hm-grid{grid-template-rows:auto}.hm-card{min-height:64px}
   }
+  /* ===== 表情つきの顔（吹き出し・出自カード・主人公カード） ===== */
+  .sb.hasav{display:flex;align-items:center;gap:7px;padding:5px 10px 5px 6px;max-width:min(270px,52vw)}
+  .sb .sbp{flex:0 0 auto;width:30px;height:35px;border-radius:7px;overflow:hidden}
+  .sb .sbp svg{width:100%;height:100%;display:block}
+  .sb .sbt{min-width:0}
+  .origin .opt-pt{flex:0 0 auto;width:46px;height:54px;border-radius:9px;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,.4)}
+  .origin .opt-pt svg{width:100%;height:100%;display:block}
+  .hm-story .nxav{display:inline-block;width:22px;height:26px;border-radius:5px;overflow:hidden;vertical-align:-7px;margin-right:6px}
+  .hm-story .nxav svg{width:100%;height:100%;display:block}
+  .hero-card .hpt{width:36px;height:42px;border-radius:8px;overflow:hidden;display:inline-block;align-self:center}
+  .hero-card .hpt svg{width:100%;height:100%;display:block}
   /* ===== 対局中メニュー・設定 ===== */
   .pz{display:flex;flex-direction:column;gap:9px;max-width:300px;margin:8px auto 0}
   .pz .btn{width:100%}
@@ -1059,6 +1070,10 @@ const sfx={
   blip:()=>beep(1500,.025,'sine',.018),
   chat:()=>beep(1175,.05,'sine',.05),
   select:()=>{beep(660,.07,'sine',.09);setTimeout(()=>beep(990,.12,'sine',.09),70);},
+  door:()=>{if(!SOUND_ON)return;try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();   // 扉が開いてドアベルが鳴る
+    const knock=(at,vol)=>{const n=AC.sampleRate*0.09|0;const b=AC.createBuffer(1,n,AC.sampleRate);const d=b.getChannelData(0);for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/n,4);const s=AC.createBufferSource();s.buffer=b;const f=AC.createBiquadFilter();f.type='lowpass';f.frequency.value=380;const g=AC.createGain();g.gain.value=vol;s.connect(f);f.connect(g);g.connect(AC.destination);s.start(AC.currentTime+at);};
+    knock(0,.7);knock(.17,.55);
+    [[2093,.9,.05],[2637,.8,.035],[3520,.6,.02]].forEach(([fq,du,vo],i)=>setTimeout(()=>beep(fq,du,'sine',vo),300+i*70));}catch(e){}},
   whoosh:()=>{if(!SOUND_ON)return;try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();const n=AC.sampleRate*0.7|0;const b=AC.createBuffer(1,n,AC.sampleRate);const d=b.getChannelData(0);for(let i=0;i<n;i++){const k=i/n;d[i]=(Math.random()*2-1)*Math.sin(Math.PI*k)*Math.pow(1-k,1.5);}const src=AC.createBufferSource();src.buffer=b;const f=AC.createBiquadFilter();f.type='lowpass';f.frequency.setValueAtTime(400,AC.currentTime);f.frequency.exponentialRampToValueAtTime(3000,AC.currentTime+0.5);const g=AC.createGain();g.gain.value=.18;src.connect(f);f.connect(g);g.connect(AC.destination);src.start();}catch(e){}}
 };
 /* ===== BGM（WebAudioで生成。外部ファイルなし） ===== */
@@ -2426,7 +2441,7 @@ function useSkill(i){
 let cutinT;
 function cutin(nm,tg,cid){
   document.getElementById('cutinNm').textContent=nm;
-  {const pt=document.getElementById('cutinPt');if(cid&&PORTRAITS[cid]){pt.innerHTML=portraitSVG(cid,'point');pt.hidden=false;}else{pt.hidden=true;pt.innerHTML='';}}
+  {const pt=document.getElementById('cutinPt');if(cid&&PORTRAITS[cid]){pt.innerHTML=portraitSVG(cid,'point',BATTLE_FACE[cid]||'smile');pt.hidden=false;}else{pt.hidden=true;pt.innerHTML='';}}
   document.getElementById('cutinTg').textContent=tg;
   const el=document.getElementById('cutin');el.classList.remove('show');void el.offsetWidth;el.classList.add('show');
   clearTimeout(cutinT);cutinT=setTimeout(()=>el.classList.remove('show'),1200);sfx.sting();
@@ -3492,7 +3507,7 @@ function rigGame(hand0,draws){hideHome();
   render();renderActions([],false);document.getElementById('coach').hidden=false;bgmPlay('store');
 }
 function tutIntro(list,onDone){tut._intro=list;tut._i2=0;tut._done=onDone;tutIntroStep();}
-function tutIntroStep(){clearHL();const last=tut._i2>=tut._intro.length-1;
+function tutIntroStep(){if(!tut._intro)return;clearHL();const last=tut._i2>=tut._intro.length-1;
   coachShow(tut._intro[tut._i2],[{label:last?'はじめる':'次へ',fn:()=>{if(!last){tut._i2++;tutIntroStep();}else tut._done();}}],true);}
 /* ===== 情報系レッスン（読む＋ハイライト） ===== */
 const thtml=(...v)=>v.map(x=>tileEl(x,'sm').outerHTML).join('');
@@ -3571,7 +3586,7 @@ function startTsumo(){
     `<b>はじめての和了。</b>いらない牌を切って形を作り、最後の1枚を自分で引く<b>ツモ</b>であがる。`,
     `下が君の13枚。まずは<b>使いにくい牌</b>を切っていく。光る牌を目印に進めるといい。`
   ],()=>{tut.phase='play';G.turn=0;G.phase='draw';drawStep();});
-  if(lsGet('mjTour')!=='1')screenTour(begin);else begin();
+  if(lsGet('mjTour')!=='1'&&!storyCasting)screenTour(begin);else begin();   // 物語から入った時のツアーは storyStart が会話の後に出す
 }
 function startRiichiRon(){
   rigGame([1,2,3,4,5,6,15,16,21,22,17,17,33],[14,27]); // 中→テンパイ→リーチ→相手が6sを捨てロン
@@ -3809,23 +3824,28 @@ const BANTER={
   south:['南場。点差から逆算します。','後半。数字で詰めます。']}
 };
 let BANT_T=[0,0,0,0];
+/* 掛け合いの種類ごとの表情 */
+const BANTER_FACE={start:'smile',myRiichi:'shock',riichi:'angry',win:'laugh',winHero:'sad',heroTsumo:'shock',lose:'sad',call:'smile',draw:'calm',south:'calm'};
 function banterOne(ev,delay,pid,force){
   if(!G||G.tutorial||MP.active)return;
   if(pid==null){const c=[1,2,3].filter(i=>G.players[i].charId&&BANTER[G.players[i].charId]);if(!c.length)return;pid=c[(Math.random()*c.length)|0];}
   const id=G.players[pid].charId;const L=BANTER[id]&&BANTER[id][ev];if(!L||!L.length)return;
   if(!force&&Math.random()>0.55)return;
   const g=G.gen;setTimeout(()=>{if(!G||G.gen!==g)return;const now=Date.now();if(now-BANT_T[pid]<2400)return;BANT_T[pid]=now;
-    speakBubble(pid,fmt(L[(Math.random()*L.length)|0]));},delay||0);
+    speakBubble(pid,fmt(L[(Math.random()*L.length)|0]),false,BANTER_FACE[ev]||'calm');},delay||0);
 }
 function banterAll(ev){[1,2,3].forEach((i,k)=>banterOne(ev,k*900,i,true));}
-function speakBubble(pid,text,chat){
+function speakBubble(pid,text,chat,face){
   if(!G||!G.players||!G.players[pid])return;
   const rs=relSeat(pid);   // 画面の上での位置（参加者の端末では自分が下）
   const seat=document.getElementById('seat'+rs);const pill=seat&&seat.querySelector('.info');if(!pill)return;
   document.querySelectorAll('body > .sb.sb'+rs).forEach(e=>e.remove());
-  const r=pill.getBoundingClientRect();const el=document.createElement('div');el.className='sb sb'+rs;el.textContent=text;
-  if(chat){el.style.borderColor=CHAT_COLOR[pid][0];el.style.color=CHAT_COLOR[pid][1];}
-  else{const id=G.players[pid].charId,P=PORTRAITS[id];if(P){el.style.borderColor=P.bg[1];el.style.color=P.bg[0];}}
+  const r=pill.getBoundingClientRect();const el=document.createElement('div');el.className='sb sb'+rs;
+  if(chat){el.textContent=text;el.style.borderColor=CHAT_COLOR[pid][0];el.style.color=CHAT_COLOR[pid][1];}
+  else{const id=G.players[pid].charId,P=PORTRAITS[id];
+    if(P){el.style.borderColor=P.bg[1];el.style.color=P.bg[0];el.classList.add('hasav');   // 表情つきの小さな顔
+      const av=document.createElement('span');av.className='sbp';av.innerHTML=portraitSVG(id,'calm',face||'calm');el.appendChild(av);}
+    const tx=document.createElement('span');tx.className='sbt';tx.textContent=text;el.appendChild(tx);}
   document.body.appendChild(el);
   const w=el.offsetWidth,h=el.offsetHeight;let x,y;
   if(rs===2){x=r.left+r.width/2-w/2;y=r.bottom+6;}
@@ -3879,7 +3899,14 @@ const PORTRAITS={
  washio:{bg:['#f3efe4','#8f8260'],acc:'#c9a961',skin:'#ead0b9',hair:'#cfc9bf',hairD:'#9a9389',iris:'#4b4a50',face:'oval',
    eye:{lid:.4},brow:'thin',mouth:'small',outfit:'suit',suit:'#d8cfbb',suitD:'#bfb49c',tie:'#b08d3e',extras:['glassesHalf','ageLines','square']},
  minato:{bg:['#e4e8ee','#5d6b80'],acc:'#9fb3d1',skin:'#eccdb1',hair:'#1f2b40',hairD:'#101623',iris:'#2f4a66',face:'slim',
-   eye:{lid:.2},brow:'flat',mouth:'smirk',outfit:'turtle',extras:['earring']}
+   eye:{lid:.2},brow:'flat',mouth:'smirk',outfit:'turtle',extras:['earring']},
+ /* 主人公（出自ごと） */
+ hero_gambler:{bg:['#eadfd0','#8a6a4a'],acc:'#c9a961',skin:'#e6c2a0',hair:'#2c2320',hairD:'#15100e',iris:'#3a2f2a',face:'oval',
+   eye:{lid:.25},brow:'flat',mouth:'smirk',outfit:'loose',extras:['stubble']},
+ hero_student:{bg:['#e6efe6','#6f9b7c'],acc:'#4fbfa8',skin:'#f1d3b8',hair:'#4a352c',hairD:'#2e201a',iris:'#4a5a3f',face:'round',
+   eye:{lid:.05},brow:'soft',mouth:'smile',outfit:'cardigan',extras:[]},
+ hero_clerk:{bg:['#e8f0ee','#5e8f86'],acc:'#2f8d78',skin:'#f0d2bb',hair:'#1f1c1e',hairD:'#0d0b0c',iris:'#3a4a48',face:'oval',
+   eye:{lid:.1},brow:'soft',mouth:'small',outfit:'polo',extras:[]}
 };
 const PT_FACE={
  oval:'M37,52 C37,34 46,27 60,27 C74,27 83,34 83,52 C83,68 74,85 60,86 C46,85 37,68 37,52 Z',
@@ -3897,16 +3924,28 @@ const PT_HAIR={
  domoto:{front:'M33,58 C33,28 45,20 60,20 C75,20 87,28 87,58 L83,58 L83,48 C82,40 74,36 60,36 C46,36 38,40 37,48 L37,58 Z',hi:'M44,30 C50,26 58,25 66,26 M42,44 C44,40 48,38 52,38'},
  karasu:{back:'M33,60 C31,30 89,30 87,60 L86,74 L34,74 Z',front:'M35,64 C33,32 88,26 87,52 L84,56 C80,44 70,42 62,46 C56,50 52,58 50,70 C46,72 40,70 35,64 Z',hi:'M46,36 C52,32 60,31 68,33'},
  washio:{front:'M32,56 C32,28 46,20 62,22 C80,24 90,32 89,56 L86,56 C84,44 78,38 66,38 C56,38 46,40 40,46 C37,49 35,53 35,56 Z',hi:'M42,34 C50,28 60,27 72,29 M40,42 C46,38 52,36 58,36'},
- minato:{front:'M35,56 C35,32 48,24 62,26 C78,28 88,36 87,56 L84,50 C80,42 70,40 62,44 C56,47 52,52 50,56 C46,58 40,58 35,56 Z M35,56 L35,66 L40,64 L40,56 Z',hi:'M46,33 C52,29 60,28 68,30'}
+ minato:{front:'M35,56 C35,32 48,24 62,26 C78,28 88,36 87,56 L84,50 C80,42 70,40 62,44 C56,47 52,52 50,56 C46,58 40,58 35,56 Z M35,56 L35,66 L40,64 L40,56 Z',hi:'M46,33 C52,29 60,28 68,30'},
+ hero_gambler:{front:'M34,58 C32,30 44,22 60,22 C76,22 88,30 86,58 L83,58 C82,48 76,42 68,42 L60,47 L52,42 C44,44 40,50 38,58 Z M30,50 L37,36 L40,48 Z M90,48 L83,36 L80,48 Z',hi:'M44,32 C50,27 58,26 66,27'},
+ hero_student:{front:'M35,54 C35,30 46,23 60,23 C74,23 85,30 85,54 L82,54 C80,45 72,41 60,41 C48,41 40,45 38,54 Z',hi:'M45,32 C51,28 58,27 66,28 M50,26 L53,32'},
+ hero_clerk:{front:'M34,56 C34,30 46,22 60,22 C76,22 88,30 87,54 L84,54 C82,44 76,40 68,39 L54,42 C46,44 40,48 37,56 Z',hi:'M53,41 C51,36 50,31 52,27'}
 };
 const POSES={point:1,cross:1};
+/* 表情：目・眉・口の型を上書きする */
+const PT_FACES={
+ smile:{lidAdd:.15,brow:'soft',mouth:m=>m==='grin'?'grin':'smile'},
+ laugh:{closed:1,brow:'up',mouth:'grin'},
+ angry:{lid:.3,brow:'angry',mouth:'frown'},
+ sad:{lid:.35,brow:'sad',mouth:'frownS',sweat:1},
+ shock:{lid:0,wide:1,brow:'up',mouth:'o'}
+};
 let PGN=0;
 function ptLn(d,w,extra){return `<path d="${d}" fill="none" stroke="${PT_LINE}" stroke-width="${w||1.6}" stroke-linecap="round" stroke-linejoin="round" ${extra||''}/>`;}
 function ptEye(x,y,o,skin,uid,hidden){
-  const w=o.w||7,h=o.h||4.6,lid=o.lid||0,lash=o.lash;
+  const w=(o.w||7)+(o.wide?1:0),h=(o.h||4.6)+(o.wide?1.1:0),lid=o.lid||0,lash=o.lash;
   const top=`M${x-w},${y} Q${x},${y-h*1.7} ${x+w},${y}`;
   const almond=`${top} Q${x},${y+h*1.3} ${x-w},${y} Z`;
   if(hidden)return '';
+  if(o.closed)return ptLn(`M${x-w},${y+1} Q${x},${y-h*1.5} ${x+w},${y+1}`,lash?2.4:2)+(lash?ptLn(`M${x+w-1},${y} L${x+w+2.5},${y-2.5}`,1.5):'');
   const cid=`ec_${uid}_${x|0}`;
   let s=`<clipPath id="${cid}"><path d="${almond}"/></clipPath>`;
   s+=`<path d="${almond}" fill="#fbf7f1"/>`;
@@ -3928,6 +3967,7 @@ function ptBrow(x,y,type,right){
     case 'thick':d=`M${x+o*8},${y-8} Q${x},${y-10.5} ${x+i*7},${y-7}`;w=3;break;
     case 'flat':d=`M${x+o*7},${y-7.5} Q${x},${y-9} ${x+i*6},${y-7}`;break;
     case 'thin':d=`M${x+o*7},${y-8} Q${x},${y-10} ${x+i*6},${y-7.5}`;w=1.3;break;
+    case 'sad':d=`M${x+o*7},${y-6} Q${x},${y-8.5} ${x+i*6},${y-10}`;break;
     default:d=`M${x+o*7},${y-7} Q${x},${y-10.5} ${x+i*6},${y-7.5}`;   // soft
   }
   return ptLn(d,w);
@@ -3941,6 +3981,8 @@ function ptMouth(x,y,type){
     case 'smirk':return ptLn(`M${x-5},${y+2} Q${x+1},${y+3} ${x+7},${y-1.5}`,1.7);
     case 'smirkL':return ptLn(`M${x+5},${y+2} Q${x-1},${y+3} ${x-7},${y-1.5}`,1.7);
     case 'frown':return ptLn(`M${x-6},${y+2.5} Q${x},${y-2} ${x+6},${y+2.5}`,1.8);
+    case 'frownS':return ptLn(`M${x-4},${y+2} Q${x},${y-.5} ${x+4},${y+2}`,1.6);
+    case 'o':return `<ellipse cx="${x}" cy="${y+1.5}" rx="3" ry="3.8" fill="#8a3a3a"/>`+ptLn(`M${x-3},${y+1.5} a3,3.8 0 1,0 6,0 a3,3.8 0 1,0 -6,0`,1.3);
   }
   return '';
 }
@@ -3980,6 +4022,18 @@ function ptOutfit(P){
     s+=`<path d="M40,104 C40,90 80,90 80,104 L84,110 C70,102 50,102 36,110 Z" fill="#3d4744"/>`+ptLn('M40,104 C40,90 80,90 80,104',1.3);
     s+=body('#4a5550');
     s+=`<path d="M60,100 L60,140" stroke="#b8bcb8" stroke-width="2" stroke-dasharray="2 1.6"/>`+ptLn('M60,100 L60,140',.6);
+  }else if(o==='cardigan'){s+=body('#6b7d6a');
+    s+=`<path d="M46,98 L60,124 L74,98 L69,93 L60,108 L51,93 Z" fill="#f4f2ee"/>`+ptLn('M46,98 L60,124 L74,98',1.2);
+    s+=`<circle cx="60" cy="129" r="1.6" fill="#3e4a3d"/><circle cx="60" cy="136" r="1.6" fill="#3e4a3d"/>`+ptLn('M60,124 L60,140',.7);
+    s+=`<path d="M46,98 L34,140 L46,140 L50,104 Z M74,98 L86,140 L74,140 L70,104 Z" fill="#5a6a59"/>`+ptLn('M46,98 L34,140 M74,98 L86,140',1);
+  }else if(o==='polo'){s+=body('#2f8d78');
+    s+=`<path d="M47,98 L54,110 L60,104 L66,110 L73,98 L69,93 L60,100 L51,93 Z" fill="#25705f"/>`+ptLn('M47,98 L54,110 L60,104 L66,110 L73,98',1.2)+ptLn('M60,104 L60,118',1);
+    s+=`<rect x="72" y="114" width="15" height="9" rx="1.5" fill="#f4f2ee"/><path d="M75,118.5 L84,118.5" stroke="#2f8d78" stroke-width="1.4"/>`+ptLn('M72,114 h15 v9 h-15 Z',.8);
+  }else if(o==='loose'){s+=body('#3b3b40');
+    s+=`<path d="M46,98 L60,128 L74,98 L69,93 L60,112 L51,93 Z" fill="#f4f2ee"/>`;
+    s+=`<path d="M52,94 L60,110 L68,94 Z" fill="${P.skin}"/>`+ptLn('M46,98 L60,128 L74,98 M52,94 L60,110 L68,94',1.1);
+    s+=`<path d="M55,110 L64,108 L62,115 L67,131 L62,137 L57,131 L59,115 Z" fill="#7a2f2f"/>`+ptLn('M55,110 L64,108 L62,115 L67,131 L62,137 L57,131 L59,115 Z',1);
+    s+=`<path d="M46,98 L36,128 L50,130 L60,128 Z M74,98 L84,128 L70,130 L60,128 Z" fill="#2c2c30"/>`+ptLn('M46,98 L36,128 L50,130 L60,128 L70,130 L84,128 L74,98',1.3);
   }else if(o==='turtle'){
     s+=`<path d="M50,88 C50,82 70,82 70,88 L70,100 L50,100 Z" fill="#20242b"/>`+ptLn('M50,88 C50,82 70,82 70,88',1.2)+ptLn('M52,90 L68,90 M52,94 L68,94',.8);
     s+=body('#20242b');
@@ -4011,7 +4065,7 @@ function ptExtras(P,uid){
 }
 function ptPose(P,pose,uid){
   const sk=P.skin;
-  const sleeve=P.outfit==='apron'?'#f2efe6':P.outfit==='hoodie'?'#3b4a63':P.outfit==='kimono'?'#7d86c2':P.outfit==='jacket'?'#6e4a36':P.outfit==='suit'?P.suit:P.outfit==='openshirt'?'#1c1a1a':P.outfit==='zip'?'#4a5550':'#4b5563';
+  const sleeve={apron:'#f2efe6',hoodie:'#3b4a63',kimono:'#7d86c2',jacket:'#6e4a36',suit:P.suit,openshirt:'#1c1a1a',zip:'#4a5550',cardigan:'#6b7d6a',polo:'#2f8d78',loose:'#3b3b40'}[P.outfit]||'#4b5563';
   if(pose==='point'){
     return `<path d="M94,140 C93,122 96,104 100,90 L100,72 L112,72 L112,92 C111,106 109,124 108,140 Z" fill="${sleeve}"/>`+ptLn('M94,140 C93,122 96,104 100,90 L100,72 M112,72 L112,92 C111,106 109,124 108,140',1.5)
       +`<path d="M98,74 C98,66 100,62 106,62 C112,62 114,66 114,74 L114,78 L98,78 Z" fill="${sk}"/><rect x="102.5" y="44" width="6.5" height="22" rx="3.2" fill="${sk}"/>`+ptLn('M98,78 L98,72 C98,66 100,62 106,62 C112,62 114,66 114,74 L114,78 M102.5,66 L102.5,47 a3.2,3.2 0 0 1 6.5,0 L109,66',1.4)+ptLn('M100,70 L104,71 M100,74 L104,75',.9);
@@ -4023,7 +4077,7 @@ function ptPose(P,pose,uid){
   }
   return '';
 }
-function portraitSVG(id,pose){
+function portraitSVG(id,pose,face){
   const P=PORTRAITS[id];if(!P)return '';const uid=id+'_'+(++PGN);const H=PT_HAIR[id]||{};
   const tf=P.lean?`transform="rotate(${P.lean} 60 140)"`:'';
   const skD='rgba(60,30,20,.22)';
@@ -4043,12 +4097,16 @@ function portraitSVG(id,pose){
   s+=`<path d="${F}" fill="${P.skin}"/>`;
   s+=`<path d="M46,80 Q60,90 74,80 Q60,86 46,80 Z" fill="${skD}" opacity=".6"/>`;   // あごの影
   // 目・眉・鼻・口
-  const E=P.eye||{};const eo=Object.assign({iris:P.iris},E);
+  const E=P.eye||{};const eo=Object.assign({iris:P.iris},E);let brow=P.brow,mouth=P.mouth,sweat=false;
+  const FX=face&&PT_FACES[face];
+  if(FX){if(FX.lid!=null)eo.lid=FX.lid;if(FX.lidAdd)eo.lid=Math.min(.5,(eo.lid||0)+FX.lidAdd);if(FX.closed)eo.closed=1;if(FX.wide)eo.wide=1;
+    brow=FX.brow||brow;mouth=typeof FX.mouth==='function'?FX.mouth(mouth):(FX.mouth||mouth);sweat=!!FX.sweat;}
   s+=ptEye(49,60,eo,P.skin,uid,E.hideL)+ptEye(71,60,eo,P.skin,uid,E.hideR);
-  if(!E.hideL)s+=ptBrow(49,60,P.brow,false);
-  if(!E.hideR)s+=ptBrow(71,60,P.brow,true);
+  if(!E.hideL)s+=ptBrow(49,60,brow,false);
+  if(!E.hideR)s+=ptBrow(71,60,brow,true);
   s+=ptLn('M60,64 L58.5,70.5 L61.5,71',1.2);
-  s+=ptMouth(60,77,P.mouth);
+  s+=ptMouth(60,77,mouth);
+  if(sweat)s+=`<path d="M89,44 C85.5,50 85.5,53 89,54 C92.5,53 92.5,50 89,44 Z" fill="#9fc6ff" opacity=".9"/>`+ptLn('M89,44 C85.5,50 85.5,53 89,54 C92.5,53 92.5,50 89,44 Z',.8);
   s+=ptExtras(P,uid);
   s+=ptLn(F,1.7);
   // 前髪
@@ -4158,14 +4216,14 @@ function vnShow(bg){const v=document.getElementById('vn');document.getElementByI
 function vnHide(){const v=document.getElementById('vn');clearInterval(VN.typing);VN.lines=null;document.getElementById('vnChoices').innerHTML='';
   if(v.hidden)return;v.classList.remove('in');setTimeout(()=>{if(!v.classList.contains('in')){v.hidden=true;VN.bg='';VN.portKey='';}checkRotate();},330);}
 function hideTalk(){document.getElementById('coach').hidden=true;setSpeaker(null);vnHide();}
-function vnSpeaker(id,pose){
+function vnSpeaker(id,pose,face){
   const port=document.getElementById('vnPort'),name=document.getElementById('vnName'),box=document.getElementById('vnBox');
   const nar=!id||id==='nar'||id==='coach';
   box.classList.toggle('nar',nar);
   if(nar){port.classList.add('dim');name.hidden=true;return;}
   port.classList.remove('dim');
-  const key=id+'/'+(pose||'calm');
-  if(VN.portKey!==key){port.innerHTML=portraitSVG(id,pose||'calm');port.classList.remove('pop','point','none');void port.offsetWidth;port.classList.add(VN.portKey.split('/')[0]===id?'point':'pop');VN.portKey=key;}
+  const key=id+'/'+(pose||'calm')+'/'+(face||'');
+  if(VN.portKey!==key){port.innerHTML=portraitSVG(id,pose||'calm',face);port.classList.remove('pop','point','none');void port.offsetWidth;port.classList.add(VN.portKey.split('/')[0]===id?'point':'pop');VN.portKey=key;}
   const c=CHARS[id]||{n:id},P=PORTRAITS[id];name.hidden=false;name.textContent=c.n;
   name.style.background=P?P.bg[1]:'';name.style.color=P?P.bg[0]:'';
 }
@@ -4175,7 +4233,7 @@ function vnType(text,onEnd){
   VN.typing=setInterval(()=>{i++;el.textContent=text.slice(0,i);if(i%3===1)sfx.blip();if(i>=text.length){clearInterval(VN.typing);VN.typing=null;nx.classList.add('on');onEnd&&onEnd();}},26);
 }
 function vnFinishTyping(){if(VN.typing){clearInterval(VN.typing);VN.typing=null;document.getElementById('vnText').textContent=VN.full;document.getElementById('vnNext').classList.add('on');VN.onTyped&&VN.onTyped();return true;}return false;}
-function vnStep(){const L=VN.lines[VN.i];if(L.bg)vnSetBg(L.bg);vnSpeaker(L.who,L.pose);vnType(fmt(L.t));}
+function vnStep(){const L=VN.lines[VN.i];if(L.bg)vnSetBg(L.bg);vnSpeaker(L.who,L.pose,L.face);vnType(fmt(L.t));}
 function vnAdvance(){
   if(!VN.lines)return;
   if(vnFinishTyping())return;
@@ -4373,7 +4431,7 @@ function zeroDone(){
   say(c.outro,()=>{hideTalk();confetti();
     const ov=document.getElementById('overlay');ov.style.display='flex';
     document.getElementById('modal').innerHTML=`<div class="chap-num">第0章　第${['一','二','三'][i]}節</div><h2>${c.t}</h2>
-      <div class="port-big">${portraitSVG('master','point')}</div><div class="title-earn">クリア</div>
+      <div class="port-big">${portraitSVG('master','point','smile')}</div><div class="title-earn">クリア</div>
       <div class="sub">${i+1<ZERO.length?'次の節が開きました。':'第一章「翠の教え」が開きました。'}</div>
       <button class="btn" id="zeroNextBtn">つづける</button>`;
     document.getElementById('zeroNextBtn').onclick=()=>showStory();},{bg:'store'});
@@ -4385,7 +4443,7 @@ function showPrologue(){
   {const _m=document.getElementById('modal');_m.classList.remove('done');_m.onclick=null;}
   const ov=document.getElementById('overlay');ov.style.display='flex';const m=document.getElementById('modal');
   let sel=HERO.origin||'student';
-  const cards=()=>ORIGINS.map(o=>`<button class="origin ${o.id===sel?'sel':''}" data-o="${o.id}"><span class="ob"><b>${o.t}</b><small>${o.sub}</small><small class="eff">${o.eff}</small></span><span class="df">${o.diff}</span></button>`).join('');
+  const cards=()=>ORIGINS.map(o=>`<button class="origin ${o.id===sel?'sel':''}" data-o="${o.id}"><span class="opt-pt">${portraitSVG('hero_'+o.id,'calm',o.id===sel?'smile':'calm')}</span><span class="ob"><b>${o.t}</b><small>${o.sub}</small><small class="eff">${o.eff}</small></span><span class="df">${o.diff}</span></button>`).join('');
   m.innerHTML=`<div class="chap-num">序章</div><h2>扉の前で</h2>
     <div class="st-intro">駅裏の小さな雀荘「翠」。<br>君は、どんな人物としてこの扉を開ける？</div>
     <div class="hero-in"><label>名前</label><input id="heroName" maxlength="8" placeholder="8文字まで" value="${(HERO.name||'').replace(/"/g,'')}"></div>
@@ -4860,7 +4918,7 @@ function showStageResult(){
     hide();say(st.badEnd,()=>{hide();
       ov.style.display='flex';
       document.getElementById('modal').innerHTML=`<div class="chap-num">${st.dark?(st.part||'黒い手'):'賭けに敗れた'}</div><h2>${st.badTitle||st.t+'との約束'}</h2>
-        <div class="port-big">${portraitSVG(st.boss,'point')}</div><div class="yaku">${rows}</div>
+        <div class="port-big">${portraitSVG(st.boss,'point','laugh')}</div><div class="yaku">${rows}</div>
         <div class="sub">${st.badText||'賭けを受けた対局で負けた。物語はここで一度途切れる。'}</div>
         <div style="display:flex;gap:8px;justify-content:center;margin-top:10px"><button class="btn" id="beRetry">あの日に戻る</button><button class="btn gray" id="beBack">雀荘へ</button></div>`;
       document.getElementById('beRetry').onclick=()=>startStage(idx);
@@ -4872,7 +4930,7 @@ function showStageResult(){
   const note=outcome==='win'?'':(outcome==='narrow'?`${st.t}より上の順位で突破。称号は1位の時だけ。`:'1位（またはボスより上）で突破。もう一度挑戦できます。');
   document.getElementById('modal').innerHTML=`<div class="chap-num">${st.dark?(st.part||'黒い手')+'　'+(st.stake||'証文を賭けた一戦'):(idx<3?'第二章　腕試し':'第三章　岐路')+'　'+(wager?'本気の賭け':'通常')}</div>
     <h2>${head}</h2>
-    <div class="port-big">${portraitSVG(st.boss,outcome==='lose'?'point':'calm')}</div>
+    <div class="port-big">${portraitSVG(st.boss,outcome==='lose'?'point':'calm',outcome==='win'?'shock':(outcome==='lose'?'laugh':'angry'))}</div>
     <div class="yaku">${rows}</div>
     ${special?`<div class="cond-ok">${gotFlag?'流儀を制した　':'流儀は満たしたが賭けなし　'}${st.cond.text}</div>`:''}
     ${title?`<div class="title-earn">称号「${title}」を獲得</div>`:''}
@@ -4894,7 +4952,7 @@ function showDarkEnding(outcome,rows,idx){
   if(outcome!=='win'){
     hide();say(st.narrow,()=>{hide();ov.style.display='flex';
       document.getElementById('modal').innerHTML=`<div class="chap-num">${st.part||'黒い手'}　決戦</div><h2>まだ、終わらない</h2>
-        <div class="port-big">${portraitSVG(st.boss,'point')}</div><div class="yaku">${rows}</div>
+        <div class="port-big">${portraitSVG(st.boss,'point','angry')}</div><div class="yaku">${rows}</div>
         <div class="sub">${E.narrowSub}</div>
         <div style="display:flex;gap:8px;justify-content:center;margin-top:10px"><button class="btn" id="dkRetry">もう一度</button><button class="btn gray" id="dkBack">雀荘へ</button></div>`;
       document.getElementById('dkRetry').onclick=()=>startStage(idx);document.getElementById('dkBack').onclick=()=>showStory();});
@@ -4903,7 +4961,7 @@ function showDarkEnding(outcome,rows,idx){
   if(stageProgress()<idx+1)lsSet('mjStage',String(idx+1));lsSet('mjTitle',E.title);lsSet('mjEnd_'+E.endKey,'1');addNote('end_'+E.endKey);
   hide();say(st.win.concat(E.lines||DARK_END),()=>{hide();ov.style.display='flex';
     document.getElementById('modal').innerHTML=`<div class="chap-num">${E.num}</div><h2>${E.h2}</h2>
-      <div class="port-big">${portraitSVG('master','point')}</div><div class="yaku">${rows}</div>
+      <div class="port-big">${portraitSVG('master','point','laugh')}</div><div class="yaku">${rows}</div>
       <div class="title-earn">称号「${E.title}」を獲得</div>
       <div class="sub">${E.sub}</div>
       <button class="btn" id="dkBack">雀荘へ</button>`;
@@ -4924,7 +4982,7 @@ function showEnding(outcome,rows,idx){
   say(E.lines.concat(EPILOGUE[E.id]||[]),()=>{hide();ov.style.display='flex';
     const hint=E.id==='top'?'（賭けを受けて常連の流儀を制し、秘密を3つ以上聞くと結末が変わる）':E.id==='neo'?'（岐路をやり直せば、別の結末が見られる）':E.id==='close'?'':'';
     document.getElementById('modal').innerHTML=`<div class="chap-num">第四章　最後の一局</div><h2>${E.t}</h2>
-      <div class="port-big">${portraitSVG('master',E.id==='close'?'point':(E.id==='true'?'point':'calm'))}</div>
+      <div class="port-big">${portraitSVG('master',E.id==='close'?'calm':'point',E.id==='close'?'sad':(E.id==='true'?'laugh':'smile'))}</div>
       <div class="yaku">${rows}</div>
       ${E.id==='true'?'<div class="title-earn">称号「翠の主」を獲得</div>':''}
       ${hint?`<div class="sub">${hint}</div>`:''}
@@ -4979,7 +5037,7 @@ function showStory(){
     {n:'第六章　白い塔',open:sprog>=9,rows:rows6,hint:'第五章をクリアすると開く'}];
   let secs='';for(const c of CH){if(c.open){secs+=`<div class="dojo-sec">${c.n}</div><div id="dojo2">${c.rows}</div>`;}else{secs+=`<div class="dojo-sec">${c.n.split('　')[0]}　？？？<span style="opacity:.6;font-weight:400">　（${c.hint}）</span></div>`;break;}}
   m.innerHTML=`<h2>雀荘「翠」</h2>
-    <div class="hero-card"><span class="hn">${heroName()}</span><span class="ho">${o?o.t:''}　<em>難易度 ${o?o.diff:''}</em></span>${title?`<span class="ttl-now">称号：${title}</span>`:''}${ASSIST?'<span class="ttl-now">おたすけ中</span>':''}${HERO.route?`<span class="ttl-now">${HERO.route==='neo'?'新しい翠の道':'翠を守る道'}</span>`:''}</div>
+    <div class="hero-card"><span class="hpt">${portraitSVG('hero_'+HERO.origin,'calm')}</span><span class="hn">${heroName()}</span><span class="ho">${o?o.t:''}　<em>難易度 ${o?o.diff:''}</em></span>${title?`<span class="ttl-now">称号：${title}</span>`:''}${ASSIST?'<span class="ttl-now">おたすけ中</span>':''}${HERO.route?`<span class="ttl-now">${HERO.route==='neo'?'新しい翠の道':'翠を守る道'}</span>`:''}</div>
     <div class="dojo-sec">第0章　はじめの一歩</div><div id="dojo">${rows0}</div>
     ${z0?`<div class="dojo-sec">第一章　翠の教え</div><div id="dojo">${rows1}</div>${secs}`:`<div class="dojo-sec">第一章　？？？<span style="opacity:.6;font-weight:400">　（第0章をクリアすると開く）</span></div>`}
     <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px">
@@ -5006,15 +5064,17 @@ function storyStart(ch){
   storyCasting=true;c.run();storyCasting=false;   // 場を仕込み、レッスン自身のイントロが表示される
   tut.story=ch;
   const resume=(tut.mode==='info')?()=>infoRun():()=>tutIntroStep();
-  say(intro,()=>{vnHide();tut.story=ch;setSpeaker(c.who);resume();});
+  say(intro,()=>{vnHide();tut.story=ch;setSpeaker(c.who);
+    // 第二節の最初だけ「画面の見方」ツアーを挟む（以前は run() がツアーを始めた直後に会話が重なり、会話の後に何も出なくなっていた）
+    if(tut.lesson==='tsumo'&&lsGet('mjTour')!=='1')screenTour(resume);else resume();});
 }
 /* 章の締めに1局だけ実戦（第三〜七章）。あがれなくても先に進める */
 const PRACTICE={
- 2:{ask:'覚えたか？ じゃあ試しに一局、俺たちと打ってみろよ。あがれなくても気にすんな。',win:[{who:'hayato',pose:'point',t:'おっ、やるじゃん！ 鳴きも見えてたぜ。'}],lose:[{who:'hayato',t:'ま、最初はそんなもんだ。俺の速さ、少しは見えたろ？'}]},
- 3:{ask:'……一局、打ってみる？ 私がリーチしたら、現物を思い出して。',win:[{who:'shizuka',t:'……きれいな一局だった。'}],lose:[{who:'shizuka',t:'振り込まなかった？ なら、それでいいの。'}]},
- 4:{ask:'講釈はここまでだ。一局打て。テンパイしたらリーチ、忘れんなよ。',win:[{who:'gen',pose:'point',t:'いいリーチだった。それでいい。'}],lose:[{who:'gen',t:'あがれなくても、押した一局には意味がある。次だ。'}]},
- 5:{ask:'効率は、頭で分かっただけでは身につかない。一局、打ってみるかい？',win:[{who:'master',t:'切り順が良かった。それが効率だ。'}],lose:[{who:'master',t:'あがれなくていい。繋がりを残す癖がつけば、次は違う。'}]},
- 6:{ask:'最後に一局。相手がリーチしたら、押すか降りるか、自分で決めてごらん。',win:[{who:'master',pose:'point',t:'いい判断だった。攻めと守りの線が見えている。'}],lose:[{who:'master',t:'降りる時に降りられたか？ それができれば十分だ。'}]}
+ 2:{ask:'覚えたか？ じゃあ試しに一局、俺たちと打ってみろよ。あがれなくても気にすんな。',win:[{who:'hayato',pose:'point',face:'laugh',t:'おっ、やるじゃん！ 鳴きも見えてたぜ。'}],lose:[{who:'hayato',face:'smile',t:'ま、最初はそんなもんだ。俺の速さ、少しは見えたろ？'}]},
+ 3:{ask:'……一局、打ってみる？ 私がリーチしたら、現物を思い出して。',win:[{who:'shizuka',face:'smile',t:'……きれいな一局だった。'}],lose:[{who:'shizuka',t:'振り込まなかった？ なら、それでいいの。'}]},
+ 4:{ask:'講釈はここまでだ。一局打て。テンパイしたらリーチ、忘れんなよ。',win:[{who:'gen',pose:'point',face:'smile',t:'いいリーチだった。それでいい。'}],lose:[{who:'gen',t:'あがれなくても、押した一局には意味がある。次だ。'}]},
+ 5:{ask:'効率は、頭で分かっただけでは身につかない。一局、打ってみるかい？',win:[{who:'master',face:'smile',t:'切り順が良かった。それが効率だ。'}],lose:[{who:'master',t:'あがれなくていい。繋がりを残す癖がつけば、次は違う。'}]},
+ 6:{ask:'最後に一局。相手がリーチしたら、押すか降りるか、自分で決めてごらん。',win:[{who:'master',pose:'point',face:'smile',t:'いい判断だった。攻めと守りの線が見えている。'}],lose:[{who:'master',t:'降りる時に降りられたか？ それができれば十分だ。'}]}
 };
 function practiceStart(ch){
   hideTalk();
@@ -5063,7 +5123,7 @@ function showChapterClear(ch){
   const c=STORY[ch];const ov=document.getElementById('overlay');ov.style.display='flex';
   document.getElementById('modal').innerHTML=`<div class="chap-num">第一章　第${['一','二','三','四','五','六','七'][ch]}節</div>
     <h2>${c.t}</h2>
-    <div class="port-big">${portraitSVG(c.who,'point')}</div>
+    <div class="port-big">${portraitSVG(c.who,'point','smile')}</div>
     <div class="title-earn">クリア</div>
     <div class="sub">${ch+1<STORY.length?'次の章が開きました。':''}</div>
     <button class="btn" id="chapNext">つづける</button>`;
@@ -5127,6 +5187,7 @@ function showChooser(){if(MP.active)return mpMenu();showHome();}
 
 /* ===== タイトル画面・ホーム画面・対局中メニュー・設定 ===== */
 const APP_VER='2026.09.18';
+const BATTLE_FACE={domoto:'angry',kuroda:'angry',karasu:'smile',washio:'calm',minato:'calm',shizuka:'calm',master:'smile',hayato:'smile',gen:'smile',ren:'smile'};   // 「○○ 戦」のカットインの表情
 const HM_IC={
  free:'<rect x="5" y="2.5" width="14" height="19" rx="2.5"/><circle cx="12" cy="12" r="3.2"/><path d="M12 5.5v1M12 17.5v1"/>',
  vs:'<circle cx="8.5" cy="8" r="3"/><circle cx="16.5" cy="9" r="2.5"/><path d="M2.5 19.5c.6-3.6 3-5.5 6-5.5s5.4 1.9 6 5.5M14.5 19c.4-2.6 1.6-3.8 3-3.8 1.6 0 3 1.2 3.8 3.8"/>',
@@ -5166,7 +5227,7 @@ function showTitle(){
   const tt=document.getElementById('titleTiles');[31,32,33].forEach(x=>tt.appendChild(tileEl(x)));
   t.classList.remove('out');t.classList.add('on');
   let going=false;
-  const go=()=>{if(going)return;going=true;try{sfx.select();}catch(e){}t.classList.add('out');setTimeout(()=>{t.classList.remove('on','out');showHome();},430);};
+  const go=()=>{if(going)return;going=true;try{sfx.door();}catch(e){}t.classList.add('out');setTimeout(()=>{t.classList.remove('on','out');showHome();},430);};
   t.onclick=go;
   t.onkeydown=(e)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}};
   try{t.focus({preventScroll:true});}catch(e){}
@@ -5210,10 +5271,10 @@ function renderHome(){
      <button class="hm-story" id="hmStory">
        <span class="lbl">STORY　物語</span>
        <span class="hn">${o?heroName():'雀荘「翠」へようこそ'}${o?`<small>${o.t}</small>`:''}</span>
-       <span class="nx">${nx.done?'<b>すべての物語をクリア</b>':(o?`次は <b>${nx.ch}「${nx.t}」</b>`:'駅裏の小さな雀荘で、店主と常連に麻雀を教わる物語。<b>まったくの初心者でもここから。</b>')}${title?`<br><span class="tt">称号：${title}</span>`:''}</span>
+       <span class="nx">${nx.done?'<b>すべての物語をクリア</b>':(o?`<span class="nxav">${portraitSVG(nx.who,'calm')}</span>次は <b>${nx.ch}「${nx.t}」</b>`:'駅裏の小さな雀荘で、店主と常連に麻雀を教わる物語。<b>まったくの初心者でもここから。</b>')}${title?`<br><span class="tt">称号：${title}</span>`:''}</span>
        <span class="bar"><i style="width:${pct}%"></i></span>
        <span class="row"><span class="btn ${o?'':'pulse'}">${o?(nx.done?'物語を見る':'つづきから'):'物語をはじめる'}</span><span class="pc">${pct}%</span></span>
-       <span class="who">${portraitSVG(nx.who,'calm')}</span>
+       <span class="who">${portraitSVG(o?'hero_'+HERO.origin:nx.who,'calm',o?'smile':'calm')}</span>
      </button>
      <div class="hm-grid">
        <button class="hm-card free" id="hmFree"><span class="ic">${hmIc('free')}</span><span class="tx"><b>自由対局</b><small>常連と半荘。CPUの強さ：${lvl}</small></span></button>
@@ -5238,7 +5299,7 @@ function renderHome(){
   if($('hmBack'))$('hmBack').onclick=()=>{hideHome();if(G&&G.tutorial)document.getElementById('coach').hidden=false;bgmPlay(G.dark?'boss':'match');};
   h.querySelectorAll('#hmCast button').forEach(b=>b.onclick=()=>homeSay(b,b.dataset.id));
 }
-let hmSayT;
+let hmSayT,hmSayBtn=null;
 function homeSay(btn,id){
   const L=(BANTER[id]&&BANTER[id].start)||[];if(!L.length)return;
   const el=document.getElementById('hmSay'),P=PORTRAITS[id];const r=btn.getBoundingClientRect();
@@ -5248,7 +5309,9 @@ function homeSay(btn,id){
   el.style.borderColor=P?P.bg[1]:'';el.style.color=P?P.bg[0]:'';
   el.classList.remove('hm-say');void el.offsetWidth;el.classList.add('hm-say');
   try{sfx.blip();}catch(e){}
-  clearTimeout(hmSayT);hmSayT=setTimeout(()=>{el.hidden=true;},2800);
+  if(hmSayBtn&&hmSayBtn!==btn)hmSayBtn.innerHTML=portraitSVG(hmSayBtn.dataset.id,'calm');
+  hmSayBtn=btn;btn.innerHTML=portraitSVG(id,'calm','laugh');   // 話す間は笑顔
+  clearTimeout(hmSayT);hmSayT=setTimeout(()=>{el.hidden=true;btn.innerHTML=portraitSVG(id,'calm');if(hmSayBtn===btn)hmSayBtn=null;},2800);
 }
 function showSettings(back){
   {const _m=document.getElementById('modal');_m.classList.remove('done');_m.onclick=null;}
