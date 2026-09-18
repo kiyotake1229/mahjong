@@ -1,4 +1,4 @@
-const CACHE = 'mahjong-v6';   // v6: 横画面向け（manifest の向きを landscape に）
+const CACHE = 'mahjong-v7';   // v7: タイトル画面・ホーム画面・立ち絵の刷新（manifest の名前も更新）
 const ASSETS = [
   './', './index.html', './manifest.json',
   './icon-192.png', './icon-512.png', './icon-512-maskable.png',
