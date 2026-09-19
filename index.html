@@ -685,6 +685,10 @@
   .hm-story .nxav svg{width:100%;height:100%;display:block}
   .hero-card .hpt{width:36px;height:42px;border-radius:8px;overflow:hidden;display:inline-block;align-self:center}
   .hero-card .hpt svg{width:100%;height:100%;display:block}
+  /* ===== 不具合の記録 ===== */
+  .errlog{max-height:40vh;overflow:auto;text-align:left;font-size:12px;line-height:1.5;margin:8px 0}
+  .errrow{border-top:1px solid var(--line);padding:6px 0}
+  .errrow small{color:var(--muted);word-break:break-all}
   /* ===== 対局中メニュー・設定 ===== */
   .pz{display:flex;flex-direction:column;gap:9px;max-width:300px;margin:8px auto 0}
   .pz .btn{width:100%}
@@ -1146,6 +1150,17 @@ let CPU_LV=lsGet('mjCpuLv')||'normal';
 const CPU_LV_LEVEL={easy:1,normal:2,hard:2,oni:3};
 function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
 function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+/* ===== 不具合の記録（原因調査用。端末の中だけに残り、外には送らない） ===== */
+function errCtx(){try{const G_=(typeof G!=='undefined')?G:null;const t=(typeof tut!=='undefined'&&tut)?tut:{};
+  const scr=(typeof homeOn==='function'&&homeOn())?'home':((typeof titleOn==='function'&&titleOn())?'title':(!document.getElementById('vn').hidden?'vn':(document.getElementById('overlay').style.display==='flex'?'modal':'table')));
+  return {v:(typeof APP_VER!=='undefined')?APP_VER:'',screen:scr,lesson:t.lesson||'',story:t.story==null?'':t.story,mode:t.mode||'',stage:G_?G_.stage:null,practice:G_?G_.practice:null,tut:G_?!!G_.tutorial:null,turn:G_?G_.turn:null,phase:G_?G_.phase:null,wall:G_&&G_.wall?G_.wall.length:null};}catch(e){return {};}}
+let ERR_T=0;
+function errLog(msg,where,stack){
+  try{const arr=JSON.parse(lsGet('mjErrLog')||'[]');arr.push({at:new Date().toISOString(),msg:String(msg).slice(0,200),where:String(where||'').slice(0,120),stack:String(stack||'').slice(0,400),ctx:errCtx()});while(arr.length>8)arr.shift();lsSet('mjErrLog',JSON.stringify(arr));}catch(e){}
+  const now=Date.now();if(now-ERR_T>30000){ERR_T=now;try{toast('エラーが起きました。進めない時は右上のメニュー →「やり直す」',5000);}catch(e){}}
+}
+window.addEventListener('error',e=>errLog(e.message,String(e.filename||'').split('/').pop()+':'+e.lineno+':'+e.colno,e.error&&e.error.stack));
+window.addEventListener('unhandledrejection',e=>errLog('Promise: '+(e.reason&&e.reason.message||e.reason),'',e.reason&&e.reason.stack));
 function later(fn,ms){const g=G.gen;setTimeout(()=>{if(G&&G.gen===g&&!G.over)fn();},ms);}
 const SPEEDS={slow:{label:'じっくり',think:[950,1900],react:400,draw:280,call:700},
               normal:{label:'標準',think:[620,1300],react:300,draw:200,call:520},
@@ -5186,7 +5201,7 @@ function showChooser(){if(MP.active)return mpMenu();showHome();}
 
 
 /* ===== タイトル画面・ホーム画面・対局中メニュー・設定 ===== */
-const APP_VER='2026.09.18';
+const APP_VER='2026.09.19';
 const BATTLE_FACE={domoto:'angry',kuroda:'angry',karasu:'smile',washio:'calm',minato:'calm',shizuka:'calm',master:'smile',hayato:'smile',gen:'smile',ren:'smile'};   // 「○○ 戦」のカットインの表情
 const HM_IC={
  free:'<rect x="5" y="2.5" width="14" height="19" rx="2.5"/><circle cx="12" cy="12" r="3.2"/><path d="M12 5.5v1M12 17.5v1"/>',
@@ -5328,6 +5343,7 @@ function showSettings(back){
     <div class="setrow"><button class="btn ${lsGet('mjChatOff')==='1'?'gray':''} sm" id="setChat">ひとこと：${lsGet('mjChatOff')==='1'?'表示しない':'表示する'}</button><small>オンライン対戦の定型文チャット</small></div>
     <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px">
       <button class="btn gray sm" id="setTour">画面の見方</button><button class="btn gray sm" id="setRules">ルールブック</button><button class="btn gray sm" id="setReset">物語を最初から</button></div>
+    <div style="margin-top:10px"><button class="linkbtn" id="setErr">不具合の記録（${(()=>{try{return JSON.parse(lsGet('mjErrLog')||'[]').length;}catch(e){return 0;}})()}件）</button>　<span style="font-size:11px;color:var(--muted)">版 ${APP_VER}</span></div>
     <button class="btn" id="setClose" style="margin-top:14px;min-width:160px">とじる</button>`;
   const again=()=>showSettings(back);
   m.querySelectorAll('#setLv button').forEach(b=>b.onclick=()=>{CPU_LV=b.dataset.lv;lsSet('mjCpuLv',CPU_LV);
@@ -5340,7 +5356,43 @@ function showSettings(back){
   document.getElementById('setTour').onclick=()=>{ov.style.display='none';hideHome();tourFromMenu();};
   document.getElementById('setRules').onclick=()=>showHelp(again);
   document.getElementById('setReset').onclick=()=>resetStory();
+  document.getElementById('setErr').onclick=()=>showErrLog(again);
   document.getElementById('setClose').onclick=()=>{ov.style.display='none';if(back)back();};
+}
+function showErrLog(back){
+  const ov=document.getElementById('overlay');ov.style.display='flex';const m=document.getElementById('modal');
+  let arr=[];try{arr=JSON.parse(lsGet('mjErrLog')||'[]');}catch(e){}
+  const rows=arr.length?arr.slice().reverse().map(e=>{const c=e.ctx||{};return `<div class="errrow"><b>${esc(String(e.at||'').replace('T',' ').slice(0,19))}</b>　${esc(e.msg)}<br><small>${esc(e.where)}　画面:${esc(c.screen||'')}　節:${esc(String(c.story==null?'':c.story))} ${esc(c.lesson||'')}　戦:${esc(String(c.stage==null?'':c.stage))}　手番:${esc(String(c.turn==null?'':c.turn))}/${esc(c.phase||'')}　版:${esc(c.v||'')}</small></div>`;}).join(''):'<div class="sub">記録はありません</div>';
+  m.innerHTML=`<h2>不具合の記録</h2>
+    <div class="sub">エラーが起きた時に、この端末の中だけに残る記録です（外には送られません）。進めなくなった時は、この画面の内容を開発側に伝えてください。</div>
+    <div class="errlog">${rows}</div>
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px">
+      <button class="btn gray sm" id="errCopy">コピー</button><button class="btn gray sm" id="errClear">消す</button><button class="btn sm" id="errBack">もどる</button></div>`;
+  document.getElementById('errCopy').onclick=()=>{const txt=JSON.stringify({v:APP_VER,ua:navigator.userAgent,log:arr},null,1);if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(txt).then(()=>toast('コピーしました'),()=>toast('コピーできませんでした'));else toast('この端末ではコピーできません');};
+  document.getElementById('errClear').onclick=()=>{lsSet('mjErrLog','[]');showErrLog(back);};
+  document.getElementById('errBack').onclick=()=>{if(back)back();else ov.style.display='none';};
+}
+/* いま遊んでいる物語の節・戦・レッスン（やり直し用） */
+function currentStoryItem(){
+  const t=tut||{};
+  if(G&&G.stage!=null)return {kind:'stage',i:G.stage,t:'この戦'};
+  if(G&&G.storyFinal)return {kind:'final',t:'この一局'};
+  if(G&&G.practice!=null)return {kind:'practice',i:G.practice,t:'練習の一局'};
+  if(t.mode==='zero'&&t.zero!=null)return {kind:'zero',i:t.zero,t:'この節'};
+  if(t.story!=null&&t.story>=0&&G&&G.tutorial)return {kind:'story',i:t.story,t:'この節'};
+  if(G&&G.tutorial&&t.lesson&&LESSONS.some(L=>L.id===t.lesson))return {kind:'lesson',id:t.lesson,t:'このレッスン'};
+  return null;
+}
+function restartStoryItem(it){
+  hideTalk();document.getElementById('coach').hidden=true;clearHL();
+  if(G){G.over=true;G.gen++;}   // 動いている手番のタイマーを止める
+  document.getElementById('actions').innerHTML='';
+  if(it.kind==='stage')return startStage(it.i);
+  if(it.kind==='final')return storyFinalStart();
+  if(it.kind==='practice')return practiceStart(it.i);
+  if(it.kind==='zero')return zeroStart(it.i);
+  if(it.kind==='story')return storyStart(it.i);
+  if(it.kind==='lesson'){const L=LESSONS.find(x=>x.id===it.id);if(L){tut={lesson:'',mode:'',phase:'',i:0};L.run();}}
 }
 function showPause(){
   if(MP.active)return mpMenu();
@@ -5348,19 +5400,34 @@ function showPause(){
   {const _m=document.getElementById('modal');_m.classList.remove('done');_m.onclick=null;}
   const ov=document.getElementById('overlay');ov.style.display='flex';const m=document.getElementById('modal');
   const info=G.tutorial?'レッスン中':`${document.getElementById('roundName').textContent}局 ${document.getElementById('honba').textContent}本場`;
+  const cur=currentStoryItem();
   m.innerHTML=`<h2>メニュー</h2><div class="sub">${info}</div>
     <div class="pz">
       <button class="btn blue" id="pzBack">${G.tutorial?'レッスンにもどる':'対局にもどる'}</button>
       <button class="btn gray" id="pzTour">画面の見方</button>
       <button class="btn gray" id="pzRules">ルールブック</button>
       <button class="btn gray" id="pzSet">設定</button>
+      ${cur?`<button class="btn gray" id="pzRestart">${cur.t}をやり直す</button>`:''}
       <button class="btn gray" id="pzHome">ホームにもどる</button></div>`;
+  if(cur)document.getElementById('pzRestart').onclick=()=>{if(!confirm(cur.t+'を最初からやり直しますか？')){return;}ov.style.display='none';restartStoryItem(cur);};
   document.getElementById('pzBack').onclick=()=>{ov.style.display='none';};
   document.getElementById('pzTour').onclick=()=>{ov.style.display='none';tourFromMenu();};
   document.getElementById('pzRules').onclick=()=>showHelp(showPause);
   document.getElementById('pzSet').onclick=()=>showSettings(showPause);
   document.getElementById('pzHome').onclick=()=>{ov.style.display='none';showHome();};
 }
+
+/* 見張り：レッスンの案内が消えたまま、またはCPUの手番が動かないままなら、抜け方を知らせて記録に残す */
+let WD={n:0,sig:'',m:0,told:0};
+setInterval(()=>{try{
+  if(!G||G.over||MP.active)return;
+  if(homeOn()||titleOn()||!document.getElementById('vn').hidden||document.getElementById('overlay').style.display==='flex'){WD.n=0;WD.m=0;return;}
+  const tell=(why)=>{if(Date.now()-WD.told<120000)return;WD.told=Date.now();errLog('見張り: '+why,'');toast('進めなくなった時は、右上のメニュー →「やり直す」',6000);};
+  if(G.tutorial){const busy=document.querySelector('.tile.pulse,.btn.pulse,#actions .btn');
+    if(document.getElementById('coach').hidden&&!busy){WD.n++;if(WD.n===5)tell('レッスン中に案内が消えたまま');}else WD.n=0;}
+  else{const sig=[G.gen,G.turn,G.phase,G.wall.length,G.players.map(p=>p.discards.length).join('.')].join('|');
+    if(sig===WD.sig&&ctlOf(G.turn)==='cpu'){WD.m++;if(WD.m===8)tell('CPUの手番が動かないまま '+sig);}else{WD.sig=sig;WD.m=0;}}
+}catch(e){}},5000);
 
 {const mm=/#room=([a-z0-9]{6})/i.exec(location.hash||'');
   if(mm){history.replaceState(null,'',location.pathname+location.search);showHome();setTimeout(()=>showVersus(mm[1].toLowerCase()),300);}
