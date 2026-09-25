@@ -147,6 +147,7 @@
   .tile.last{outline:1px solid var(--gold);outline-offset:1px;animation:justput .34s cubic-bezier(.25,1.2,.4,1)}
   @keyframes justput{0%{transform:translateY(-9px) scale(1.1);opacity:.5}62%{transform:translateY(1px) scale(.99)}100%{transform:none;opacity:1}}
   .hand .tile{cursor:pointer;transition:transform .13s ease,box-shadow .18s ease}
+  .hand .tile.sel{transform:translateY(-12px);box-shadow:0 0 0 2px var(--gold-hi),0 10px 18px rgba(0,0,0,.5);z-index:2}
   .hand .tile:hover{transform:translateY(-8px);
     box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 2px 0 #b3ac99,0 10px 16px rgba(0,0,0,.45)}
   .hand .tile.drawn{margin-left:13px;animation:drawpop .26s ease-out;
@@ -786,6 +787,12 @@ const isRed=t=>t%1!==0;
 const REDABLE={4:1,13:1,22:1};        // 5萬・5筒・5索
 let RED_ON=lsGet('mjRed')!=='0';
 let ASSIST=lsGet('mjAssist')==='1';   // おたすけ: 相手が少し弱く、ゲージが溜まりやすい
+/* 打ち方の設定 */
+let AUTO_WIN=lsGet('mjAutoWin')==='1';          // あがれる時は自動でロン・ツモ
+let NO_CALL=lsGet('mjNoCall')==='1';            // ポン・チー・カンの確認を出さない（ロンだけ聞く）
+let AUTO_TG=lsGet('mjAutoTg')!=='0';            // リーチ後は自動でツモ切り
+let TWO_TAP=(lsGet('mjTwoTap')||(matchMedia('(pointer:coarse)').matches?'1':'0'))==='1';   // タップで選んで、もう一度で捨てる（触って操作する端末は最初からON）
+let TILE_BIG=lsGet('mjTileBig')==='1';          // 牌を大きめに
 const pname=i=>(G&&G.players[i]&&G.players[i].name)||POS[(i-VIEW+4)%4];
 const isTermHon=t=>t>=27||t%9===0||t%9===8;
 function tileName(t){const r=isRed(t)?'赤':'';t=nt(t);return r+(t<27?(t%9+1)+['萬','筒','索'][(t/9)|0]:HON[t-27]);}
@@ -1356,8 +1363,8 @@ function humanTurn(){
     const ev=evaluate(p.hand,p.melds,buildCtx(pid,true,p.drawn));
     if(ev){tsumoAct={label:'ツモ',cls:'red',fn:()=>win(pid,pid,true,G.players[pid].drawn)};acts.push(tsumoAct);}
   }
-  if(tsumoAct&&p.riichi&&!G.tutorial&&MODE!=='guest'){ // リーチ中は自動ツモ
-    renderActions(acts,true);setGuide('<b>ツモ！</b> リーチ中なので自動であがります');
+  if(tsumoAct&&(p.riichi||AUTO_WIN)&&!G.tutorial&&MODE!=='guest'){ // リーチ中（または設定で自動）は自動ツモ
+    renderActions(acts,true);setGuide(p.riichi?'<b>ツモ！</b> リーチ中なので自動であがります':'<b>ツモ！</b> 設定により自動であがります');
     later(()=>{if(G.turn===pid&&G.phase==='discard'&&!G.over)tsumoAct.fn();},900);return;
   }
   if(!p.riichi&&p.melds.every(m=>m.concealed)&&p.score>=1000&&G.wall.length>=4&&!(G.tutorial&&p.hand.includes(33))){
@@ -1370,6 +1377,10 @@ function humanTurn(){
     ks.forEach(k=>acts.push({label:'カン'+(ks.length>1?tileName(k.tile):''),cls:'gray',fn:()=>doKan(pid,k.tile,k.kind)}));}
   renderActions(acts,true);
   if(G.tutorial)tutGuide();
+  // リーチ後は自動でツモ切り（カンの選択がある時は待つ）
+  if(p.riichi&&!tsumoAct&&AUTO_TG&&!G.tutorial&&MODE!=='guest'&&p.drawn>=0&&!acts.length){
+    const d=p.drawn;later(()=>{if(G.turn===pid&&G.phase==='discard'&&!G.over&&G.players[pid].drawn===d){const i=G.players[pid].hand.indexOf(d);if(i>=0)humanDiscard(i,true);}},700);
+  }
 }
 /* カンの候補: 暗槓(4枚) / 加槓(ポンした牌を引いた) */
 function kanOptions(p){
@@ -1404,17 +1415,21 @@ function finishKan(pid){
   render();
   if(isHuman(pid))seatTurn(pid);else later(()=>cpuDiscardOnly(pid),think());
 }
-function humanDiscard(idx){
+function humanDiscard(idx,auto){
   if(HIDE)return;
   if(MODE==='guest'&&(!NET.ask||NET.ask.req.kind!=='turn'))return;
   const pid=VIEW,p=G.players[pid];if(G.phase!=='discard'||G.turn!==pid||G.over)return;
   const tile=p.hand[idx];
   if(G.tutorial&&G.tutGate!=null&&tile!==G.tutGate){flash('光ってる牌をタップ');return;}
   if(p.riichi&&tile!==p.drawn)return;
+  if(p.pendingRiichi){const r=p.hand.slice();r.splice(idx,1);if(shanten(r,p.melds.length)!==0){toast('その牌では聴牌しません');return;}}
+  if(TWO_TAP&&!auto&&!p.riichi&&!G.tutorial&&MODE!=='guest'){   // 1回目のタップは選ぶだけ。同じ牌をもう一度で捨てる（自動ツモ切りとリーチ中は1回）
+    const els=document.querySelectorAll('#myHand .tile'),el=els[idx];
+    if(el&&!el.classList.contains('sel')){els.forEach(e=>e.classList.remove('sel'));el.classList.add('sel');try{sfx.blip();}catch(e){}
+      if(document.getElementById('begChk').checked)setGuide('もう一度タップすると捨てます');return;}
+  }
   let riichi=false;
   if(p.pendingRiichi){
-    const r=p.hand.slice();r.splice(idx,1);
-    if(shanten(r,p.melds.length)!==0){toast('その牌では聴牌しません');return;}
     riichi=true;p.pendingRiichi=false;
     if(isFuriten(p,waits(r,p.melds.length))){if(MODE==='hot')toast('フリテンリーチ：ロンはできません。ツモを待とう',1200);else setTimeout(()=>{if(!HIDE&&VIEW===pid)toast('フリテンリーチ：ロンはできません。ツモを待とう');},700);}
   }
@@ -1500,8 +1515,8 @@ function ronPhase(fromPid,tile,onNone,chankan){
   const order=(a,b)=>((a-fromPid+4)%4)-((b-fromPid+4)%4);
   const claim=[];for(let i=0;i<4;i++)if(i!==fromPid&&canRon(i,tile,chankan)&&!aiMissesRon(i,tile,chankan))claim.push(i);
   claim.sort(order);
-  const autoRon=MODE==='hot'&&!MP.calls;
-  const humans=autoRon?[]:claim.filter(isHuman);
+  const autoRonAll=MODE==='hot'&&!MP.calls;
+  const humans=claim.filter(pid=>isHuman(pid)&&!autoRonAll&&!(AUTO_WIN&&ctlOf(pid)==='local'&&!G.tutorial));   // 自動ロンの人は聞かずにあがる
   if(!humans.length){
     if(claim.length){flash(claim.map(pname).join('と')+'のロン');return later(()=>winMulti(claim,fromPid,tile,chankan),sp().call);}
     return onNone();
@@ -1527,7 +1542,7 @@ function ronPhase(fromPid,tile,onNone,chankan){
 function ponPhase(fromPid,tile){
   let pid=null,canKan=false;
   for(let d=1;d<4;d++){const i=(fromPid+d)%4;const p=G.players[i];if(p.riichi)continue;const c=toCounts(p.hand)[tile];if(c>=2){pid=i;canKan=c>=3;break;}}
-  if(pid!==null&&isHuman(pid)&&!(MODE==='hot'&&!MP.calls)){
+  if(pid!==null&&isHuman(pid)&&!(MODE==='hot'&&!MP.calls)&&!(NO_CALL&&ctlOf(pid)==='local'&&!G.tutorial)){
     const kanOk=canKan&&G.wall.length>0;
     askDecision(pid,{kind:'pon',tile,fromPid,canKan:kanOk},ch=>{
       if(ch.a==='pon')return doPon(pid,fromPid,tile,false);
@@ -1551,7 +1566,7 @@ function chiPhase(fromPid,tile){
   const combos=p.riichi?[]:chiCombos(p.hand,tile);
   if(combos.length){
     if(isHuman(pid)){
-      if(MODE==='hot'&&!MP.calls)return advanceTurn(fromPid);
+      if((MODE==='hot'&&!MP.calls)||(NO_CALL&&ctlOf(pid)==='local'&&!G.tutorial))return advanceTurn(fromPid);
       askDecision(pid,{kind:'chi',tile,fromPid,combos},ch=>{
         if(ch.a==='chi'&&combos[ch.k])return doChi(pid,fromPid,tile,combos[ch.k]);
         advanceTurn(fromPid);});
@@ -2086,12 +2101,12 @@ function fitLayout(){
   const P=(G&&G.players)||[];const me=P[VIEW];const nm=me&&me.melds?me.melds.length:0;
   const fs=clampN(Math.min(W*.0145,H*.032),10,18),lh=fs*1.45;
   // 手牌（右端はボタンの場所。狭い画面ではボタンを手牌の上に浮かせる）
-  const cap=Math.min(land?H*.15/1.36:H*.07,62);
+  const cap=Math.min((land?H*.15/1.36:H*.07)*(TILE_BIG?1.18:1),TILE_BIG?70:62);   // 「牌を大きめに」は高さの上限を少し広げる
   let actW=land?200:0;
   let hw=(Wa-actW-24-nm*8)/(14.6-0.66*nm);
   if(land&&hw<cap*.97){actW=0;hw=(Wa-24-nm*8)/(14.6-0.66*nm);}
   document.body.classList.toggle('actfloat',!land||actW===0);
-  hw=clampN(Math.min(hw,cap),20,62);
+  hw=clampN(Math.min(hw,cap),20,TILE_BIG?70:62);
   const hh=hw*1.36,barH=Math.round(hh+15+sa.b*.6);
   // 捨て牌：対面と自分は3段（多い時は1段の枚数を増やす）、左右は6枚ずつ
   const cnt=(i,k)=>(P[i]&&P[i][k])?P[i][k].length:0;
@@ -5378,6 +5393,12 @@ function showSettings(back){
     <div class="dojo-sec">自由対局・対戦のCPUの強さ</div>
     <div class="seg" id="setLv">${CPU_LEVELS.map(L=>`<button data-lv="${L.id}" class="${CPU_LV===L.id?'on':''}">${L.t}</button>`).join('')}</div>
     <div style="font-size:11px;color:var(--muted);margin-bottom:6px">${cur.d}（物語の相手には影響しません）</div>
+    <div class="dojo-sec">打ち方</div>
+    <div class="setrow"><button class="btn ${AUTO_WIN?'':'gray'} sm" id="setAutoWin">自動でロン・ツモ：${AUTO_WIN?'ON':'OFF'}</button><small>あがれる時はボタンを押さずにあがる</small></div>
+    <div class="setrow"><button class="btn ${NO_CALL?'':'gray'} sm" id="setNoCall">鳴きの確認：${NO_CALL?'出さない':'出す'}</button><small>出さない＝ポン・チー・カンは聞かず、ロンだけ聞く</small></div>
+    <div class="setrow"><button class="btn ${AUTO_TG?'':'gray'} sm" id="setAutoTg">リーチ後の自動ツモ切り：${AUTO_TG?'ON':'OFF'}</button><small>リーチ中、あがり牌でなければ自動で切る</small></div>
+    <div class="setrow"><button class="btn ${TWO_TAP?'':'gray'} sm" id="setTwoTap">二段タップ：${TWO_TAP?'ON':'OFF'}</button><small>1回目で選び、同じ牌をもう一度タップで捨てる（誤タップ防止）</small></div>
+    <div class="setrow"><button class="btn ${TILE_BIG?'':'gray'} sm" id="setTileBig">牌を大きめに：${TILE_BIG?'ON':'OFF'}</button><small>手牌を少し大きく（狭い画面ではボタンが手牌の上に浮く）</small></div>
     <div class="dojo-sec">あそびやすさ</div>
     <div class="setrow"><button class="btn ${ASSIST?'':'gray'} sm" id="setAssist">おたすけモード：${ASSIST?'ON':'OFF'}</button><small>物語の相手が少し弱くなり、スキルゲージが1.5倍溜まる。慣れるまでONがおすすめ</small></div>
     <div class="setrow"><button class="btn ${SOUND_ON?'':'gray'} sm" id="setSound">音楽・効果音：${SOUND_ON?'あり':'なし'}</button><small>BGMと効果音（端末の中で作っています）</small></div>
@@ -5391,6 +5412,11 @@ function showSettings(back){
   m.querySelectorAll('#setLv button').forEach(b=>b.onclick=()=>{CPU_LV=b.dataset.lv;lsSet('mjCpuLv',CPU_LV);
     if(G&&!G.tutorial&&G.stage==null&&!G.storyFinal&&G.practice==null)G.players.forEach((q,i)=>{if(i&&q.ai!==undefined&&q.ai!==null){q.ai=CPU_LV;q.level=CPU_LV_LEVEL[CPU_LV];}});
     again();});
+  document.getElementById('setAutoWin').onclick=()=>{AUTO_WIN=!AUTO_WIN;lsSet('mjAutoWin',AUTO_WIN?'1':'0');again();};
+  document.getElementById('setNoCall').onclick=()=>{NO_CALL=!NO_CALL;lsSet('mjNoCall',NO_CALL?'1':'0');again();};
+  document.getElementById('setAutoTg').onclick=()=>{AUTO_TG=!AUTO_TG;lsSet('mjAutoTg',AUTO_TG?'1':'0');again();};
+  document.getElementById('setTwoTap').onclick=()=>{TWO_TAP=!TWO_TAP;lsSet('mjTwoTap',TWO_TAP?'1':'0');again();};
+  document.getElementById('setTileBig').onclick=()=>{TILE_BIG=!TILE_BIG;lsSet('mjTileBig',TILE_BIG?'1':'0');if(G&&G.players)render();again();};
   document.getElementById('setAssist').onclick=()=>{ASSIST=!ASSIST;lsSet('mjAssist',ASSIST?'1':'0');if(G&&G.stage!=null&&!G.over){G.players.forEach((p,i)=>{if(i&&p.level)p.level=ASSIST?Math.max(1,p.level-1):p.level+1;});}again();};
   document.getElementById('setSound').onclick=()=>{setSound(!SOUND_ON);again();};
   document.getElementById('setRed').onclick=()=>{RED_ON=!RED_ON;lsSet('mjRed',RED_ON?'1':'0');again();};
