@@ -955,6 +955,8 @@ function ryanmenWin(seqs,pair,w){
     return false;
   });
 }
+/* 役満が成立している時は、通常の役とドラは数えない（四暗刻に対々和・ツモが付くのを防ぐ） */
+function onlyYakuman(y){if(y.some(v=>v.h>=13)){const ym=y.filter(v=>v.h>=13);y.length=0;ym.forEach(v=>y.push(v));}}
 function evaluate(hand,om,ctx){
   const counts=toCounts(hand),concealed=om.every(m=>m.concealed);
   const allTiles=hand.concat(om.flatMap(expandMeld));
@@ -974,6 +976,7 @@ function evaluate(hand,om,ctx){
     let ok=true,p=0;for(let i=0;i<34;i++){if(counts[i]===0)continue;if(counts[i]===2)p++;else{ok=false;break;}}
     if(ok&&p===7){
       const y=[];addExtra(y,ctx);y.push({n:'七対子',h:2});addFlags(y,allTiles,concealed);addDora(y,allTiles,ctx);
+      onlyYakuman(y);
       const han=y.reduce((a,b)=>a+b.h,0),real=y.filter(v=>!v.dora).reduce((a,b)=>a+b.h,0);
       if(real>0)best={yaku:y,han,fu:25};
     }
@@ -1009,6 +1012,7 @@ function evaluate(hand,om,ctx){
     if(anko>=4)y.push({n:'四暗刻',h:13});else if(anko>=3)y.push({n:'三暗刻',h:2});
     addFlags(y,allTiles,concealed);
     addDora(y,allTiles,ctx);
+    onlyYakuman(y);
     const real=y.filter(v=>!v.dora).reduce((a,b)=>a+b.h,0);
     if(real===0)continue;
     const han=y.reduce((a,b)=>a+b.h,0);
