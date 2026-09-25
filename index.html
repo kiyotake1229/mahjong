@@ -1150,6 +1150,41 @@ let CPU_LV=lsGet('mjCpuLv')||'normal';
 const CPU_LV_LEVEL={easy:1,normal:2,hard:2,oni:3};
 function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
 function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+/* ===== 対局の自動保存と再開（ひとり用。レッスンと「みんなで対戦」は対象外） ===== */
+const SAVE_SV=1;
+let TOUR_ON=false;
+function saveLabel(){let kind='自由対局';try{if(G.stage!=null){const st=storyPath()[G.stage];kind=st?(st.t+' 戦'):'物語の対局';}else if(G.storyFinal)kind='終節の一局';else if(G.practice!=null)kind='練習の一局';}catch(e){}
+  return kind+'　'+document.getElementById('roundName').textContent+'局';}
+function saveGame(){
+  if(!G||G.tutorial||TOUR_ON||(typeof MP!=='undefined'&&MP.active)||typeof APP_VER==='undefined')return;
+  try{lsSet('mjSaveGame',JSON.stringify({sv:SAVE_SV,app:APP_VER,at:Date.now(),lbl:saveLabel(),gauge:(typeof SKILL!=='undefined'?SKILL.gauge:0),G}));}catch(e){}
+}
+function loadSave(){try{const d=JSON.parse(lsGet('mjSaveGame')||'null');if(!d||d.sv!==SAVE_SV||!d.G||!Array.isArray(d.G.players)||d.G.players.length!==4)return null;return d;}catch(e){return null;}}
+function clearSave(){try{localStorage.removeItem('mjSaveGame');}catch(e){}}
+function resumeSaved(){
+  const d=loadSave();if(!d)return false;
+  hideTalk();document.getElementById('overlay').style.display='none';document.getElementById('coach').hidden=true;
+  G=d.G;if(typeof SKILL!=='undefined')SKILL.gauge=d.gauge||0;VIEW=0;HIDE=false;tut={lesson:'',mode:'',phase:'',i:0};
+  G.gen=++GEN;   // 保存前に動いていたタイマーが残っていても効かないように
+  hideHome();render();renderActions([],false);if(typeof updateSkillbar==='function')updateSkillbar();bgmPlay(G.dark?'boss':'match');
+  toast('続きから再開しました');
+  const won=()=>((G._winners||[]).includes(0)||!!G._meTen);
+  if(G.over){   // 局の結果まで進んでいた（結果は見たものとして次へ）
+    if(G.storyFinal)return storyFinalEnd(won());
+    if(G.practice!=null)return practiceEnd(G.practice,won());
+    return endCheck();}
+  if(G.phase==='draw')return drawStep();
+  if(G.phase==='discard')return seatTurn(G.turn);
+  if(G.phase==='react'){const ld=G.lastDiscard;if(ld)return startResolve(ld.pid,ld.tile);G.turn=(G.turn+1)%4;G.phase='draw';return drawStep();}
+  return true;
+}
+/* 自由対局を新しく始める（途中の対局があれば確認する） */
+function startFreeGame(){
+  const inGame=!!(G&&!G.over&&!G.tutorial&&G.wall&&(G.wall.length<70||G.players.some(p=>p.discards&&p.discards.length)));
+  if(inGame&&!confirm('いまの対局を終えて、新しく始めますか？'))return;
+  const sv=loadSave();if(!inGame&&sv&&!confirm('途中の対局（'+sv.lbl+'）を消して、新しく始めますか？'))return;
+  clearSave();lsSet('mjHelpSeen','1');G=null;newHand(false);
+}
 /* ===== 不具合の記録（原因調査用。端末の中だけに残り、外には送らない） ===== */
 function errCtx(){try{const G_=(typeof G!=='undefined')?G:null;const t=(typeof tut!=='undefined'&&tut)?tut:{};
   const scr=(typeof homeOn==='function'&&homeOn())?'home':((typeof titleOn==='function'&&titleOn())?'title':(!document.getElementById('vn').hidden?'vn':(document.getElementById('overlay').style.display==='flex'?'modal':'table')));
@@ -1851,6 +1886,7 @@ function win(pid,fromPid,tsumo,winTile){
   if(!ev){if(ctlOf(pid)==='local'){toast('役がありません');renderActions([],true);}return;}
   G.over=true;const before=G.players.map(q=>q.score);
   const r=applyWin(pid,pid,true,ev,true);netSnapNext([pid]);
+  G._winners=[pid];G.advance=(pid!==G.dealer);G.keepHonba=!G.advance;   // 途中で閉じても次局の進み方が分かるように先に記録
   sfx.tsumo();render();showDeltas(before);
   if(pid===0){banterOne('heroTsumo',600);}else banterOne('win',400,pid,true);
   const show=()=>showResult(pid,pid,true,hand,winTile,ev,r.pay,r.gained,r.sticks);
@@ -1880,14 +1916,14 @@ function winMulti(winners,fromPid,tile,chankan){
   const start=()=>showK(0);
   if(heroWon){flash(n>1?'ダブロン':(MP.active?pname(list[0].pid)+'のロン':'ロン'));setTimeout(start,520);}else start();
   // 最後の結果画面のボタンで afterWinners が呼ばれる（showResult 側）
-  G._winners=list.map(w=>w.pid);
+  G._winners=list.map(w=>w.pid);G.advance=!G._winners.includes(G.dealer);G.keepHonba=!G.advance;
 }
 function ryuukyoku(){
   G.over=true;const before=G.players.map(p=>p.score);
   const tenpai=G.players.map(p=>shanten(p.hand,p.melds.length)===0);
   const tn=tenpai.filter(Boolean).length;
   if(tn>0&&tn<4){const get=3000/tn,give=3000/(4-tn);G.players.forEach((p,i)=>p.score+=tenpai[i]?get:-give);}
-  G.advance=!tenpai[G.dealer];G.keepHonba=true;netSnapNext(null,tenpai);
+  G.advance=!tenpai[G.dealer];G.keepHonba=true;G._meTen=!!tenpai[0];netSnapNext(null,tenpai);
   render();showDeltas(before);banterOne('draw',300);showDraw(tenpai);
 }
 
@@ -1930,6 +1966,7 @@ function render(){
   if(beg&&!G.offering)guideForTurn();
   fitCheck();
   if(typeof netAfterRender==='function')netAfterRender();
+  saveGame();   // ひとり用の対局は毎回ここで保存（ホームの「続きから」で再開）
 }
 function renderPeek(){
   const ps=document.getElementById('peekStrip');
@@ -2303,6 +2340,7 @@ function endCheck(){
   newHand(true);
 }
 function showFinal(){
+  clearSave();
   {const _m=document.getElementById('modal');_m.classList.remove('done');_m.onclick=null;}
   if(G.stage!=null){return showStageResult();}
   if(MP.active)return mpFinal();
@@ -2487,9 +2525,9 @@ function screenTour(onDone){
   step();
 }
 function tourFromMenu(){
-  hideTalk();G=null;newHand(false);G.gen++;   // 卓を用意して止める
+  hideTalk();TOUR_ON=true;G=null;newHand(false);G.gen++;   // 卓を用意して止める（この卓は保存しない）
   document.getElementById('coach').hidden=false;
-  screenTour(()=>{document.getElementById('coach').hidden=true;G=null;newHand(false);});
+  screenTour(()=>{document.getElementById('coach').hidden=true;TOUR_ON=false;if(loadSave()){G=null;resumeSaved();}else{G=null;newHand(false);}});
 }
 
 /* ===== みんなで対戦 ===== */
@@ -4475,7 +4513,7 @@ function showPrologue(){
 }
 function resetStory(){
   if(!confirm('物語の進行をすべて消して、最初から始めますか？（道場の記録は残ります）'))return;
-  HERO=blankHero();saveHero();
+  clearSave();HERO=blankHero();saveHero();
   ['mjStory','mjZero','mjStage','mjTitle','mjRoute','mjFlag_hayato','mjFlag_shizuka','mjFlag_gen','mjFlag_ren','mjFlag_kuroda','mjEnd_true','mjEnd_top','mjEnd_neo','mjEnd_close','mjEnd_dark','mjEnd_tower','mjFlag_karasu','mjFlag_domoto','mjFlag_minato','mjFlag_hayato2','mjInter_karasu','mjInter_domoto','mjInter_minato','mjInter_hayato2','mjInter_hayato','mjInter_shizuka','mjInter_gen','mjInter_ren','mjInter_kuroda','mjInter2_hayato','mjInter2_shizuka','mjInter2_gen','mjInter2_ren','mjInter2_kuroda'].forEach(k=>{try{localStorage.removeItem(k)}catch(e){}});
   showStory();
 }
@@ -4879,6 +4917,7 @@ function castStage(st,idx,wager){
 }
 function startStage(i){
   const path=storyPath(),st=path[i];if(!st)return;
+  {const sv=loadSave();if(sv&&sv.G.stage!==i&&!st.scene&&!confirm('途中の対局（'+sv.lbl+'）を消して、この戦を始めますか？'))return;if(!st.scene)clearSave();}
   document.getElementById('overlay').style.display='none';
   tut={lesson:'',mode:'',phase:'',i:0,story:null};
   G=null;
@@ -4912,6 +4951,7 @@ function runCrossroad(i){
   });
 }
 function showStageResult(){
+  clearSave();
   {const _m=document.getElementById('modal');_m.classList.remove('done');_m.onclick=null;}
   const path=storyPath(),idx=G.stage,st=path[idx],wager=!!G.wager,bossSeat=2;
   const order=G.players.map((p,i)=>({i,score:p.score})).sort((a,b)=>b.score-a.score);
@@ -5098,7 +5138,7 @@ function practiceStart(ch){
   render();
 }
 function practiceEnd(ch,won){
-  const P=PRACTICE[ch]||{};
+  clearSave();const P=PRACTICE[ch]||{};
   tut={story:ch,lesson:'',mode:'',phase:'',i:0};
   document.getElementById('coach').hidden=false;
   say((won?P.win:P.lose)||[],()=>storyOutro(ch));
@@ -5157,7 +5197,7 @@ function storyFinalStart(){
   render();
 }
 function storyFinalEnd(won){
-  G.storyFinal=false;
+  clearSave();G.storyFinal=false;
   if(won){tut={story:STORY.findIndex(c=>c.final),lesson:'',mode:'',phase:'',i:0};storyChapterDone(null);return;}
   const ov=document.getElementById('overlay');ov.style.display='flex';
   document.getElementById('modal').innerHTML=`<h2>惜しい</h2>
@@ -5193,7 +5233,7 @@ function showDojo(){
   m.querySelectorAll('.lesson[data-id]').forEach(b=>b.onclick=()=>{const L=LESSONS.find(x=>x.id===b.dataset.id);ov.style.display='none';L.run();});
   document.getElementById('dojoStory').onclick=()=>showStory();
   document.getElementById('dojoZero').onclick=()=>{if(!HERO.origin){HERO=blankHero();HERO.origin='student';HERO.name='';saveHero();}zeroStart(0);};
-  document.getElementById('dojoPlay').onclick=()=>{ov.style.display='none';lsSet('mjHelpSeen','1');G=null;newHand(false);};
+  document.getElementById('dojoPlay').onclick=()=>{ov.style.display='none';startFreeGame();};
   document.getElementById('dojoRead').onclick=()=>showHelp(showDojo);
   document.getElementById('dojoHome').onclick=()=>{ov.style.display='none';showHome();};
 }
@@ -5276,9 +5316,10 @@ function renderHome(){
   const cast=['master','hayato','shizuka','gen'].concat(stageProgress()>=3?['ren']:[]).concat(HERO.route==='neo'?['kuroda']:[]);
   const lvl=(CPU_LEVELS.find(L=>L.id===CPU_LV)||CPU_LEVELS[1]).t;
   const done=LESSONS.filter(L=>lsGet('mjLesson_'+L.id)==='1').length;
+  const sv=inGame?null:loadSave();
   h.innerHTML=`<div class="hm">
    <div class="hm-top"><div class="lg">雀荘 <b>翠</b></div><div class="sp"></div>
-     ${inGame?`<button class="ib go" id="hmBack">${hmIc('play')}<span>${G.tutorial?'レッスンにもどる':'対局にもどる'}</span></button>`:''}
+     ${inGame?`<button class="ib go" id="hmBack">${hmIc('play')}<span>${G.tutorial?'レッスンにもどる':'対局にもどる'}</span></button>`:(sv?`<button class="ib go" id="hmResume">${hmIc('play')}<span>続きから（${esc(sv.lbl)}）</span></button>`:'')}
      <button class="ib" id="hmSound" title="音楽・効果音">${hmIc(SOUND_ON?'sndOn':'sndOff')}<span>${SOUND_ON?'音あり':'音なし'}</span></button>
      <button class="ib" id="hmSet" title="設定">${hmIc('gear')}<span>設定</span></button>
      <button class="ib" id="hmTitle" title="タイトルへ" aria-label="タイトルへ">${hmIc('title')}</button></div>
@@ -5302,7 +5343,7 @@ function renderHome(){
    <div class="hm-say" id="hmSay" hidden></div></div>`;
   const $=id=>document.getElementById(id);
   $('hmStory').onclick=()=>{if(!HERO.origin)showPrologue();else showStory();};
-  $('hmFree').onclick=()=>{if(inGame&&!G.tutorial&&!confirm('いまの対局を終えて、新しく始めますか？'))return;lsSet('mjHelpSeen','1');G=null;newHand(false);};
+  $('hmFree').onclick=()=>startFreeGame();
   $('hmVs').onclick=()=>showVersus();
   $('hmDojo').onclick=()=>showDojo();
   $('hmNotes').onclick=()=>showNotes();
@@ -5312,6 +5353,7 @@ function renderHome(){
   $('hmSet').onclick=()=>showSettings(()=>{renderHome();});
   $('hmTitle').onclick=()=>showTitle();
   if($('hmBack'))$('hmBack').onclick=()=>{hideHome();if(G&&G.tutorial)document.getElementById('coach').hidden=false;bgmPlay(G.dark?'boss':'match');};
+  if($('hmResume'))$('hmResume').onclick=()=>resumeSaved();
   h.querySelectorAll('#hmCast button').forEach(b=>b.onclick=()=>homeSay(b,b.dataset.id));
 }
 let hmSayT,hmSayBtn=null;
