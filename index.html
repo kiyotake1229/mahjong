@@ -128,6 +128,15 @@
   .rc-y:hover{transform:translateY(-1px)}
   .rc-y.on{opacity:1;border-color:var(--gold);color:var(--gold-hi);background:rgba(201,169,97,.12)}
   .rc-y b{margin-left:5px;font-size:11px;color:var(--gold)}
+  .rc-ach .note{margin:5px 0;padding:8px 12px}.rc-ach .note small{display:block;margin-top:2px;font-size:11px;color:var(--muted)}
+  /* 実績解除の帯 */
+  #achv{position:fixed;top:12px;right:12px;z-index:120;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+  .achv-item{display:flex;align-items:center;gap:10px;background:rgba(20,28,24,.95);border:1px solid var(--gold);border-radius:12px;padding:8px 14px 8px 10px;color:var(--gold-hi);box-shadow:0 8px 24px rgba(0,0,0,.4);animation:achvIn .5s cubic-bezier(.2,.9,.3,1.2);transition:opacity .45s,transform .45s}
+  .achv-item svg{width:26px;height:26px;color:var(--gold);flex:0 0 auto}
+  .achv-item small{display:block;font-size:10px;color:var(--muted);letter-spacing:.1em}
+  .achv-item b{font-size:14px;font-family:var(--f-mincho)}
+  .achv-item.out{opacity:0;transform:translateX(30px)}
+  @keyframes achvIn{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:none}}
   .rb{text-align:left;font-size:13.5px;line-height:1.75;max-width:520px;margin:0 auto}
   .rb h4{font-size:13px;color:var(--gold);letter-spacing:.1em;margin:14px 0 4px}
   .rb .ex{display:flex;align-items:center;gap:2px;flex-wrap:wrap;margin:4px 0 8px}
@@ -851,14 +860,63 @@ function statHandEnd(kind,o){
   if(kind==='draw'){S.draw++;if(o.tenpai)S.drawTen++;if(o.nagashi)S.nagashi++;}
   else if(kind==='abort'){S.abort++;if(o.reason==='九種九牌'&&o.by===0)S.kyushu++;}
   else if(kind==='win'){if(o.fromPid===0&&!(o.winners||[]).includes(0))S.dealIn++;}
-  saveStats();
+  saveStats();checkAch();
 }
 /* 半荘（東風）の終わり */
 function statGameEnd(){
   if(!statOK()||G._statGame)return;G._statGame=true;const S=STATS;
   const sc=G.players.map(p=>p.score),me=sc[0],rank=sc.filter(x=>x>me).length;   // 同点は上位扱い
   S.games++;S.rank[rank]++;if(me<0)S.tobi++;if(me>S.best)S.best=me;
-  saveStats();
+  saveStats();checkAch();
+}
+
+/* ===== 実績（戦績・道場・物語の進みから判定。解除した日時を mjAch に保存） ===== */
+const yakuKinds=S=>YAKU_BOOK.reduce((a,g)=>a+g[1].filter(n=>S.yaku[n]).length,0);
+const ACH=[
+ {id:'win1',t:'初和了',d:'はじめてあがる',f:S=>S.win>=1},
+ {id:'riichi1',t:'はじめてのリーチ',d:'リーチを宣言した局を終える',f:S=>S.riichi>=1},
+ {id:'tsumo1',t:'自力で引く',d:'ツモあがり',f:S=>S.tsumo>=1},
+ {id:'ron1',t:'直撃',d:'ロンあがり',f:S=>S.ron>=1},
+ {id:'mangan1',t:'満貫デビュー',d:'満貫以上であがる',f:S=>S.mangan>=1||S.yakuman>=1},
+ {id:'haneman',t:'跳満の夜',d:'6翻以上であがる',f:S=>S.maxHan>=6},
+ {id:'yakuman1',t:'役満',d:'役満であがる',f:S=>S.yakuman>=1},
+ {id:'game1',t:'一荘目',d:'半荘（東風戦）を1回打ち切る',f:S=>S.games>=1},
+ {id:'game10',t:'常連',d:'10回打ち切る',f:S=>S.games>=10},
+ {id:'game50',t:'翠の主',d:'50回打ち切る',f:S=>S.games>=50},
+ {id:'top1',t:'初トップ',d:'1位で終える',f:S=>S.rank[0]>=1},
+ {id:'top10',t:'トップ10回',d:'1位で10回終える',f:S=>S.rank[0]>=10},
+ {id:'best40',t:'四万点',d:'40000点以上で終える',f:S=>S.best>=40000},
+ {id:'best60',t:'六万点',d:'60000点以上で終える',f:S=>S.best>=60000},
+ {id:'hands100',t:'百局',d:'100局打つ',f:S=>S.hands>=100},
+ {id:'yaku10',t:'役図鑑 10種',d:'10種類の役であがる',f:S=>yakuKinds(S)>=10},
+ {id:'yaku20',t:'役図鑑 20種',d:'20種類の役であがる',f:S=>yakuKinds(S)>=20},
+ {id:'yaku30',t:'役図鑑 30種',d:'30種類の役であがる',f:S=>yakuKinds(S)>=30},
+ {id:'nagashi',t:'流し満貫',d:'流し満貫を成立させる',f:S=>S.nagashi>=1},
+ {id:'kyushu',t:'仕切り直し',d:'九種九牌で流す',f:S=>S.kyushu>=1},
+ {id:'pao',t:'責任はとってもらう',d:'責任払いで受け取る',f:S=>S.pao>=1},
+ {id:'ten5',t:'粘り腰',d:'流局時に聴牌していること5回',f:S=>S.drawTen>=5},
+ {id:'tobi',t:'洗礼',d:'飛ばされる（誰にでもある）',f:S=>S.tobi>=1},
+ {id:'dealin30',t:'授業料',d:'30回振り込む',f:S=>S.dealIn>=30},
+ {id:'dojo',t:'道場皆伝',d:'道場のレッスンをすべてクリア',f:()=>LESSONS.every(L=>lsGet('mjLesson_'+L.id)==='1')},
+ {id:'stage1',t:'腕試し',d:'第二章の第一戦に勝つ',f:()=>stageProgress()>=1},
+ {id:'story',t:'物語の終わり',d:'物語をすべてクリア',f:()=>!!storyNext().done},
+ {id:'notes',t:'翠ノート完成',d:'翠ノートを全ページ開く',f:()=>HERO.notes.length>=NOTES.length},
+];
+let ACHV=(()=>{try{return JSON.parse(lsGet('mjAch')||'{}')||{};}catch(e){return {};}})();
+function checkAch(){
+  if(typeof LESSONS==='undefined'||typeof HERO==='undefined')return;   // 読み込みの途中
+  const fresh=[];
+  for(const a of ACH){if(ACHV[a.id])continue;let ok=false;try{ok=!!a.f(STATS);}catch(e){}if(ok){ACHV[a.id]=Date.now();fresh.push(a);}}
+  if(!fresh.length)return;
+  try{lsSet('mjAch',JSON.stringify(ACHV));}catch(e){}
+  fresh.forEach((a,i)=>setTimeout(()=>achBanner(a),i*900));
+}
+function achBanner(a){
+  let box=document.getElementById('achv');if(!box){box=document.createElement('div');box.id='achv';document.body.appendChild(box);}
+  const el=document.createElement('div');el.className='achv-item';
+  el.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="5.5"/><path d="M8.5 13.5L7 22l5-2.6L17 22l-1.5-8.5"/></svg><div><small>実績解除</small><b>${esc(a.t)}</b></div>`;
+  box.appendChild(el);try{sfx.select();}catch(e){}
+  setTimeout(()=>{el.classList.add('out');setTimeout(()=>el.remove(),500);},3600);
 }
 const pname=i=>(G&&G.players[i]&&G.players[i].name)||POS[(i-VIEW+4)%4];
 const isTermHon=t=>t>=27||t%9===0||t%9===8;
@@ -3975,7 +4033,7 @@ function lessonComplete(id){
   if(tut.story!=null){storyChapterDone(id);return;}
   setSpeaker(null);
   if(!id){showDojo();return;}
-  lsSet('mjLesson_'+id,'1');
+  lsSet('mjLesson_'+id,'1');checkAch();
   const allDone=LESSONS.every(L=>lsGet('mjLesson_'+L.id)==='1');
   confetti();showCelebrate(id,allDone);
 }
@@ -4365,7 +4423,7 @@ function saveHero(){lsSet('mjHero',JSON.stringify(HERO));}
 function heroName(){return HERO.name||'新人';}
 function originOf(){return ORIGINS.find(o=>o.id===HERO.origin)||null;}
 function isO(id){return H=>H.origin===id;}
-function addNote(id){if(!HERO.notes.includes(id)){HERO.notes.push(id);saveHero();}}
+function addNote(id){if(!HERO.notes.includes(id)){HERO.notes.push(id);saveHero();checkAch();}}
 function fmt(t){return t.replace(/\{n\}/g,heroName());}
 /* セリフを順に表示（if:主人公条件、{n}:名前） */
 /* ===== 会話シーンの背景（SVGで描く） ===== */
@@ -5130,6 +5188,7 @@ function showStageResult(){
   const gotFlag=special&&wager;
   if(outcome!=='lose'&&stageProgress()<idx+1)lsSet('mjStage',String(idx+1));
   if(gotFlag){lsSet('mjFlag_'+fk,'1');addNote(fk);if(st.skill&&!HERO.skills.includes(st.skill)){HERO.skills.push(st.skill);saveHero();}}
+  checkAch();
   G.stage=null;G.wager=false;
   const rows=order.map((o,k)=>`${k+1}位 ${G.players[o.i].name||POS[o.i]}<span class="h">${G.players[o.i].score}</span>`).join('<br>');
   if(st.final)return showEnding(outcome,rows,idx);
@@ -5313,7 +5372,7 @@ function practiceEnd(ch,won){
 function storyChapterDone(id){
   const ch=tut.story;const c=STORY[ch];
   if(storyProgress()<ch+1)lsSet('mjStory',String(ch+1));
-  if(id)lsSet('mjLesson_'+id,'1');
+  if(id){lsSet('mjLesson_'+id,'1');checkAch();}
   const P=PRACTICE[ch];
   if(P){
     document.getElementById('coach').hidden=false;
@@ -5504,7 +5563,7 @@ function renderHome(){
        <button class="hm-card vs" id="hmVs"><span class="ic">${hmIc('vs')}</span><span class="tx"><b>みんなで対戦</b><small>この端末で交代／オンライン（部屋コード）</small></span></button>
        <button class="hm-card dojo" id="hmDojo"><span class="ic">${hmIc('dojo')}</span><span class="tx"><b>道場</b><small>8レッスンで基礎から。${done}/${LESSONS.length} クリア</small></span></button>
        <button class="hm-card notes" id="hmNotes"><span class="ic">${hmIc('notes')}</span><span class="tx"><b>翠ノート</b><small>集めた秘密と結末 ${HERO.notes.length}/${NOTES.length}</small></span></button>
-       <div class="hm-foot"><button class="linkbtn" id="hmRules">ルールブック</button><button class="linkbtn" id="hmTour">画面の見方</button><button class="linkbtn" id="hmRec">戦績・役図鑑</button>
+       <div class="hm-foot"><button class="linkbtn" id="hmRules">ルールブック</button><button class="linkbtn" id="hmTour">画面の見方</button><button class="linkbtn" id="hmRec">戦績・役図鑑・実績</button>
          <div class="hm-cast" id="hmCast">${cast.map(id=>`<button data-id="${id}" title="${CHARS[id].n}" aria-label="${CHARS[id].n}">${portraitSVG(id,'calm')}</button>`).join('')}</div></div>
      </div></div>
    <div class="hm-say" id="hmSay" hidden></div></div>`;
@@ -5523,6 +5582,7 @@ function renderHome(){
   if($('hmBack'))$('hmBack').onclick=()=>{hideHome();if(G&&G.tutorial)document.getElementById('coach').hidden=false;bgmPlay(G.dark?'boss':'match');};
   if($('hmResume'))$('hmResume').onclick=()=>resumeSaved();
   h.querySelectorAll('#hmCast button').forEach(b=>b.onclick=()=>homeSay(b,b.dataset.id));
+  checkAch();   // 物語やノートの節目で解除される実績はここで拾う
 }
 let hmSayT,hmSayBtn=null;
 function homeSay(btn,id){
@@ -5648,7 +5708,9 @@ function showRecords(back){
       <div class="rc-grid">${cell('局数',S.hands)}${cell('和了率',pct(S.win,S.hands),'ツモ'+S.tsumo+'／ロン'+S.ron)}${cell('放銃率',pct(S.dealIn,S.hands))}${cell('立直率',pct(S.riichi,S.hands))}${cell('副露率',pct(S.call,S.hands))}${cell('流局時聴牌率',pct(S.drawTen,S.draw))}${cell('平均和了点',S.win?Math.round(S.winPts/S.win).toLocaleString():'—')}${cell('最高打点',S.maxPts?S.maxPts.toLocaleString():'—',S.maxYaku)}${cell('満貫以上',S.mangan+'回')}${cell('役満',S.yakuman+'回')}${cell('流し満貫',S.nagashi+'回')}${cell('途中流局',S.abort+'回')}</div>`
       :'<div class="st-intro">まだ記録がありません。自由対局や物語の戦を打つと、ここに戦績が残ります（レッスンと「みんなで対戦」は数えません）。</div>';
     const yaku='<div class="st-intro">あがった役と回数。名前をタップすると説明。</div>'+YAKU_BOOK.map(([h,list])=>`<div class="dojo-sec">${h}</div><div class="rc-yaku">${list.map(n=>{const c=S.yaku[n]||0;return `<button class="rc-y ${c?'on':''}" data-y="${n}">${n}${c?`<b>${c}</b>`:''}</button>`;}).join('')}</div>`).join('');
-    const TABS={stat:{t:'戦績',h:stat},yaku:{t:`役図鑑 ${got}/${all}`,h:yaku}};
+    const achN=ACH.filter(a=>ACHV[a.id]).length;
+    const ach=`<div class="st-intro">解除した実績 ${achN} / ${ACH.length}</div><div class="rc-ach">${ACH.map(a=>{const at=ACHV[a.id];return `<div class="note ${at?'on':''}"><b>${esc(a.t)}</b><small>${esc(a.d)}${at?'　—　'+new Date(at).toLocaleDateString('ja-JP'):''}</small></div>`;}).join('')}</div>`;
+    const TABS={stat:{t:'戦績',h:stat},yaku:{t:`役図鑑 ${got}/${all}`,h:yaku},ach:{t:`実績 ${achN}/${ACH.length}`,h:ach}};
     m.innerHTML=`<h2>戦績</h2>
       <div class="rb-tabs">${Object.keys(TABS).map(k=>`<button data-k="${k}" class="${k===cur?'on':''}">${TABS[k].t}</button>`).join('')}</div>
       <div class="rb rc">${TABS[cur].h}</div>
@@ -5656,7 +5718,7 @@ function showRecords(back){
     m.querySelectorAll('.rb-tabs button').forEach(b=>b.onclick=()=>{cur=b.dataset.k;draw();});
     m.querySelectorAll('.rc-y').forEach(b=>b.onclick=()=>{const d=yakuDesc(b.dataset.y);toast(b.dataset.y+(d?'：'+d:''),3800);});
     document.getElementById('rcClose').onclick=()=>{ov.style.display='none';if(back)back();};
-    document.getElementById('rcReset').onclick=()=>{if(!confirm('戦績と役図鑑の記録をすべて消しますか？'))return;STATS=blankStats();saveStats();draw();};
+    document.getElementById('rcReset').onclick=()=>{if(!confirm('戦績・役図鑑・実績の記録をすべて消しますか？'))return;STATS=blankStats();saveStats();ACHV={};lsSet('mjAch','{}');draw();};
   };
   draw();
 }
