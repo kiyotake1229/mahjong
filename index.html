@@ -827,6 +827,24 @@ let PAO_ON=lsGet('mjPao')!=='0';                // 責任払い（大三元・�
 let EXT_ON=lsGet('mjExt')!=='0';                // 延長（西入。東風戦は南入）: 終局時に誰も30000点に届いていなければ続ける
 let AGARIYAME=lsGet('mjAgariyame')!=='0';       // オーラス親のアガリやめ・テンパイやめ
 let KUITAN=lsGet('mjKuitan')!=='0';             // 喰いタン（鳴いた断幺九を認める）
+let HAPTIC=lsGet('mjHaptic')!=='0';             // 振動（対応端末のみ）
+
+/* ===== 触覚：iOSアプリ（Capacitor Haptics）／Android のブラウザ（navigator.vibrate）。ほかは何もしない ===== */
+const CAP_NATIVE=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform());
+const CAP_PL=(window.Capacitor&&window.Capacitor.Plugins)||{};
+function haptic(kind){
+  if(!HAPTIC)return;
+  try{
+    if(CAP_PL.Haptics){
+      if(kind==='win')CAP_PL.Haptics.notification({type:'SUCCESS'});
+      else if(kind==='lose')CAP_PL.Haptics.notification({type:'ERROR'});
+      else if(kind==='warn')CAP_PL.Haptics.notification({type:'WARNING'});
+      else CAP_PL.Haptics.impact({style:kind==='heavy'?'HEAVY':kind==='medium'?'MEDIUM':'LIGHT'});
+      return;
+    }
+    if(navigator.vibrate){const p={light:8,medium:18,heavy:30,win:[20,60,40],lose:[60,40,60],warn:[30,30,30]}[kind]||8;navigator.vibrate(p);}
+  }catch(e){}
+}
 
 /* ===== 戦績・役図鑑（ひとり用の対局だけ数える。端末に保存） ===== */
 const STAT_SV=1;
@@ -915,7 +933,7 @@ function achBanner(a){
   let box=document.getElementById('achv');if(!box){box=document.createElement('div');box.id='achv';document.body.appendChild(box);}
   const el=document.createElement('div');el.className='achv-item';
   el.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="5.5"/><path d="M8.5 13.5L7 22l5-2.6L17 22l-1.5-8.5"/></svg><div><small>実績解除</small><b>${esc(a.t)}</b></div>`;
-  box.appendChild(el);try{sfx.select();}catch(e){}
+  box.appendChild(el);try{sfx.select();}catch(e){}haptic('medium');
   setTimeout(()=>{el.classList.add('out');setTimeout(()=>el.remove(),500);},3600);
 }
 const pname=i=>(G&&G.players[i]&&G.players[i].name)||POS[(i-VIEW+4)%4];
@@ -1554,14 +1572,14 @@ function doKan(pid,tile,kind){
     const reds=p.hand.filter(t=>nt(t)===tile&&isRed(t)).map(nt);
     p.hand=p.hand.filter(t=>nt(t)!==tile);
     p.melds.push({t:'trip',tile,k:4,concealed:true,kan:true,reds});
-    G.phase='kan';renderActions([],false);flash(pname(pid)+'の暗槓');sfx.call();render();
+    G.phase='kan';renderActions([],false);flash(pname(pid)+'の暗槓');sfx.call();haptic('medium');render();
     return finishKan(pid);
   }
   // 加槓
   let i=p.hand.findIndex(t=>t===tile);if(i<0)i=p.hand.findIndex(t=>nt(t)===tile);
   const taken=p.hand[i];p.hand.splice(i,1);
   const m=p.melds.find(m=>m.t==='trip'&&!m.kan&&m.tile===tile);m.k=4;m.kan=true;if(isRed(taken))m.reds=(m.reds||[]).concat([tile]);
-  G.phase='kan';renderActions([],false);flash(pname(pid)+'の加槓');sfx.call();render();
+  G.phase='kan';renderActions([],false);flash(pname(pid)+'の加槓');sfx.call();haptic('medium');render();
   // 槍槓: 他家がこの牌でロンできる
   ronPhase(pid,tile,()=>finishKan(pid),true);
 }
@@ -1605,7 +1623,7 @@ function seatDiscard(pid,idx,riichi){
     const r=p.hand.slice();r.splice(idx,1);if(shanten(r,p.melds.length)!==0)return false;
     p.riichi=true;p.pendingRiichi=false;p.riichiIdx=p.discards.length;p.riichiAt=(G.discN||0)+1;p.score-=1000;G.riichiSticks++;
     if(p.discards.length===0&&!G.callHappened)p.doubleRiichi=true;
-    G.pendingRiichiDeclarer=pid;sfx.riichi();flash(MP.active?pname(pid)+'のリーチ':'リーチ');
+    G.pendingRiichiDeclarer=pid;sfx.riichi();haptic('medium');flash(MP.active?pname(pid)+'のリーチ':'リーチ');
     if(!MP.active){gaugeAdd(20);banterOne('myRiichi',900);}
   }
   doDiscard(pid,idx);return true;
@@ -1642,7 +1660,7 @@ function doDiscard(pid,idx){
   G.discN=(G.discN||0)+1;(G.discLog||(G.discLog=[])).push({pid,t:nt(tile),n:G.discN});
   const src=srcRectFor(pid,idx);
   p.hand.splice(idx,1);p.drawn=-1;p.hand.sort((a,b)=>a-b);p.discards.push(tile);
-  G.lastDiscard={pid,tile};
+  G.lastDiscard={pid,tile};if(ctlOf(pid)==='local')haptic('light');
   // フリテン更新（自分の待ちに自分の河があるか）
   const w=waits(p.hand,p.melds.length);if(isFuriten(p,w))p.tempFuriten=true;
   if(pid===0&&!MP.active)gaugeAdd(8);
@@ -1742,7 +1760,7 @@ function doPon(pid,fromPid,tile,kan){
   const rt=takeDiscard(src,pid);const reds=isRed(rt)?[tile]:[];
   let need=kan?3:2,rm=0;p.hand=p.hand.filter(t=>{if(nt(t)===tile&&rm<need){rm++;if(isRed(t))reds.push(tile);return false;}return true;});
   p.melds.push({t:'trip',tile,k:kan?4:3,concealed:false,kan,from:fromPid,called:tile,reds});
-  clearIppatsu();G.pendingRiichiDeclarer=-1;G.callHappened=true;G.offering=false;flash(pname(pid)+(kan?'のカン':'のポン'));sfx.call();if(!isHuman(pid))banterOne('call',500,pid);
+  clearIppatsu();G.pendingRiichiDeclarer=-1;G.callHappened=true;G.offering=false;flash(pname(pid)+(kan?'のカン':'のポン'));sfx.call();haptic(isHuman(pid)?'medium':'light');if(!isHuman(pid))banterOne('call',500,pid);
   markPao(pid,fromPid,tile);
   if(kan){revealKanDora();const rt2=G.wall.shift();p.hand.push(rt2);p.drawn=rt2;p.hand.sort((a,b)=>a-b);G.rinshanFlag=true;markKan4();}
   G.turn=pid;G.phase='discard';p.drawn=kan?p.drawn:-1;
@@ -1755,7 +1773,7 @@ function doChi(pid,fromPid,tile,combo){
   for(const t of combo){let i=p.hand.findIndex(x=>x===t);if(i<0){i=p.hand.findIndex(x=>nt(x)===t);reds.push(t);}p.hand.splice(i,1);}
   const low=Math.min(tile,...combo);
   p.melds.push({t:'seq',tile:low,k:3,concealed:false,from:fromPid,called:tile,reds});
-  clearIppatsu();G.pendingRiichiDeclarer=-1;G.callHappened=true;G.offering=false;flash(pname(pid)+'のチー');sfx.call();if(!isHuman(pid))banterOne('call',500,pid);
+  clearIppatsu();G.pendingRiichiDeclarer=-1;G.callHappened=true;G.offering=false;flash(pname(pid)+'のチー');sfx.call();haptic(isHuman(pid)?'medium':'light');if(!isHuman(pid))banterOne('call',500,pid);
   G.turn=pid;G.phase='discard';p.drawn=-1;p.hand.sort((a,b)=>a-b);
   render();
   if(isHuman(pid))seatTurn(pid);else later(()=>cpuDiscardOnly(pid),think());
@@ -1807,7 +1825,7 @@ function cpuTurn(){
     const rr=idx>=0?p.hand.slice():null;if(rr)rr.splice(idx,1);
     if(idx>=0&&!isFuriten(p,waits(rr,p.melds.length))){p.riichi=true;p.riichiIdx=p.discards.length;p.riichiAt=(G.discN||0)+1;p.score-=1000;G.riichiSticks++;
       if(p.discards.length===0&&!G.callHappened)p.doubleRiichi=true;
-      G.pendingRiichiDeclarer=pid;sfx.riichi();flash(pname(pid)+'のリーチ');banterOne('riichi',300,pid,true);
+      G.pendingRiichiDeclarer=pid;sfx.riichi();haptic('heavy');flash(pname(pid)+'のリーチ');banterOne('riichi',300,pid,true);
       return later(()=>doDiscard(pid,idx),sp().call);}
   }
   if(p.riichi){const i=p.hand.indexOf(p.drawn);return doDiscard(pid,i>=0?i:0);}
@@ -2073,7 +2091,7 @@ function win(pid,fromPid,tsumo,winTile){
   G.over=true;const before=G.players.map(q=>q.score);
   const r=applyWin(pid,pid,true,ev,true);netSnapNext([pid]);statHandEnd('win',{winners:[pid],fromPid:pid});
   G._winners=[pid];G.advance=(pid!==G.dealer);G.keepHonba=!G.advance;   // 途中で閉じても次局の進み方が分かるように先に記録
-  sfx.tsumo();render();showDeltas(before);
+  sfx.tsumo();haptic(isHuman(pid)?'win':'light');render();showDeltas(before);
   if(pid===0){banterOne('heroTsumo',600);}else banterOne('win',400,pid,true);
   const show=()=>showResult(pid,pid,true,hand,winTile,ev,r.pay,r.gained,r.sticks);
   if(isHuman(pid)){flash(MP.active?pname(pid)+'のツモ':'ツモ');setTimeout(show,520);}else show();
@@ -2093,7 +2111,7 @@ function winMulti(winners,fromPid,tile,chankan){
   list.forEach((w,k)=>{Object.assign(w,applyWin(w.pid,fromPid,false,w.ev,k===0));});statHandEnd('win',{winners:list.map(w=>w.pid),fromPid});
   netSnapNext(list.map(w=>w.pid));
   sfx.ron();render();showDeltas(before);
-  const heroWon=list.some(w=>isHuman(w.pid));
+  const heroWon=list.some(w=>isHuman(w.pid));haptic(heroWon?'win':(isHuman(fromPid)?'lose':'light'));
   if(heroWon)banterOne('lose',600,fromPid,true);
   else{const w=list.find(w=>w.pid!==0);banterOne(fromPid===0?'winHero':'win',400,w.pid,true);}
   const n=list.length;
@@ -2118,13 +2136,13 @@ function ryuukyoku(){
     if(tn>0&&tn<4){const get=3000/tn,give=3000/(4-tn);G.players.forEach((p,i)=>p.score+=tenpai[i]?get:-give);}
   }
   G.advance=!tenpai[G.dealer];G.keepHonba=true;G._meTen=!!tenpai[0];netSnapNext(null,tenpai);statHandEnd('draw',{tenpai:tenpai[0],nagashi:nag[0]});
-  render();showDeltas(before);banterOne('draw',300);showDraw(tenpai,nag);
+  haptic('medium');render();showDeltas(before);banterOne('draw',300);showDraw(tenpai,nag);
 }
 /* 途中流局：親はそのまま続けて1本場。供託もそのまま */
 function abortDraw(reason){
   if(!G||G.over)return;
   G.over=true;G.abort=reason;G.advance=false;G.keepHonba=true;G._meTen=false;statHandEnd('abort',{reason,by:G.turn});
-  renderActions([],false);flash(reason);sfx.call();
+  renderActions([],false);flash(reason);sfx.call();haptic('warn');
   netSnapNext(null,G.players.map((p,i)=>i===G.dealer));   // 親を聴牌扱いにして「連荘・1本場」を伝える
   render();
   const g=G.gen;setTimeout(()=>{if(G&&G.gen===g)showDraw(null,null,reason);},700);
@@ -5598,6 +5616,42 @@ function homeSay(btn,id){
   hmSayBtn=btn;btn.innerHTML=portraitSVG(id,'calm','laugh');   // 話す間は笑顔
   clearTimeout(hmSayT);hmSayT=setTimeout(()=>{el.hidden=true;btn.innerHTML=portraitSVG(id,'calm');if(hmSayBtn===btn)hmSayBtn=null;},2800);
 }
+/* ===== 引き継ぎコード（端末の記録をまとめて書き出す／読み込む） ===== */
+const XFER_SKIP=['mjSaveGame','mjErrLog','mjIce'];   // 途中の対局・不具合の記録・中継サーバーの設定は入れない
+function xferKeys(){const ks=[];try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('mj')&&!XFER_SKIP.includes(k))ks.push(k);}}catch(e){}return ks.sort();}
+function xferMake(){const o={};xferKeys().forEach(k=>{o[k]=lsGet(k);});const json=JSON.stringify({v:1,app:APP_VER,at:Date.now(),d:o});return 'SUI1.'+btoa(unescape(encodeURIComponent(json)));}
+function xferParse(code){
+  code=(code||'').replace(/\s+/g,'');if(!code.startsWith('SUI1.'))throw new Error('形式が違います（SUI1. で始まるコードを貼ってください）');
+  let obj;try{obj=JSON.parse(decodeURIComponent(escape(atob(code.slice(5)))));}catch(e){throw new Error('コードが壊れています（途中で切れていないか確かめてください）');}
+  if(!obj||obj.v!==1||!obj.d||typeof obj.d!=='object')throw new Error('このアプリのコードではありません');
+  const d={};Object.keys(obj.d).forEach(k=>{if(/^mj[A-Za-z0-9_]+$/.test(k)&&!XFER_SKIP.includes(k)&&typeof obj.d[k]==='string')d[k]=obj.d[k];});
+  return {at:obj.at,app:obj.app,d};
+}
+function xferApply(p){Object.keys(p.d).forEach(k=>lsSet(k,p.d[k]));}
+function showXfer(back){
+  {const _m=document.getElementById('modal');_m.classList.remove('done');_m.onclick=null;}
+  const ov=document.getElementById('overlay');ov.style.display='flex';const m=document.getElementById('modal');
+  const ta='width:min(92vw,460px);height:70px;font-size:11px;font-family:monospace;background:rgba(0,0,0,.25);color:inherit;border:1px solid var(--line);border-radius:8px;padding:6px;box-sizing:border-box';
+  m.innerHTML=`<h2>引き継ぎ</h2>
+    <div class="st-intro" style="max-width:460px;margin:0 auto 6px">物語の進み・戦績・実績・設定を1つのコードにまとめます。別の端末やアプリ版で「読み込む」に貼ると同じ状態になります（途中の対局・不具合の記録は含みません）。</div>
+    <div class="dojo-sec">この端末のコードを作る</div>
+    <textarea id="xfOut" readonly style="${ta}" placeholder="「コードを作る」を押すとここに出ます"></textarea>
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:6px 0 2px"><button class="btn sm" id="xfMake">コードを作る</button><button class="btn gray sm" id="xfCopy">コピー</button>${navigator.share?'<button class="btn gray sm" id="xfShare">共有</button>':''}</div>
+    <div class="dojo-sec">コードを読み込む</div>
+    <textarea id="xfIn" style="${ta}" placeholder="SUI1. で始まるコードを貼る"></textarea>
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:6px 0 2px"><button class="btn sm" id="xfLoad">読み込む（この端末の記録を上書き）</button></div>
+    <div id="xfMsg" class="sub" style="min-height:18px"></div>
+    <button class="btn gray" id="xfClose" style="margin-top:8px;min-width:140px">もどる</button>`;
+  const msg=(t,ok)=>{const e=document.getElementById('xfMsg');e.textContent=t;e.style.color=ok?'var(--gold)':'#e88';};
+  document.getElementById('xfMake').onclick=()=>{const c=xferMake();document.getElementById('xfOut').value=c;msg('コードを作りました（'+xferKeys().length+'項目・'+c.length+'文字）',true);};
+  document.getElementById('xfCopy').onclick=async()=>{const v=document.getElementById('xfOut').value;if(!v)return msg('先に「コードを作る」を押してください');try{await navigator.clipboard.writeText(v);msg('コピーしました',true);}catch(e){const t=document.getElementById('xfOut');t.focus();t.select();msg('選択したので、そのままコピーしてください',true);}};
+  const sh=document.getElementById('xfShare');if(sh)sh.onclick=async()=>{const v=document.getElementById('xfOut').value;if(!v)return msg('先に「コードを作る」を押してください');try{await navigator.share({title:'雀荘 翠 引き継ぎコード',text:v});}catch(e){}};
+  document.getElementById('xfLoad').onclick=()=>{let p;try{p=xferParse(document.getElementById('xfIn').value);}catch(e){return msg(e.message);}
+    const n=Object.keys(p.d).length;if(!n)return msg('読み込める項目がありません');
+    if(!confirm('この端末の記録（物語の進み・戦績・実績・設定）を、貼ったコードの内容で上書きします。よろしいですか？'))return;
+    xferApply(p);msg('読み込みました。画面を読み直します',true);setTimeout(()=>location.reload(),900);};
+  document.getElementById('xfClose').onclick=()=>{ov.style.display='none';if(back)back();};
+}
 function showSettings(back){
   {const _m=document.getElementById('modal');_m.classList.remove('done');_m.onclick=null;}
   const ov=document.getElementById('overlay');ov.style.display='flex';const m=document.getElementById('modal');
@@ -5623,10 +5677,11 @@ function showSettings(back){
     <div class="dojo-sec">あそびやすさ</div>
     <div class="setrow"><button class="btn ${ASSIST?'':'gray'} sm" id="setAssist">おたすけモード：${ASSIST?'ON':'OFF'}</button><small>物語の相手が少し弱くなり、スキルゲージが1.5倍溜まる。慣れるまでONがおすすめ</small></div>
     <div class="setrow"><button class="btn ${SOUND_ON?'':'gray'} sm" id="setSound">音楽・効果音：${SOUND_ON?'あり':'なし'}</button><small>BGMと効果音（端末の中で作っています）</small></div>
+    <div class="setrow"><button class="btn ${HAPTIC?'':'gray'} sm" id="setHaptic">振動：${HAPTIC?'ON':'OFF'}</button><small>打牌・鳴き・リーチ・あがりで短く振動（対応する端末だけ。iPhone はアプリ版で）</small></div>
     <div class="setrow"><button class="btn ${RED_ON?'':'gray'} sm" id="setRed">赤ドラ：${RED_ON?'あり':'なし'}</button><small>5萬・5筒・5索が各1枚。次の局から</small></div>
     <div class="setrow"><button class="btn ${lsGet('mjChatOff')==='1'?'gray':''} sm" id="setChat">ひとこと：${lsGet('mjChatOff')==='1'?'表示しない':'表示する'}</button><small>オンライン対戦の定型文チャット</small></div>
     <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px">
-      <button class="btn gray sm" id="setTour">画面の見方</button><button class="btn gray sm" id="setRules">ルールブック</button><button class="btn gray sm" id="setReset">物語を最初から</button></div>
+      <button class="btn gray sm" id="setTour">画面の見方</button><button class="btn gray sm" id="setRules">ルールブック</button><button class="btn gray sm" id="setXfer">引き継ぎ</button><button class="btn gray sm" id="setReset">物語を最初から</button></div>
     <div style="margin-top:10px"><button class="linkbtn" id="setErr">不具合の記録（${(()=>{try{return JSON.parse(lsGet('mjErrLog')||'[]').length;}catch(e){return 0;}})()}件）</button>　<span style="font-size:11px;color:var(--muted)">版 ${APP_VER}</span></div>
     <button class="btn" id="setClose" style="margin-top:14px;min-width:160px">とじる</button>`;
   const again=()=>showSettings(back);
@@ -5647,10 +5702,12 @@ function showSettings(back){
   document.getElementById('setKuitan').onclick=()=>{KUITAN=!KUITAN;lsSet('mjKuitan',KUITAN?'1':'0');again();};
   document.getElementById('setAssist').onclick=()=>{ASSIST=!ASSIST;lsSet('mjAssist',ASSIST?'1':'0');if(G&&G.stage!=null&&!G.over){G.players.forEach((p,i)=>{if(i&&p.level)p.level=ASSIST?Math.max(1,p.level-1):p.level+1;});}again();};
   document.getElementById('setSound').onclick=()=>{setSound(!SOUND_ON);again();};
+  document.getElementById('setHaptic').onclick=()=>{HAPTIC=!HAPTIC;lsSet('mjHaptic',HAPTIC?'1':'0');haptic('medium');again();};
   document.getElementById('setRed').onclick=()=>{RED_ON=!RED_ON;lsSet('mjRed',RED_ON?'1':'0');again();};
   document.getElementById('setChat').onclick=()=>{lsSet('mjChatOff',lsGet('mjChatOff')==='1'?'0':'1');if(typeof updateChatBtn==='function')updateChatBtn();again();};
   document.getElementById('setTour').onclick=()=>{ov.style.display='none';hideHome();tourFromMenu();};
   document.getElementById('setRules').onclick=()=>showHelp(again);
+  document.getElementById('setXfer').onclick=()=>showXfer(again);
   document.getElementById('setReset').onclick=()=>resetStory();
   document.getElementById('setErr').onclick=()=>showErrLog(again);
   document.getElementById('setClose').onclick=()=>{ov.style.display='none';if(back)back();};

@@ -1,8 +1,28 @@
 {
-  "next_no": 16,
-  "total": 14,
-  "generated_at": "2026-09-25T15:26:39.968037",
+  "next_no": 18,
+  "total": 16,
+  "generated_at": "2026-09-25T15:34:02.905383",
   "documents": [
+    {
+      "no": 17,
+      "date": "2026-09-25",
+      "type": "NEW",
+      "category": "APP",
+      "title": "振動（触覚フィードバック）",
+      "filename": "20260925_NEW_0017_APP_振動（触覚フィードバック）.md",
+      "extension": "md",
+      "summary": "打牌・鳴き・リーチ・あがり・流局・実績解除で短く振動する。iOSアプリ版では Capacitor の Haptics、Android のブラウザでは `navigator.vibrate`。どちらもない環境（iPhone の Safari、PC）では何も起きない。設定の「あそびやすさ」でON/OFF（初期値ON）。"
+    },
+    {
+      "no": 16,
+      "date": "2026-09-25",
+      "type": "NEW",
+      "category": "APP",
+      "title": "引き継ぎコード",
+      "filename": "20260925_NEW_0016_APP_引き継ぎコード.md",
+      "extension": "md",
+      "summary": "記録はすべて端末の中（`localStorage`）にあるので、機種変更やブラウザ版からアプリ版（iOS）への移行で消えてしまう。そこで、物語の進み・戦績・実績・設定を1つの文字列（引き継ぎコード）にまとめて書き出し、別の端末で貼って読み込めるようにした。サーバーは使わない（コードは利用者が自分でコピー・共有する）。"
+    },
     {
       "no": 15,
       "date": "2026-09-25",
