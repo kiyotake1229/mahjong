@@ -129,6 +129,7 @@ const CASES = [
   { n: '緑一色 ロン（役満）', hand: '234s 234s 666s 888s F F', win: '8s', ctx: {}, exp: { han: 13, fu: null, yaku: ['緑一色'], only: true } },
   { n: '天和（役満）', hand: '123m 456m 234p 678s 99p', win: '8s', ctx: { tsumo: true, tenhou: true }, exp: { han: 13, fu: null, yaku: ['天和'], only: true } },
   { n: '地和（役満）', hand: '123m 456m 234p 678s 99p', win: '8s', ctx: { tsumo: true, chiihou: true }, exp: { han: 13, fu: null, yaku: ['地和'], only: true } },
+  { n: '三槓子 対々和 白 鳴き（満貫）', hand: '9m 9m', win: '9m', melds: [ankan(0), minkan(13), minkan(20), pon(31)], ctx: { concealed: false }, exp: { han: 5, fu: null, yaku: ['三槓子', '対々和', '白'] } },
   { n: '喰いタン ロン（30符1翻）', hand: '234m 567m 345p 88p', win: '5p', melds: [chi(19)], ctx: { concealed: false }, exp: { han: 1, fu: 30, yaku: ['断幺九'] } },
 ];
 
