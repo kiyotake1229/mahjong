@@ -793,6 +793,14 @@ let NO_CALL=lsGet('mjNoCall')==='1';            // ポン・チー・カンの�
 let AUTO_TG=lsGet('mjAutoTg')!=='0';            // リーチ後は自動でツモ切り
 let TWO_TAP=(lsGet('mjTwoTap')||(matchMedia('(pointer:coarse)').matches?'1':'0'))==='1';   // タップで選んで、もう一度で捨てる（触って操作する端末は最初からON）
 let TILE_BIG=lsGet('mjTileBig')==='1';          // 牌を大きめに
+/* ルール（設定画面の「ルール」。切り替えは次の判定から効く。対局の長さだけは次の対局から） */
+let GAME_LEN=lsGet('mjLen')==='ton'?'ton':'han';   // han=半荘（東場＋南場）／ton=東風戦（東場だけ）
+let ABORT_ON=lsGet('mjAbort')!=='0';            // 途中流局（九種九牌・四風連打・四家立直・四槓散了）
+let NAGASHI_ON=lsGet('mjNagashi')!=='0';        // 流し満貫
+let PAO_ON=lsGet('mjPao')!=='0';                // 責任払い（大三元・大四喜）
+let EXT_ON=lsGet('mjExt')!=='0';                // 延長（西入。東風戦は南入）: 終局時に誰も30000点に届いていなければ続ける
+let AGARIYAME=lsGet('mjAgariyame')!=='0';       // オーラス親のアガリやめ・テンパイやめ
+let KUITAN=lsGet('mjKuitan')!=='0';             // 喰いタン（鳴いた断幺九を認める）
 const pname=i=>(G&&G.players[i]&&G.players[i].name)||POS[(i-VIEW+4)%4];
 const isTermHon=t=>t>=27||t%9===0||t%9===8;
 function tileName(t){const r=isRed(t)?'赤':'';t=nt(t);return r+(t<27?(t%9+1)+['萬','筒','索'][(t/9)|0]:HON[t-27]);}
@@ -895,6 +903,8 @@ const isYakuhaiTile=(t,ctx)=>t>=31||(t>=27&&(t-27===ctx.roundWind||t-27===ctx.se
 
 /* ===== 役 & 符 評価 ===== */
 function addExtra(y,ctx){
+  if(ctx.tenhou)y.push({n:'天和',h:13});
+  if(ctx.chiihou)y.push({n:'地和',h:13});
   if(ctx.riichi)y.push({n:ctx.doubleRiichi?'ダブル立直':'立直',h:ctx.doubleRiichi?2:1});
   if(ctx.ippatsu)y.push({n:'一発',h:1});
   if(ctx.tsumo&&ctx.concealed)y.push({n:'門前清自摸和',h:1});
@@ -904,12 +914,15 @@ function addExtra(y,ctx){
   if(ctx.chankan&&!ctx.tsumo)y.push({n:'槍槓',h:1});
 }
 function addFlags(y,allT,concealed){
-  if(allT.every(t=>!isTermHon(t)))y.push({n:'断幺九',h:1});
+  if(allT.every(t=>!isTermHon(t))&&(concealed||KUITAN))y.push({n:'断幺九',h:1});
   const suits=new Set(allT.filter(t=>t<27).map(t=>(t/9)|0)), hasHon=allT.some(t=>t>=27);
   if(suits.size===1){
     if(hasHon)y.push({n:'混一色',h:concealed?3:2});
-    else y.push({n:'清一色',h:concealed?6:5});
+    else{y.push({n:'清一色',h:concealed?6:5});
+      // 九蓮宝燈：門前・カンなしで 1112345678999＋同じ色の1枚
+      if(concealed&&allT.length===14){const b=[...suits][0]*9,c=toCounts(allT);if(c[b]>=3&&c[b+8]>=3&&[1,2,3,4,5,6,7].every(k=>c[b+k]>=1))y.push({n:'九蓮宝燈',h:13});}}
   }
+  if(allT.every(t=>[19,20,21,23,25,32].includes(t|0)))y.push({n:'緑一色',h:13});   // 索子の2・3・4・6・8と發だけ
   if(allT.every(t=>isTermHon(t))){
     if(allT.every(t=>t>=27))y.push({n:'字一色',h:13});
     else if(allT.every(t=>t<27))y.push({n:'清老頭',h:13});
@@ -995,6 +1008,9 @@ function evaluate(hand,om,ctx){
     // 三元/風の役満系
     const dr=[31,32,33].filter(t=>trips.some(m=>m.tile===t)).length;
     if(dr===3)y.push({n:'大三元',h:13});
+    const wd=[27,28,29,30].filter(t=>trips.some(m=>m.tile===t)).length;
+    if(wd===4)y.push({n:'大四喜',h:13});else if(wd===3&&dec.pair>=27&&dec.pair<31)y.push({n:'小四喜',h:13});
+    if(om.filter(m=>m.kan).length===4)y.push({n:'四槓子',h:13});
     const pinfu=concealed&&seqs.length===4&&!isYakuhaiTile(dec.pair,ctx)&&ryanmenWin(seqs,dec.pair,ctx.winTile);
     if(pinfu)y.push({n:'平和',h:1});
     if(concealed){const k=seqs.map(m=>m.tile).sort((a,b)=>a-b);let ip=0;for(let i=0;i<k.length-1;i++)if(k[i]===k[i+1]){ip++;i++;}if(ip>=2)y.push({n:'二盃口',h:3});else if(ip>=1)y.push({n:'一盃口',h:1});}
@@ -1009,6 +1025,7 @@ function evaluate(hand,om,ctx){
       y.push(hasH?{n:'混全帯幺九',h:concealed?2:1}:{n:'純全帯幺九',h:concealed?3:2});}
     let anko=0,ru=ctx.tsumo?false:false,ronUsed=false;
     for(const m of cm){if(m.t!=='trip')continue;if(!ctx.tsumo&&!ronUsed&&m.tile===ctx.winTile){ronUsed=true;continue;}anko++;}
+    for(const m of om)if(m.kan&&m.concealed)anko++;   // 暗槓も暗刻に数える
     if(anko>=4)y.push({n:'四暗刻',h:13});else if(anko>=3)y.push({n:'三暗刻',h:2});
     addFlags(y,allTiles,concealed);
     addDora(y,allTiles,ctx);
@@ -1037,7 +1054,7 @@ const YAKU_DESC={
  '三暗刻':'鳴かずに作った刻子が3組','四暗刻':'鳴かずに刻子4組。役満','小三元':'白・發・中のうち2つが刻子、残り1つがアタマ','大三元':'白・發・中が全部刻子。役満',
  '混全帯幺九':'チャンタ。全部の組とアタマに1・9・字牌が入っている','純全帯幺九':'ジュンチャン。全部の組とアタマに1か9が入っている（字牌なし）',
  '混一色':'ホンイツ。1色の数牌＋字牌だけ','清一色':'チンイツ。1色の数牌だけ。6翻',
- '混老頭':'1・9・字牌だけで作る（順子なし）','字一色':'字牌だけ。役満','清老頭':'1と9だけ。役満',
+ '混老頭':'1・9・字牌だけで作る（順子なし）','字一色':'字牌だけ。役満','清老頭':'1と9だけ。役満','大四喜':'東南西北すべて刻子。役満','小四喜':'東南西北のうち3つが刻子、残り1つがアタマ。役満','四槓子':'カンを4回。役満','緑一色':'索子の2・3・4・6・8と發だけ。役満','九蓮宝燈':'1色で1112345678999＋同じ色の1枚。門前のみ。役満','天和':'親が配牌でいきなりあがり。役満','地和':'子が最初のツモであがり（それまでに鳴きなし）。役満',
  '七対子':'チートイツ。同じ牌2枚のペアを7つ。2翻25符','国士無双':'1・9・字牌を全種類1枚ずつ＋どれか1枚。役満',
  'ドラ':'ドラ表示牌の次の牌。持っているだけで1枚＋1翻（役にはならない）','裏ドラ':'リーチであがった時だけ見られる隠しドラ','赤ドラ':'赤い5。持っているだけで＋1翻',
  '白':'白を3枚（刻子）。役牌','發':'發を3枚（刻子）。役牌','中':'中を3枚（刻子）。役牌',
@@ -1238,12 +1255,13 @@ function newHand(keep,restart){
   else{const pool=['hayato','shizuka','gen','master'];if(parseInt(lsGet('mjStage')||'0',10)>=4)pool.push('ren','kuroda');
     pool.sort(()=>Math.random()-.5);for(let i=1;i<4;i++){const id=pool[i-1];players[i].charId=id;players[i].name=CHARS[id].n;players[i].style=CHAR_STYLE[id];players[i].level=CPU_LV_LEVEL[CPU_LV]||1;players[i].ai=CPU_LV;}}
   const storyFinal=keep&&prev?prev.storyFinal:false;const dark=keep&&prev?!!prev.dark:false;
+  const len=keep&&prev?(prev.len||'han'):GAME_LEN;   // 半荘か東風戦か（対局の間は変えない）
   const stage=keep&&prev?prev.stage:null;const wager=keep&&prev?!!prev.wager:false;
   const stats=keep&&prev&&prev.stats?prev.stats:{dealIns:0,maxHan:0,ronBoss:false};
   G={wall,dead,doraInd:[dead[4]],uraInd:[dead[5]],players,dealer,round,honba,turn:dealer,roundWind:round,
      phase:'draw',over:false,riichiSticks:sticks,ippatsu:[false,false,false,false],callHappened:false,
      rinshanFlag:false,lastDiscard:null,advance:false,keepHonba:false,pendingRiichiDeclarer:-1,offering:false,
-     tutorial:false,tutGate:null,gen:++GEN,skill:{foresight:false,peekTiles:null,god:false},storyFinal,stage,wager,stats,practice:null,dark,
+     tutorial:false,tutGate:null,gen:++GEN,skill:{foresight:false,peekTiles:null,god:false},storyFinal,stage,wager,stats,practice:null,dark,len,
      startScores:scores.slice(),startHonba:honba,startSticks:sticks,
      ctl:MP.active?MP.seats.map((st,i)=>st.kind==='cpu'?'cpu':(MODE==='hot'?'local':(i===MP.me?'local':'remote'))):['local','cpu','cpu','cpu']};
   players.forEach(p=>{if(p.cheat)rigHand(p,wall,p.cheat);});
@@ -1254,6 +1272,7 @@ function newHand(keep,restart){
   bgmPlay(dark?'boss':'match');
   if(!keep)later(()=>banterAll('start'),400);
   else if(prev&&prev.round===0&&round===1)later(()=>banterAll('south'),300);
+  if(keep&&prev&&round>prev.round&&round>(len==='ton'?0:1))later(()=>toast('延長戦（'+WINDS[round]+'入）：誰かが30000点に届いた局で終わります',4000),800);
   later(drawStep,620);
 }
 
@@ -1353,9 +1372,11 @@ function reactionUI(pid,req,cb){
 
 function buildCtx(pid,tsumo,winTile,chankan){
   const p=G.players[pid];
+  const first=!!tsumo&&!G.tutorial&&p.discards.length===0&&p.melds.length===0&&!G.callHappened&&!G.rinshanFlag;   // 第一ツモ（鳴きなし）
   return {seatWind:p.seatWind,roundWind:G.roundWind,tsumo,riichi:p.riichi,doubleRiichi:p.doubleRiichi,
     ippatsu:G.ippatsu[pid],concealed:p.melds.every(m=>m.concealed),winTile:nt(winTile),chankan:!!chankan,
     haitei:G.wall.length===0,houtei:G.wall.length===0&&!chankan,rinshan:G.rinshanFlag,
+    tenhou:first&&p.isDealer,chiihou:first&&!p.isDealer,
     doraTiles:liveDora(),uraTiles:p.riichi?liveUra():null};
 }
 
@@ -1379,6 +1400,7 @@ function humanTurn(){
   }
   if(!p.riichi&&p.drawn>=0&&G.wall.length>0&&!G.tutorial){const ks=kanOptions(p);
     ks.forEach(k=>acts.push({label:'カン'+(ks.length>1?tileName(k.tile):''),cls:'gray',fn:()=>doKan(pid,k.tile,k.kind)}));}
+  if(abortRules()&&MODE!=='guest'&&p.drawn>=0&&firstTurn(p)&&kyushuOk(p.hand))acts.push({label:'九種九牌',cls:'gray',fn:()=>abortDraw('九種九牌')});   // 最初のツモで1・9・字牌が9種類以上なら流せる
   renderActions(acts,true);
   if(G.tutorial)tutGuide();
   // リーチ後は自動でツモ切り（カンの選択がある時は待つ）
@@ -1387,7 +1409,22 @@ function humanTurn(){
   }
 }
 /* カンの候補: 暗槓(4枚) / 加槓(ポンした牌を引いた) */
+/* ---- 特殊ルールの道具 ---- */
+const abortRules=()=>ABORT_ON&&!!G&&!G.tutorial&&!G.storyFinal&&G.practice==null;   // 途中流局を使う場面か（レッスン・終節・練習の一局では使わない）
+function kanCount(){const ks=G.players.map(q=>q.melds.filter(m=>m.kan).length);return {tot:ks.reduce((a,b)=>a+b,0),max:Math.max(...ks)};}
+const kyushuOk=h=>new Set(h.map(nt).filter(isTermHon)).size>=9;   // 九種九牌：1・9・字牌が9種類以上
+const firstTurn=p=>p.discards.length===0&&p.melds.length===0&&!G.callHappened;   // 第一巡（鳴きなし）
+function markKan4(){const kc=kanCount();if(kc.tot>=4&&kc.max<4&&abortRules())G.kan4=true;}   // 四槓散了：2人以上で合計4回のカン（次の打牌が通ったら流局）
+function markPao(pid,fromPid,tile){   // 責任払い：大三元・大四喜を確定させる鳴き
+  if(!PAO_ON||tile<27||G.tutorial)return;
+  const tr=G.players[pid].melds.filter(m=>m.t==='trip'),dr=tr.filter(m=>m.tile>=31).length,wd=tr.filter(m=>m.tile>=27&&m.tile<31).length;
+  const y=tile>=31?(dr===3?'大三元':null):(wd===4?'大四喜':null);if(!y)return;
+  (G.pao||(G.pao={}))[pid]={who:fromPid,y};toast(pname(fromPid)+'は '+y+' の責任払い（パオ）',2600);
+}
+/* 責任払いの分担（{支払う人:額}）。ツモは全額、他家からのロンは振り込んだ人と折半。本場は振り込んだ人（ツモならパオの人） */
+function paoShares(total,honba,tsumo,fromPid,pao){const hb=honba*300;if(tsumo)return {[pao]:total+hb};const r={};r[pao]=total/2;r[fromPid]=(r[fromPid]||0)+total/2+hb;return r;}
 function kanOptions(p){
+  if(kanCount().tot>=4)return [];   // 4回目のカンの後はカンできない
   const c=toCounts(p.hand),res=[];
   for(let i=0;i<34;i++)if(c[i]===4)res.push({tile:i,kind:'an'});
   p.melds.forEach(m=>{if(m.t==='trip'&&!m.kan&&!m.concealed&&c[m.tile]>0)res.push({tile:m.tile,kind:'ka'});});
@@ -1415,7 +1452,7 @@ function finishKan(pid){
   const p=G.players[pid];
   revealKanDora();
   const rt=G.wall.shift();p.hand.push(rt);p.drawn=rt;
-  G.rinshanFlag=true;clearIppatsu();G.callHappened=true;G.turn=pid;G.phase='discard';G.offering=false;
+  G.rinshanFlag=true;clearIppatsu();G.callHappened=true;G.turn=pid;G.phase='discard';G.offering=false;markKan4();
   render();
   if(isHuman(pid))seatTurn(pid);else later(()=>cpuDiscardOnly(pid),think());
 }
@@ -1515,7 +1552,7 @@ function canRon(pid,tile,chankan){
 }
 /* onNone: 誰もロンしなかった時の続き（省略時はポン/チーの確認へ） */
 function ronPhase(fromPid,tile,onNone,chankan){
-  onNone=onNone||(()=>ponPhase(fromPid,tile));
+  onNone=onNone||(()=>G.kan4?advanceTurn(fromPid):ponPhase(fromPid,tile));   // 四槓散了の打牌はロン以外の鳴きなし
   const order=(a,b)=>((a-fromPid+4)%4)-((b-fromPid+4)%4);
   const claim=[];for(let i=0;i<4;i++)if(i!==fromPid&&canRon(i,tile,chankan)&&!aiMissesRon(i,tile,chankan))claim.push(i);
   claim.sort(order);
@@ -1547,7 +1584,7 @@ function ponPhase(fromPid,tile){
   let pid=null,canKan=false;
   for(let d=1;d<4;d++){const i=(fromPid+d)%4;const p=G.players[i];if(p.riichi)continue;const c=toCounts(p.hand)[tile];if(c>=2){pid=i;canKan=c>=3;break;}}
   if(pid!==null&&isHuman(pid)&&!(MODE==='hot'&&!MP.calls)&&!(NO_CALL&&ctlOf(pid)==='local'&&!G.tutorial)){
-    const kanOk=canKan&&G.wall.length>0;
+    const kanOk=canKan&&G.wall.length>0&&kanCount().tot<4;
     askDecision(pid,{kind:'pon',tile,fromPid,canKan:kanOk},ch=>{
       if(ch.a==='pon')return doPon(pid,fromPid,tile,false);
       if(ch.a==='kan'&&kanOk)return doPon(pid,fromPid,tile,true);
@@ -1589,7 +1626,8 @@ function doPon(pid,fromPid,tile,kan){
   let need=kan?3:2,rm=0;p.hand=p.hand.filter(t=>{if(nt(t)===tile&&rm<need){rm++;if(isRed(t))reds.push(tile);return false;}return true;});
   p.melds.push({t:'trip',tile,k:kan?4:3,concealed:false,kan,from:fromPid,called:tile,reds});
   clearIppatsu();G.pendingRiichiDeclarer=-1;G.callHappened=true;G.offering=false;flash(pname(pid)+(kan?'のカン':'のポン'));sfx.call();if(!isHuman(pid))banterOne('call',500,pid);
-  if(kan){revealKanDora();const rt2=G.wall.shift();p.hand.push(rt2);p.drawn=rt2;p.hand.sort((a,b)=>a-b);G.rinshanFlag=true;}
+  markPao(pid,fromPid,tile);
+  if(kan){revealKanDora();const rt2=G.wall.shift();p.hand.push(rt2);p.drawn=rt2;p.hand.sort((a,b)=>a-b);G.rinshanFlag=true;markKan4();}
   G.turn=pid;G.phase='discard';p.drawn=kan?p.drawn:-1;
   render();
   if(isHuman(pid))seatTurn(pid);else later(()=>cpuDiscardOnly(pid),think());
@@ -1609,6 +1647,11 @@ function advanceTurn(fromPid){
   G.offering=false;
   // 立直宣言が通った（鳴かれず）→ 一発フラグ
   if(G.pendingRiichiDeclarer>=0){G.ippatsu[G.pendingRiichiDeclarer]=true;G.pendingRiichiDeclarer=-1;}
+  if(abortRules()){   // 途中流局
+    if(G.players.every(p=>p.riichi))return abortDraw('四家立直');
+    if(G.kan4)return abortDraw('四槓散了');
+    if(G.discN===4&&!G.callHappened){const f=G.players.map(p=>p.discards.length===1?discTiles(p)[0]:-1);if(f[0]>=27&&f[0]<31&&f.every(t=>t===f[0]))return abortDraw('四風連打');}
+  }
   G.turn=(fromPid+1)%4;G.phase='draw';
   render();
   later(drawStep,sp().draw);
@@ -1625,6 +1668,8 @@ function cpuTurn(){
     if(ev){flash(pname(pid)+'のツモ');return later(()=>win(pid,pid,true,p.drawn),sp().call);}
   }
   G.ippatsu[pid]=false; // 自分のツモ番を過ぎたので一発消滅
+  if(abortRules()&&firstTurn(p)&&kyushuOk(p.hand)){const k=new Set(p.hand.map(nt).filter(isTermHon)).size;   // 九種九牌。国士が近い（11種以上）なら半々で続ける
+    if(k<11||Math.random()<.5)return later(()=>abortDraw('九種九牌'),sp().call);}
   if(!p.riichi&&G.wall.length>1&&!riichiOpponents(p).length){
     const ks=kanOptions(p);
     for(const k of ks){ // 手が進むのを邪魔しないカンだけ
@@ -1882,8 +1927,12 @@ function showDeltas(before){
 function applyWin(pid,fromPid,tsumo,ev,takeSticks){
   const p=G.players[pid];
   const pay=payments(ev.fu,ev.han,p.isDealer,tsumo);
+  const pao=(G.pao&&G.pao[pid]&&ev.yaku.some(v=>v.n===G.pao[pid].y))?G.pao[pid].who:-1;
   let gained;
-  if(tsumo){
+  if(pao>=0&&pao!==pid&&(tsumo||pao!==fromPid)){   // 責任払い：ツモは全額、他家からのロンは折半
+    const sh=paoShares(pay.total,G.honba,tsumo,fromPid,pao);for(const k in sh)G.players[k].score-=sh[k];
+    gained=pay.total+G.honba*300;pay.pao=pao;
+  }else if(tsumo){
     if(pay.dealer){for(let i=0;i<4;i++)if(i!==pid)G.players[i].score-=pay.each+(G.honba*100);}
     else{for(let i=0;i<4;i++){if(i===pid)continue;const sh=G.players[i].isDealer?pay.d:pay.nd;G.players[i].score-=sh+(G.honba*100);}}
     gained=pay.total+G.honba*300;
@@ -1940,10 +1989,27 @@ function winMulti(winners,fromPid,tile,chankan){
 function ryuukyoku(){
   G.over=true;const before=G.players.map(p=>p.score);
   const tenpai=G.players.map(p=>shanten(p.hand,p.melds.length)===0);
-  const tn=tenpai.filter(Boolean).length;
-  if(tn>0&&tn<4){const get=3000/tn,give=3000/(4-tn);G.players.forEach((p,i)=>p.score+=tenpai[i]?get:-give);}
+  // 流し満貫：捨て牌が全部1・9・字牌で、一度も鳴かれていない（聴牌料のやり取りはなし。親の続きは聴牌で判定）
+  const nagOk=NAGASHI_ON&&!G.tutorial&&!G.storyFinal&&G.practice==null;
+  const nag=G.players.map(p=>nagOk&&p.discards.length>0&&p.discards.every(d=>{const o=typeof d==='object';return isTermHon(nt(o?d.t:d))&&!(o&&d.claimed);}));
+  if(nag.some(Boolean)){
+    G.players.forEach((p,i)=>{if(!nag[i])return;const pay=payments(30,5,p.isDealer,true);
+      for(let j=0;j<4;j++){if(j===i)continue;G.players[j].score-=pay.dealer?pay.each:(G.players[j].isDealer?pay.d:pay.nd);}p.score+=pay.total;});
+  }else{
+    const tn=tenpai.filter(Boolean).length;
+    if(tn>0&&tn<4){const get=3000/tn,give=3000/(4-tn);G.players.forEach((p,i)=>p.score+=tenpai[i]?get:-give);}
+  }
   G.advance=!tenpai[G.dealer];G.keepHonba=true;G._meTen=!!tenpai[0];netSnapNext(null,tenpai);
-  render();showDeltas(before);banterOne('draw',300);showDraw(tenpai);
+  render();showDeltas(before);banterOne('draw',300);showDraw(tenpai,nag);
+}
+/* 途中流局：親はそのまま続けて1本場。供託もそのまま */
+function abortDraw(reason){
+  if(!G||G.over)return;
+  G.over=true;G.abort=reason;G.advance=false;G.keepHonba=true;G._meTen=false;
+  renderActions([],false);flash(reason);sfx.call();
+  netSnapNext(null,G.players.map((p,i)=>i===G.dealer));   // 親を聴牌扱いにして「連荘・1本場」を伝える
+  render();
+  const g=G.gen;setTimeout(()=>{if(G&&G.gen===g)showDraw(null,null,reason);},700);
 }
 
 /* ===== 描画 ===== */
@@ -2274,7 +2340,8 @@ function btnIcon(label){
     'チー':'<path d="M4 11l3.2-3.2L10 10M9 8l3-3 3 3"/>',
     'カン':'<rect x="2.4" y="2.4" width="5.6" height="5.6" rx="1.2"/><rect x="10" y="2.4" width="5.6" height="5.6" rx="1.2"/><rect x="2.4" y="10" width="5.6" height="5.6" rx="1.2"/><rect x="10" y="10" width="5.6" height="5.6" rx="1.2"/>',
     'スルー':'<path d="M4 4.5l4.5 4.5L4 13.5M9.5 4.5L14 9l-4.5 4.5"/>',
-    'やめ':'<path d="M5 5l8 8M13 5l-8 8"/>'
+    'やめ':'<path d="M5 5l8 8M13 5l-8 8"/>',
+    '九種九牌':'<path d="M3.2 9.6a5.8 5.8 0 0 1 10-4.4M14.8 8.4a5.8 5.8 0 0 1-10 4.4"/><path d="M13.6 2.2v3.2h-3.2M4.4 15.8v-3.2h3.2"/>'
   };
   const k=Object.keys(I).find(x=>label.startsWith(x));
   return k?`<svg class="ic" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${I[k]}</svg>`:'';
@@ -2299,6 +2366,7 @@ function showResult(pid,fromPid,tsumo,hand,winTile,ev,pay,gained,sticks,after,mu
   let payStr;
   const nm=i=>esc(G.players[i].name||POS[(i-VIEW+4)%4]);
   if(tsumo){payStr=pay.dealer?`${pay.each}オール`:`子${pay.nd}/親${pay.d}`;}else payStr=`${nm(fromPid)}から`;
+  if(pay.pao!=null)payStr=(tsumo?'':nm(fromPid)+'から　')+'責任払い：'+nm(pay.pao)+(tsumo?'が全額':'と折半');
   const T0=sorted.length*55+380;               // 手牌が出そろう時刻
   const yl=ev.yaku.map((v,i)=>`<div class="yl" data-y="${esc(v.n)}" style="animation-delay:${T0+i*150}ms;cursor:help">${esc(v.n)}<span class="h">${v.dora?(v.h|0):(v.h|0)+'翻'}</span></div>`).join('');
   const T1=T0+ev.yaku.length*150+250;          // 役が出そろう時刻
@@ -2340,22 +2408,33 @@ function showResult(pid,fromPid,tsumo,hand,winTile,ev,pay,gained,sticks,after,mu
     if(wasPrac!=null){practiceEnd(wasPrac,(G._winners||[pid]).includes(0));return;}
     afterWinners(G._winners||[pid]);G._winners=null;};
 }
-function showDraw(tenpai){
-  if(MODE==='host')netSendAll({t:'draw',tenpai},true);
+function showDraw(tenpai,nag,abort){
+  if(MODE==='host')netSendAll({t:'draw',tenpai,nag,abort},true);
   {const _m=document.getElementById('modal');_m.classList.remove('done');_m.onclick=null;}
   const ov=document.getElementById('overlay');ov.style.display='flex';const m=document.getElementById('modal');
-  m.innerHTML=`<h2>流局</h2>
-    <div class="yaku">${G.players.map((p,i)=>`${esc(p.name||POS[(i-VIEW+4)%4])} ${WINDS[p.seatWind]}${p.isDealer?'親':''}<span class="h">${tenpai[i]?'聴牌':'不聴'} ${p.score}</span>`).join('<br>')}</div>
+  const st=(i)=>abort?'':(nag&&nag[i]?'<b style="color:var(--gold)">流し満貫</b> ':'')+(tenpai&&tenpai[i]?'聴牌':'不聴')+' ';
+  m.innerHTML=`<h2>${abort?'途中流局':'流局'}</h2>
+    ${abort?`<div class="sub">${esc(abort)}　親はそのまま続けて1本場</div>`:(nag&&nag.some(Boolean)?'<div class="sub">流し満貫：捨て牌が全部1・9・字牌で、一度も鳴かれなかった</div>':'')}
+    <div class="yaku">${G.players.map((p,i)=>`${esc(p.name||POS[(i-VIEW+4)%4])} ${WINDS[p.seatWind]}${p.isDealer?'親':''}<span class="h">${st(i)}${p.score}</span>`).join('<br>')}</div>
     ${chatRowHtml()}
     <button class="btn" id="nextBtn">${G.storyFinal||G.practice!=null?'つづける':'次の局へ'}</button>`;
   wireChatRow(m);
-  const wasFinal=G.storyFinal,meTen=tenpai[0],wasPrac=G.practice;
+  const wasFinal=G.storyFinal,meTen=!!(tenpai&&tenpai[0]),wasPrac=G.practice;
   document.getElementById('nextBtn').onclick=()=>{ov.style.display='none';if(wasFinal){storyFinalEnd(meTen);return;}if(wasPrac!=null){practiceEnd(wasPrac,meTen);return;}endCheck();};
 }
+const lastWind=()=>(G&&G.len==='ton')?0:1;   // 最後の場（半荘=南、東風戦=東）
+/* 局が終わった後に終局か。adv=親が流れる、scores=局の後の点数、dealerKeeps=親があがった／聴牌で続く（途中流局は含めない） */
+function gameOverAfter(adv,scores,dealerKeeps){
+  if(scores.some(s=>s<0))return true;                                   // トビ
+  const lw=lastWind(),top=Math.max(...scores);
+  if(G.roundWind>lw)return top>=30000||(G.dealer===3&&adv);             // 延長中：誰かが30000点に届いた局で終わり。4局目が流れたら打ち切り
+  if(G.roundWind<lw||G.dealer!==3)return false;                          // オーラスより前
+  if(adv)return !(EXT_ON&&top<30000);                                    // オーラスが流れた：誰も30000点に届いていなければ延長
+  // 親が続く：アガリやめ・テンパイやめ（親がただ一人のトップで、延長の条件にもかからない時）
+  return !!(AGARIYAME&&dealerKeeps&&scores[G.dealer]===top&&scores.filter(s=>s===top).length===1&&!(EXT_ON&&top<30000));
+}
 function endCheck(){
-  const bust=G.players.some(p=>p.score<0);
-  const last=(G.roundWind>=1&&G.dealer===3&&G.advance);
-  if(bust||last)return showFinal();
+  if(gameOverAfter(G.advance,G.players.map(p=>p.score),!G.advance&&!G.abort))return showFinal();
   newHand(true);
 }
 function showFinal(){
@@ -2394,7 +2473,7 @@ function showHelp(back){
     <h4>1回の番でやること</h4>山から1枚<b>引く</b>（ツモ）→ いらない牌を1枚<b>捨てる</b>。これを全員が順番にくり返す。手牌はいつも13枚、引いた瞬間だけ14枚。
     <h4>あがり方</h4>・<b>ツモ</b>：自分で引いた牌でそろう<br>・<b>ロン</b>：あと1枚の状態で、相手がその牌を捨てた
     <h4>役がないとあがれない</h4>形がそろっても<b>役が1つ以上</b>ないとあがれない。初心者はまず「<b>立直</b>」と「<b>タンヤオ</b>」の2つを覚えれば十分（次のタブ）。
-    <h4>局と半荘</h4>1回のあがりや流局で1局。東1局〜東4局、南1局〜南4局の<b>8局</b>で1ゲーム（半荘）。親（東の人）があがると、もう1局親を続ける。`},
+    <h4>局と半荘</h4>1回のあがりや流局で1局。東1局〜東4局、南1局〜南4局の<b>8局</b>で1ゲーム（半荘）。親（東の人）があがると、もう1局親を続ける。設定で東場だけの<b>東風戦</b>にもできる。`},
    yaku:{t:'役',h:`
     <div style="font-size:12px;color:var(--muted)">まずは上の3つ。翻（ハン）が多いほど高い。</div>
     ${yk('立直','1翻・門前のみ','鳴かずにテンパイしたら宣言。1000点を出す。あとは引いた牌をそのまま切るだけ。<b>一番確実な役</b>')}
@@ -2423,6 +2502,14 @@ function showHelp(back){
     <h4>ツモとロンの支払い</h4>・ロン：振り込んだ人が全額払う<br>・ツモ：3人で分けて払う（親は2倍）
     <h4>符</h4>細かい加点。平和ツモ20符、七対子25符、それ以外はだいたい30〜40符。初心者は「翻」だけ見ていれば十分。
     <h4>本場・供託</h4>・本場：親が続くと1本場ずつ増え、あがった人に300点×本場が上乗せ<br>・供託：リーチの1000点。次にあがった人がもらう`},
+   rules:{t:'特殊ルール',h:`
+    <div style="font-size:12px;color:var(--muted)">設定の「ルール」で、それぞれあり／なしを選べる。</div>
+    <h4>途中流局</h4>次の時は局が流れ、親はそのまま続けて1本場になる。<br>・<b>九種九牌</b>：最初のツモの時点で1・9・字牌が9種類以上あれば、流すか選べる<br>・<b>四風連打</b>：全員の最初の捨て牌が同じ風牌<br>・<b>四家立直</b>：4人全員がリーチ<br>・<b>四槓散了</b>：2人以上で合計4回カンした（1人で4回なら続く）
+    <h4>流し満貫</h4>流局した時、自分の捨て牌が全部1・9・字牌で、一度も鳴かれていなければ満貫のツモと同じ点をもらえる（聴牌料のやり取りはなし）。
+    <h4>責任払い（パオ）</h4>大三元・大四喜を確定させるポン・カンをさせた人は、その役満がツモなら全額、他の人からのロンなら半分を払う。
+    <h4>終局のきまり</h4>・<b>トビ</b>：誰かが0点を切ったら終わり<br>・<b>延長（西入）</b>：最後の局が終わっても誰も30000点に届いていなければ次の場へ。誰かが届いた局で終わる（4局で打ち切り）<br>・<b>アガリやめ</b>：最後の局で親がトップのままあがる（または聴牌で流局する）と、そこで終わりにできる
+    <h4>役満（このアプリで数えるもの）</h4>国士無双・四暗刻・大三元・字一色・清老頭・緑一色・九蓮宝燈・大四喜・小四喜・四槓子・天和・地和。役満は他の役やドラを数えず、複合しても役満1つ分。
+    <h4>喰いタン</h4>鳴いた断幺九を役として認めるか。`},
    words:{t:'用語',h:`<dl>
     <dt>テンパイ</dt><dd>あと1枚であがれる状態</dd><dt>シャンテン</dt><dd>テンパイまであと何歩か（1シャンテン＝あと1枚でテンパイ）</dd>
     <dt>待ち</dt><dd>テンパイの時、あがれる牌のこと</dd><dt>両面（リャンメン）</dt><dd>4萬5萬のように2種類で待つ形。一番あがりやすい</dd>
@@ -3016,7 +3103,7 @@ function netSnapNext(winners,tenpai){
   const adv=winners?!winners.includes(G.dealer):!tenpai[G.dealer];const keepHonba=winners?!adv:true;
   let dealer=G.dealer,round=G.round,honba=G.honba|0;
   if(adv){dealer=(dealer+1)%4;if(dealer===0)round++;honba=keepHonba?honba+1:0;}else honba=honba+1;
-  const over=G.players.some(p=>p.score<0)||(G.roundWind>=1&&G.dealer===3&&adv);
+  const over=gameOverAfter(adv,G.players.map(p=>p.score),!adv&&!G.abort);
   netSnapSend(netSnap('next',{scores:G.players.map(p=>p.score),dealer,round,honba,sticks:G.riichiSticks|0,over}));
 }
 function netSnapRefresh(){
@@ -3198,7 +3285,7 @@ function guestOnData(m,giveUp){
     case 'result':
       if(!G)break;NET.ask=null;stopAskBar();renderActions([],false);G.uraInd=m.ura||[];
       showResult.apply(null,m.a);guestWaitButton();break;
-    case 'draw':if(!G)break;NET.ask=null;stopAskBar();renderActions([],false);showDraw(m.tenpai);guestWaitButton();break;
+    case 'draw':if(!G)break;NET.ask=null;stopAskBar();renderActions([],false);showDraw(m.tenpai,m.nag,m.abort);guestWaitButton();break;
     case 'final':if(!G)break;NET.ask=null;stopAskBar();renderActions([],false);NET.snap=null;
       if(Array.isArray(m.scores))m.scores.forEach((v,i)=>{if(G.players[i]&&typeof v==='number'&&isFinite(v))G.players[i].score=v;});
       mpFinal();break;
@@ -4929,7 +5016,7 @@ function castStage(st,idx,wager){
   for(const seat in st.cast){const id=st.cast[seat];const p=G.players[+seat];
     p.name=CHARS[id].n;p.style=CHAR_STYLE[id];p.level=(id===st.boss)?lv:sub;p.charId=id;p.ai=null;}
   if(HERO.origin==='gambler')G.players[0].score=20000;
-  G.stage=idx;G.wager=!!wager||!!st.forceWager;G.dark=!!st.dark;if(G.dark)bgmPlay('boss');
+  G.stage=idx;G.len='han';G.wager=!!wager||!!st.forceWager;G.dark=!!st.dark;if(G.dark)bgmPlay('boss');   // 物語の戦はいつも半荘
   if(st.cheat){const b=G.players[2];b.cheat=st.cheat;rigHand(b,G.wall,st.cheat);}
   if(st.readHand)G.players[2].readHand=true;
   render();updateSkillbar();
@@ -5260,7 +5347,7 @@ function showChooser(){if(MP.active)return mpMenu();showHome();}
 
 
 /* ===== タイトル画面・ホーム画面・対局中メニュー・設定 ===== */
-const APP_VER='2026.09.19';
+const APP_VER='2026.09.25';
 const BATTLE_FACE={domoto:'angry',kuroda:'angry',karasu:'smile',washio:'calm',minato:'calm',shizuka:'calm',master:'smile',hayato:'smile',gen:'smile',ren:'smile'};   // 「○○ 戦」のカットインの表情
 const HM_IC={
  free:'<rect x="5" y="2.5" width="14" height="19" rx="2.5"/><circle cx="12" cy="12" r="3.2"/><path d="M12 5.5v1M12 17.5v1"/>',
@@ -5403,6 +5490,14 @@ function showSettings(back){
     <div class="setrow"><button class="btn ${AUTO_TG?'':'gray'} sm" id="setAutoTg">リーチ後の自動ツモ切り：${AUTO_TG?'ON':'OFF'}</button><small>リーチ中、あがり牌でなければ自動で切る</small></div>
     <div class="setrow"><button class="btn ${TWO_TAP?'':'gray'} sm" id="setTwoTap">二段タップ：${TWO_TAP?'ON':'OFF'}</button><small>1回目で選び、同じ牌をもう一度タップで捨てる（誤タップ防止）</small></div>
     <div class="setrow"><button class="btn ${TILE_BIG?'':'gray'} sm" id="setTileBig">牌を大きめに：${TILE_BIG?'ON':'OFF'}</button><small>手牌を少し大きく（狭い画面ではボタンが手牌の上に浮く）</small></div>
+    <div class="dojo-sec">ルール</div>
+    <div class="setrow"><button class="btn sm" id="setLen">対局の長さ：${GAME_LEN==='ton'?'東風戦':'半荘'}</button><small>半荘＝東場と南場の8局。東風戦＝東場だけの4局。次の対局から（物語の戦は半荘のまま）</small></div>
+    <div class="setrow"><button class="btn ${ABORT_ON?'':'gray'} sm" id="setAbort">途中流局：${ABORT_ON?'あり':'なし'}</button><small>九種九牌・四風連打・四家立直・四槓散了で流れる（親は続いて1本場）</small></div>
+    <div class="setrow"><button class="btn ${NAGASHI_ON?'':'gray'} sm" id="setNagashi">流し満貫：${NAGASHI_ON?'あり':'なし'}</button><small>流局時、捨て牌が全部1・9・字牌で一度も鳴かれていなければ満貫</small></div>
+    <div class="setrow"><button class="btn ${PAO_ON?'':'gray'} sm" id="setPao">責任払い（パオ）：${PAO_ON?'あり':'なし'}</button><small>大三元・大四喜を確定させる鳴きをさせた人が、ツモなら全額・ロンなら半分を払う</small></div>
+    <div class="setrow"><button class="btn ${EXT_ON?'':'gray'} sm" id="setExt">延長（西入）：${EXT_ON?'あり':'なし'}</button><small>終局時に誰も30000点に届いていなければ次の場へ。誰かが届いた局で終わり（4局で打ち切り）</small></div>
+    <div class="setrow"><button class="btn ${AGARIYAME?'':'gray'} sm" id="setAgariyame">アガリやめ：${AGARIYAME?'あり':'なし'}</button><small>オーラスで親がトップのままあがる（または聴牌で流局）と、そこで終局</small></div>
+    <div class="setrow"><button class="btn ${KUITAN?'':'gray'} sm" id="setKuitan">喰いタン：${KUITAN?'あり':'なし'}</button><small>鳴いた断幺九を役として認める（なし＝門前のみ）</small></div>
     <div class="dojo-sec">あそびやすさ</div>
     <div class="setrow"><button class="btn ${ASSIST?'':'gray'} sm" id="setAssist">おたすけモード：${ASSIST?'ON':'OFF'}</button><small>物語の相手が少し弱くなり、スキルゲージが1.5倍溜まる。慣れるまでONがおすすめ</small></div>
     <div class="setrow"><button class="btn ${SOUND_ON?'':'gray'} sm" id="setSound">音楽・効果音：${SOUND_ON?'あり':'なし'}</button><small>BGMと効果音（端末の中で作っています）</small></div>
@@ -5421,6 +5516,13 @@ function showSettings(back){
   document.getElementById('setAutoTg').onclick=()=>{AUTO_TG=!AUTO_TG;lsSet('mjAutoTg',AUTO_TG?'1':'0');again();};
   document.getElementById('setTwoTap').onclick=()=>{TWO_TAP=!TWO_TAP;lsSet('mjTwoTap',TWO_TAP?'1':'0');again();};
   document.getElementById('setTileBig').onclick=()=>{TILE_BIG=!TILE_BIG;lsSet('mjTileBig',TILE_BIG?'1':'0');if(G&&G.players)render();again();};
+  document.getElementById('setLen').onclick=()=>{GAME_LEN=GAME_LEN==='ton'?'han':'ton';lsSet('mjLen',GAME_LEN);again();};
+  document.getElementById('setAbort').onclick=()=>{ABORT_ON=!ABORT_ON;lsSet('mjAbort',ABORT_ON?'1':'0');again();};
+  document.getElementById('setNagashi').onclick=()=>{NAGASHI_ON=!NAGASHI_ON;lsSet('mjNagashi',NAGASHI_ON?'1':'0');again();};
+  document.getElementById('setPao').onclick=()=>{PAO_ON=!PAO_ON;lsSet('mjPao',PAO_ON?'1':'0');again();};
+  document.getElementById('setExt').onclick=()=>{EXT_ON=!EXT_ON;lsSet('mjExt',EXT_ON?'1':'0');again();};
+  document.getElementById('setAgariyame').onclick=()=>{AGARIYAME=!AGARIYAME;lsSet('mjAgariyame',AGARIYAME?'1':'0');again();};
+  document.getElementById('setKuitan').onclick=()=>{KUITAN=!KUITAN;lsSet('mjKuitan',KUITAN?'1':'0');again();};
   document.getElementById('setAssist').onclick=()=>{ASSIST=!ASSIST;lsSet('mjAssist',ASSIST?'1':'0');if(G&&G.stage!=null&&!G.over){G.players.forEach((p,i)=>{if(i&&p.level)p.level=ASSIST?Math.max(1,p.level-1):p.level+1;});}again();};
   document.getElementById('setSound').onclick=()=>{setSound(!SOUND_ON);again();};
   document.getElementById('setRed').onclick=()=>{RED_ON=!RED_ON;lsSet('mjRed',RED_ON?'1':'0');again();};

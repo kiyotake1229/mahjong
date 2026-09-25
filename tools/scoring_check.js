@@ -60,9 +60,9 @@ vm.createContext(sandbox);
 try { vm.runInContext(m[1], sandbox, { filename: 'index.html(script)' }); }
 catch (e) { console.error('読み込み中の例外（無視して続けます）:', e && e.message); }
 let api;
-try { api = vm.runInContext('({evaluate, payments, rankName, isAgari, nt})', sandbox); }
+try { api = vm.runInContext('({evaluate, payments, rankName, isAgari, nt, paoShares})', sandbox); }
 catch (e) { console.error('関数を取り出せません:', e && e.message); process.exit(2); }
-const { evaluate, payments, rankName } = api;
+const { evaluate, payments, rankName, paoShares } = api;
 
 /* ---------- 牌の表記 ---------- */
 // "123m 45p 6s E P" → 牌番号。萬 0-8、筒 9-17、索 18-26、東南西北白發中 27-33。赤5は "0m/0p/0s"
@@ -81,6 +81,8 @@ function tiles(str) {
 }
 const pon = (t, from = 1) => ({ t: 'trip', tile: t, k: 3, concealed: false, from, called: t, reds: [] });
 const chi = (low, from = 3) => ({ t: 'seq', tile: low, k: 3, concealed: false, from, called: low, reds: [] });
+const ankan = (t) => ({ t: 'trip', tile: t, k: 4, concealed: true, kan: true, reds: [] });
+const minkan = (t, from = 1) => ({ t: 'trip', tile: t, k: 4, concealed: false, kan: true, from, called: t, reds: [] });
 const ctxOf = (o) => Object.assign({ seatWind: 1, roundWind: 0, tsumo: false, riichi: false, doubleRiichi: false, ippatsu: false,
   concealed: true, winTile: 0, chankan: false, haitei: false, houtei: false, rinshan: false, doraTiles: [], uraTiles: null }, o);
 
@@ -113,12 +115,21 @@ const CASES = [
   { n: '対々和 白 鳴き（50符3翻）', hand: '999s C C', win: 'C', melds: [pon(0), pon(13), pon(31)], ctx: { concealed: false }, exp: { han: 3, fu: 50, yaku: ['対々和', '白'] } },
   { n: '混一色 一気通貫 發 鳴き（30符4翻）', hand: '123s 456s 789s 99s', win: '9s', melds: [pon(32)], ctx: { concealed: false }, exp: { han: 4, fu: 30, yaku: ['混一色', '一気通貫', '發'] } },
   { n: '混一色 發 鳴き（30符3翻）', hand: '123s 456s 678s 99s', win: '9s', melds: [pon(32)], ctx: { concealed: false }, exp: { han: 3, fu: 30, yaku: ['混一色', '發'] } },
-  { n: '清一色 一気通貫 門前ロン（倍満）', hand: '123m 456m 789m 111m 99m', win: '9m', ctx: {}, exp: { han: 8, fu: null, yaku: ['清一色', '一気通貫'] } },
+  { n: '清一色 一気通貫 門前ロン（倍満）', hand: '123m 456m 789m 222m 99m', win: '9m', ctx: {}, exp: { han: 8, fu: null, yaku: ['清一色', '一気通貫'] } },
+  { n: '九蓮宝燈 ロン（役満）', hand: '123m 456m 789m 111m 99m', win: '9m', ctx: {}, exp: { han: 13, fu: null, yaku: ['九蓮宝燈'], only: true } },
   { n: '国士無双 ロン（役満）', hand: '19m 19p 19s E S W N P F C 1m', win: '1m', ctx: {}, exp: { han: 13, fu: null, yaku: ['国士無双'], only: true } },
   { n: '大三元 鳴き ロン（役満・他の役を数えない）', hand: '234m 99p', win: '4m', melds: [pon(31), pon(32), pon(33)], ctx: { concealed: false }, exp: { han: 13, fu: null, yaku: ['大三元'], only: true } },
   { n: '字一色 七対子（役満）', hand: 'E E S S W W N N P P F F C C', win: 'C', ctx: {}, exp: { han: 13, fu: null, yaku: ['字一色'], only: true } },
   { n: '四暗刻 単騎ツモ（役満）', hand: '111m 333p 555s 777s 99m', win: '9m', ctx: { tsumo: true }, exp: { han: 13, fu: null, yaku: ['四暗刻'], only: true } },
   { n: '役なし（鳴き・平和形・東の雀頭）', hand: '345p 678s 456s E E', win: '5s', melds: [pon(1)], ctx: { concealed: false }, exp: { none: true } },
+  { n: '大四喜 鳴き ロン（役満）', hand: 'N N N 99m', win: '9m', melds: [pon(27), pon(28), pon(29)], ctx: { concealed: false }, exp: { han: 13, fu: null, yaku: ['大四喜'], only: true } },
+  { n: '小四喜 鳴き ロン（役満）', hand: 'W W W N N 234p', win: '4p', melds: [pon(27), pon(28)], ctx: { concealed: false }, exp: { han: 13, fu: null, yaku: ['小四喜'], only: true } },
+  { n: '四槓子（暗槓2・大明槓2）ツモ（役満）', hand: '9m 9m', win: '9m', melds: [ankan(0), ankan(13), minkan(20), minkan(31)], ctx: { tsumo: true, concealed: false }, exp: { han: 13, fu: null, yaku: ['四槓子'], only: true } },
+  { n: '四暗刻（暗槓を含む）ツモ（役満）', hand: '333p 555s 777s 99m', win: '9m', melds: [ankan(0)], ctx: { tsumo: true }, exp: { han: 13, fu: null, yaku: ['四暗刻'], only: true } },
+  { n: '緑一色 ロン（役満）', hand: '234s 234s 666s 888s F F', win: '8s', ctx: {}, exp: { han: 13, fu: null, yaku: ['緑一色'], only: true } },
+  { n: '天和（役満）', hand: '123m 456m 234p 678s 99p', win: '8s', ctx: { tsumo: true, tenhou: true }, exp: { han: 13, fu: null, yaku: ['天和'], only: true } },
+  { n: '地和（役満）', hand: '123m 456m 234p 678s 99p', win: '8s', ctx: { tsumo: true, chiihou: true }, exp: { han: 13, fu: null, yaku: ['地和'], only: true } },
+  { n: '喰いタン ロン（30符1翻）', hand: '234m 567m 345p 88p', win: '5p', melds: [chi(19)], ctx: { concealed: false }, exp: { han: 1, fu: 30, yaku: ['断幺九'] } },
 ];
 
 let fails = 0;
@@ -135,6 +146,25 @@ for (const c of CASES) {
   const yakuOk = (c.exp.yaku || []).every(y => names.includes(y)) && (!c.exp.only || names.every(y => c.exp.yaku.includes(y)));
   ok(hanOk && fuOk && yakuOk, `${c.n}: ${ev.han}翻 ${ev.fu}符 [${names.join(' ')}]` + (hanOk && fuOk && yakuOk ? '' : ` ← 期待 ${c.exp.han}翻 ${c.exp.fu == null ? '-' : c.exp.fu}符 ${(c.exp.yaku || []).join(',')}`));
 }
+
+/* ---------- 喰いタンなし（設定で門前のみにした時は役なし） ---------- */
+{
+  vm.runInContext('KUITAN=false;', sandbox);
+  const ev = evaluate(tiles('234m 567m 345p 88p'), [chi(19)], ctxOf({ winTile: 13, concealed: false }));
+  vm.runInContext('KUITAN=true;', sandbox);
+  ok(ev == null, `喰いタンなし → 鳴いた断幺九は役なし: ${ev ? '役あり(' + ev.yaku.map(y => y.n).join(',') + ')' : 'null'}`);
+}
+
+/* ---------- 責任払い（パオ）の分担 ---------- */
+console.log('--- 責任払い（{支払う人: 額}） ---');
+const PAO = [
+  { n: 'ツモ 32000 本場なし → パオが全額', a: [32000, 0, true, -1, 2], exp: { 2: 32000 } },
+  { n: 'ツモ 32000 1本場 → パオが本場も', a: [32000, 1, true, -1, 2], exp: { 2: 32300 } },
+  { n: '親の役満ロン 48000 → 振り込みとパオで折半', a: [48000, 0, false, 1, 2], exp: { 1: 24000, 2: 24000 } },
+  { n: 'ロン 32000 2本場 → 本場は振り込んだ人', a: [32000, 2, false, 3, 0], exp: { 0: 16000, 3: 16600 } },
+];
+const norm = o => JSON.stringify(Object.keys(o).sort().map(k => [k, o[k]]));
+for (const c of PAO) { const got = paoShares(...c.a); ok(norm(got) === norm(c.exp), `${c.n}: ${JSON.stringify(got)}`); }
 
 /* ---------- 支払いの表 ---------- */
 console.log('--- 支払い（子ロン／親ロン／子ツモ／親ツモ） ---');

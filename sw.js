@@ -1,4 +1,4 @@
-const CACHE = 'mahjong-v7';   // v7: タイトル画面・ホーム画面・立ち絵の刷新（manifest の名前も更新）
+const CACHE = 'mahjong-v8';   // v8: 自動保存・打ち方の設定・ルール（途中流局・流し満貫・パオ・西入・東風戦）
 const ASSETS = [
   './', './index.html', './manifest.json',
   './icon-192.png', './icon-512.png', './icon-512-maskable.png',
