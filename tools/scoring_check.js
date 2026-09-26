@@ -37,7 +37,7 @@ function fakeEl() {
 }
 const store = () => { const d = {}; return { getItem: k => (k in d ? d[k] : null), setItem: (k, v) => { d[k] = String(v); }, removeItem: k => { delete d[k]; }, key: i => Object.keys(d)[i] || null, get length() { return Object.keys(d).length; } }; };
 const sandbox = {
-  console, setTimeout, clearTimeout, setInterval, clearInterval, TextEncoder, TextDecoder, URL,
+  console, setTimeout, clearTimeout, setInterval, clearInterval, TextEncoder, TextDecoder, URL, URLSearchParams,
   crypto: require('crypto').webcrypto,
   performance: { now: () => Date.now() },
   requestAnimationFrame: cb => setTimeout(cb, 16), cancelAnimationFrame: clearTimeout,
