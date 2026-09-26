@@ -2379,14 +2379,16 @@ function fitLayout(){
   document.body.classList.toggle('land',land);document.body.classList.toggle('port',!land);
   const Wa=W-sa.l-sa.r;
   const P=(G&&G.players)||[];const me=P[VIEW];const nm=me&&me.melds?me.melds.length:0;
-  const fs=clampN(Math.min(W*.0145,H*.032),10,18),lh=fs*1.45;
+  const kBig=clampN(Math.min(W/1024,H/720),1,1.45);   // iPad など大きな画面では牌と文字の上限を広げる（スマホでは1）
+  const fs=clampN(Math.min(W*.0145,H*.032),10,18*kBig),lh=fs*1.45;
   // 手牌（右端はボタンの場所。狭い画面ではボタンを手牌の上に浮かせる）
-  const cap=Math.min((land?H*.15/1.36:H*.07)*(TILE_BIG?1.18:1),TILE_BIG?70:62);   // 「牌を大きめに」は高さの上限を少し広げる
+  const hwMax=(TILE_BIG?70:62)*kBig;
+  const cap=Math.min((land?H*.15/1.36:H*.07)*(TILE_BIG?1.18:1),hwMax);   // 「牌を大きめに」は高さの上限を少し広げる
   let actW=land?200:0;
   let hw=(Wa-actW-24-nm*8)/(14.6-0.66*nm);
   if(land&&hw<cap*.97){actW=0;hw=(Wa-24-nm*8)/(14.6-0.66*nm);}
   document.body.classList.toggle('actfloat',!land||actW===0);
-  hw=clampN(Math.min(hw,cap),20,TILE_BIG?70:62);
+  hw=clampN(Math.min(hw,cap),20,hwMax);
   const hh=hw*1.36,barH=Math.round(hh+15+sa.b*.6);
   // 捨て牌：対面と自分は3段（多い時は1段の枚数を増やす）、左右は6枚ずつ
   const cnt=(i,k)=>(P[i]&&P[i][k])?P[i][k].length:0;
@@ -2399,11 +2401,11 @@ function fitLayout(){
   const cHmin=guideOn?3*fs*1.42+12:0;   // 今やることは3行ぶん（長い時は中でスクロール）
   const cMin=cornerMin();
   let v=null;
-  for(let rw=46;rw>=13;rw-=.5){
-    const rh=rw*1.36,mw=clampN(rw*.7,11,20),mlW=mw*3.36+7,mlH=mw*1.36+3;
+  for(let rw=46*kBig;rw>=13;rw-=.5){
+    const rh=rw*1.36,mw=clampN(rw*.7,11,20*kBig),mlW=mw*3.36+7,mlH=mw*1.36+3;
     // 上下の枠の見出し列：名前・点数・印の3行＋（対面だけ）鳴き。鳴きが2組以上なら2列に並べる
     const tCols=topMelds>=2?2:1;
-    const hdW=Math.max(clampN(fs*6.2+14,78,128),tCols*mlW+10);
+    const hdW=Math.max(clampN(fs*6.2+14,78,128*kBig),tCols*mlW+10);
     const colH=n=>3*lh+3*3+10+Math.ceil(n/tCols)*mlH;
     const rvH=3*rh+2*2+6;                     // 3段＋「今」の札の余白
     const pHt=Math.max(rvH+10,colH(topMelds)),pHm=Math.max(rvH+10,colH(0));
