@@ -17,3 +17,15 @@ node tools/scoring_check.js
 - NG があれば1行ずつ理由を出し、終了コードが 1 になる
 
 役の判定や点数の計算を直したら、必ずこれを流してから push する。新しい手を足すときは `CASES` に1行足す（牌の表記：`123m 45p 6s`、字牌は `E S W N P F C`、赤5は `0m 0p 0s`）。
+
+## screenshots.sh — App Store 用スクリーンショット
+
+手元の Google Chrome を puppeteer-core で動かし、`index.html?shot=<場面>&demo=1` を横向き3サイズ（6.7／6.5／5.5インチ、倍率3）で撮り、`ios-app/screenshots/` に出す（`screenshots.js` が本体）。Mac 専用。puppeteer-core は初回に `~/.cache/sui-shots`（Dropbox の外）へ自動で入る。Node.js が必要。
+
+```bash
+bash tools/screenshots.sh            # 出力先を変えるなら引数にフォルダ
+```
+
+- 場面：`home`（ホーム）／`table`（対局）／`result`（あがり）／`story`（物語）／`records`（戦績）
+- `&demo=1` は見本の記録をその端末に書き込む。スクリプトは1枚ごとに空の保存領域で開くので手元の記録は変わらないが、**普段のブラウザで `demo=1` 付きの URL を開かないこと**
+- 場面の中身を変えるときは `index.html` の `shotScene`・`shotDemo` を直す

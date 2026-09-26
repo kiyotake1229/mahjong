@@ -5682,7 +5682,7 @@ function showSettings(back){
     <div class="setrow"><button class="btn ${lsGet('mjChatOff')==='1'?'gray':''} sm" id="setChat">ひとこと：${lsGet('mjChatOff')==='1'?'表示しない':'表示する'}</button><small>オンライン対戦の定型文チャット</small></div>
     <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px">
       <button class="btn gray sm" id="setTour">画面の見方</button><button class="btn gray sm" id="setRules">ルールブック</button><button class="btn gray sm" id="setXfer">引き継ぎ</button><button class="btn gray sm" id="setReset">物語を最初から</button></div>
-    <div style="margin-top:10px"><button class="linkbtn" id="setErr">不具合の記録（${(()=>{try{return JSON.parse(lsGet('mjErrLog')||'[]').length;}catch(e){return 0;}})()}件）</button>　<span style="font-size:11px;color:var(--muted)">版 ${APP_VER}</span></div>
+    <div style="margin-top:10px"><button class="linkbtn" id="setErr">不具合の記録（${(()=>{try{return JSON.parse(lsGet('mjErrLog')||'[]').length;}catch(e){return 0;}})()}件）</button>　<span style="font-size:11px;color:var(--muted)">版 ${APP_VER}</span>　<a class="linkbtn" href="support.html" target="_blank" rel="noopener" style="font-size:11px;margin:0">サポート・プライバシー</a></div>
     <button class="btn" id="setClose" style="margin-top:14px;min-width:160px">とじる</button>`;
   const again=()=>showSettings(back);
   m.querySelectorAll('#setLv button').forEach(b=>b.onclick=()=>{CPU_LV=b.dataset.lv;lsSet('mjCpuLv',CPU_LV);
@@ -5819,6 +5819,37 @@ setInterval(()=>{try{
 {const mm=/#room=([a-z0-9]{6})/i.exec(location.hash||'');
   if(mm){history.replaceState(null,'',location.pathname+location.search);showHome();setTimeout(()=>showVersus(mm[1].toLowerCase()),300);}
   else showTitle();}
+
+/* ===== 撮影用の場面（?shot=home|table|result|story|records）。App Store のスクリーンショットを tools/screenshots.sh で撮るためのもの。
+   &demo=1 を付けると見栄えのする記録をこの端末に書き込む（撮影用の空のプロファイルでだけ使う） ===== */
+function shotDemo(){
+  HERO=Object.assign(blankHero(),{name:'ミナト',origin:'student',route:'protect',skills:['peek'],notes:['hayato','shizuka','gen','cross']});saveHero();
+  lsSet('mjZero',String(ZERO.length));lsSet('mjStory',String(STORY.length));lsSet('mjStage','3');lsSet('mjTour','1');lsSet('mjHelpSeen','1');
+  LESSONS.forEach((L,i)=>{if(i<6)lsSet('mjLesson_'+L.id,'1');});
+  STATS=Object.assign(blankStats(),{games:23,rank:[9,6,5,3],tobi:1,best:52300,hands:212,win:51,tsumo:22,ron:29,dealIn:24,riichi:47,call:38,draw:31,drawTen:14,abort:2,nagashi:1,winPts:51*6100,maxPts:24000,maxHan:11,maxYaku:'立直 一発 門前清自摸和 平和 三色同順 ドラ（11翻）',mangan:12,yakuman:0,
+    yaku:{'立直':38,'一発':9,'門前清自摸和':22,'平和':17,'断幺九':21,'一盃口':6,'白':5,'發':4,'中':3,'場風':4,'自風':5,'七対子':4,'対々和':3,'三色同順':5,'一気通貫':2,'混一色':4,'清一色':1,'混全帯幺九':2,'海底摸月':1,'嶺上開花':1}});saveStats();
+  ACHV={};ACH.forEach(a=>{let ok=false;try{ok=!!a.f(STATS);}catch(e){}if(ok)ACHV[a.id]=Date.now()-86400000*3;});lsSet('mjAch',JSON.stringify(ACHV));   // 満たしている実績は解除済みにしておく（撮影中に帯を出さない）
+}
+function shotScene(k){
+  showHome();
+  if(k==='home')return;
+  if(k==='records')return showRecords();
+  if(k==='story'){hideHome();say([{who:'master',pose:'point',face:'smile',t:'いい待ちだ。リーチと言った瞬間、卓の空気が変わるのが分かったかい？'}],()=>{});return;}
+  // 卓：リーチ後にあがり牌を引いた場面
+  hideHome();TOUR_ON=true;G=null;newHand(false);G.gen++;
+  const P=G.players;
+  P[0].hand=[1,2,3,3,4,4,5,5,6,11,12,26,26,13.5].sort((a,b)=>a-b);P[0].drawn=13.5;P[0].riichi=true;P[0].riichiIdx=2;P[0].discards=[27,30,8];
+  P[1].hand=P[1].hand.slice(0,13);P[1].discards=[29,31,0,17,9,26];
+  P[2].hand=P[2].hand.slice(0,10);P[2].melds=[{t:'trip',tile:32,k:3,concealed:false,from:1,called:32,reds:[]}];P[2].discards=[28,30,18,8,0];
+  P[3].hand=P[3].hand.slice(0,13);P[3].riichi=true;P[3].riichiIdx=3;P[3].discards=[27,33,17,3,10];
+  [31200,22800,26500,19500].forEach((v,i)=>P[i].score=v);
+  G.doraInd=[3];G.uraInd=[27];G.riichiSticks=2;G.honba=1;G.wall.length=42;G.ippatsu=[true,false,false,false];G.turn=0;G.phase='discard';
+  if(typeof SKILL!=='undefined'){SKILL.gauge=70;if(typeof updateSkillbar==='function')updateSkillbar();}
+  render();renderActions([{label:'ツモ',cls:'red',fn:()=>{}}],true);
+  if(k==='result'){document.getElementById('begChk').checked=false;const hand=P[0].hand.slice(),ev=evaluate(hand,[],buildCtx(0,true,13.5));if(ev){const pay=payments(ev.fu,ev.han,true,true);setTimeout(()=>showResult(0,0,true,hand,13.5,ev,pay,pay.total+G.honba*300,G.riichiSticks*1000),400);}}
+}
+{const q=new URLSearchParams(location.search),k=q.get('shot');
+  if(k){if(q.get('demo')==='1')shotDemo();setTimeout(()=>{try{shotScene(k);}catch(e){console.error(e);}},400);}}
 
 if('serviceWorker' in navigator&&!/^(localhost|127\.0\.0\.1)$/.test(location.hostname))window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); // 手元の確認用サーバーでは使わない（別のアプリの記憶と混ざるため）
 </script>

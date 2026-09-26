@@ -1,0 +1,23 @@
+{
+  "name": "sui-mahjong-ios",
+  "version": "1.0.0",
+  "private": true,
+  "description": "雀荘 翠 - 4人打ち麻雀 iOSアプリ (Capacitorラッパー)",
+  "scripts": {
+    "sync-web": "bash sync-web.sh",
+    "add-ios": "npm run sync-web && npx cap add ios && npx cap sync ios",
+    "sync": "npm run sync-web && npx cap sync ios",
+    "open": "npx cap open ios",
+    "icons": "npx @capacitor/assets generate --ios --iconBackgroundColor '#0f5a3a' --iconBackgroundColorDark '#0f5a3a' --splashBackgroundColor '#0a3823' --splashBackgroundColorDark '#0a3823'"
+  },
+  "dependencies": {
+    "@capacitor/app": "^7.0.0",
+    "@capacitor/core": "^7.0.0",
+    "@capacitor/haptics": "^7.0.0",
+    "@capacitor/ios": "^7.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^7.0.0"
+  }
+}

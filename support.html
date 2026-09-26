@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>雀荘 翠 サポート</title>
+<meta name="description" content="4人打ち麻雀アプリ「雀荘 翠」のサポートページ。使い方、よくある質問、プライバシーポリシー、お問い合わせ。">
+<link rel="icon" href="favicon-32.png">
+<style>
+  :root{--bg:#0a3823;--bg2:#0b2a1c;--panel:rgba(255,255,255,.05);--line:rgba(255,255,255,.12);--fg:#ece9df;--muted:#a2a89f;--gold:#c9a961;--gold-hi:#e3cd97;
+    --f-mincho:"Hiragino Mincho ProN","Yu Mincho",YuMincho,"MS PMincho",serif;--f-ui:"Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic Medium","Yu Gothic",Meiryo,system-ui,sans-serif}
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:radial-gradient(1200px 600px at 50% -10%,#1a5a3c 0%,var(--bg) 45%,var(--bg2) 100%) fixed;color:var(--fg);font-family:var(--f-ui);line-height:1.85;font-size:15px}
+  a{color:var(--gold-hi)}
+  header{padding:40px 16px 22px;text-align:center}
+  .logo{display:inline-flex;align-items:center;gap:14px}
+  .logo svg{width:56px;height:56px;filter:drop-shadow(0 6px 12px rgba(0,0,0,.4))}
+  .logo h1{margin:0;font-family:var(--f-mincho);font-weight:600;font-size:30px;letter-spacing:.08em}
+  .logo h1 b{color:var(--gold-hi);font-size:40px;margin-left:4px}
+  header p{margin:10px 0 0;color:var(--muted);font-size:13px}
+  nav{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 14px;padding:0 16px 8px;font-size:13px}
+  nav a{text-decoration:none;color:var(--muted);border-bottom:1px solid transparent;padding:2px 0}
+  nav a:hover{color:var(--gold-hi);border-color:var(--gold)}
+  main{max-width:760px;margin:0 auto;padding:8px 16px 64px}
+  section{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px 22px 8px;margin:18px 0;scroll-margin-top:12px}
+  h2{font-family:var(--f-mincho);font-weight:600;font-size:21px;color:var(--gold-hi);margin:0 0 12px;letter-spacing:.05em}
+  h3{font-size:15px;color:var(--gold);margin:18px 0 6px}
+  p,li{margin:0 0 12px}
+  ul{padding-left:1.3em}
+  .btn{display:inline-block;background:linear-gradient(180deg,#d8b96a,#b8953f);color:#1a1408;text-decoration:none;font-weight:700;padding:10px 22px;border-radius:999px;box-shadow:0 6px 18px rgba(0,0,0,.35);transition:transform .15s,box-shadow .15s}
+  .btn:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(0,0,0,.4)}
+  details{border-top:1px solid var(--line);padding:10px 0}
+  details:last-of-type{border-bottom:1px solid var(--line);margin-bottom:14px}
+  summary{cursor:pointer;font-weight:700;color:var(--fg);list-style:none;display:flex;gap:10px;align-items:baseline}
+  summary::before{content:"Q";color:var(--gold);font-family:var(--f-mincho);font-size:18px}
+  summary::-webkit-details-marker{display:none}
+  details p{margin:8px 0 6px 26px;color:#d8d5cb}
+  table{border-collapse:collapse;width:100%;margin:0 0 14px;font-size:14px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--muted);font-weight:400;white-space:nowrap;width:9em}
+  .small{font-size:12.5px;color:var(--muted)}
+  footer{text-align:center;color:var(--muted);font-size:12px;padding:0 16px 40px}
+  @media (max-width:480px){section{padding:16px 14px 4px}th{width:7em}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">
+    <svg viewBox="0 0 512 512" aria-hidden="true"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1e7a4c"/><stop offset="1" stop-color="#0b3d27"/></linearGradient><linearGradient id="t" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fffdf7"/><stop offset="1" stop-color="#f1e6cf"/></linearGradient></defs><rect width="512" height="512" rx="110" fill="url(#g)"/><rect x="148" y="104" width="216" height="312" rx="30" fill="#c9bfae"/><rect x="148" y="92" width="216" height="308" rx="30" fill="url(#t)"/><text x="256" y="312" font-size="200" font-family="Hiragino Sans,Hiragino Kaku Gothic ProN,sans-serif" font-weight="800" fill="#b8372a" text-anchor="middle">中</text></svg>
+    <h1>雀荘<b>翠</b></h1>
+  </div>
+  <p>4人打ち麻雀 ― 物語で学べる、常連と打てる、みんなで打てる</p>
+  <p style="margin-top:14px"><a class="btn" href="./">ブラウザで遊ぶ</a></p>
+</header>
+<nav>
+  <a href="#about">アプリについて</a><a href="#howto">はじめ方</a><a href="#faq">よくある質問</a><a href="#privacy">プライバシーポリシー</a><a href="#contact">お問い合わせ</a>
+</nav>
+<main>
+  <section id="about">
+    <h2>アプリについて</h2>
+    <p>駅裏の小さな雀荘「翠」を舞台にした4人打ち麻雀です。まったくの初心者は物語の第0章から、経験者は自由対局から。iPhone・Android・PC のブラウザで遊べ、ホーム画面に追加するとアプリとして起動します（iOS アプリ版も準備中）。</p>
+    <table>
+      <tr><th>遊び方</th><td>物語（初心者ガイドつき）／自由対局（CPU 3人と半荘・東風戦）／道場（8レッスン）／みんなで対戦（1台で交代・オンライン）</td></tr>
+      <tr><th>ルール</th><td>立直・一発・裏ドラ、ポン・チー・カン、槍槓、ダブロン、赤ドラ、フリテン、符計算、途中流局、流し満貫、責任払い、西入、アガリやめ、喰いタンの有無 など。設定で切り替え</td></tr>
+      <tr><th>記録</th><td>戦績・役図鑑（42種）・実績（28個）。すべて端末の中に保存</td></tr>
+      <tr><th>通信</th><td>ひとり用はオフラインで動作。「みんなで対戦」のオンラインを選んだ時だけ通信する</td></tr>
+      <tr><th>料金</th><td>無料。広告・課金なし</td></tr>
+    </table>
+  </section>
+
+  <section id="howto">
+    <h2>はじめ方</h2>
+    <h3>はじめての人</h3>
+    <p>ホームの「物語をはじめる」から。第0章で店主が牌の見方・ツモと捨て牌・あがりの形を、実際に打ちながら教えてくれます。分からない言葉はいつでも右上のメニュー →「ルールブック」で引けます。</p>
+    <h3>ルールは知っている人</h3>
+    <p>「自由対局」で常連3人と半荘。設定で CPU の強さ（やさしい〜鬼）、打ち方（自動でロン・ツモ、二段タップ など）、ルール（東風戦・途中流局・喰いタン など）を変えられます。</p>
+    <h3>スマホで遊ぶ</h3>
+    <p>横画面で遊ぶ作りです。縦のままでも「このまま縦で遊ぶ」を押せば遊べます。ブラウザの共有メニューから「ホーム画面に追加」すると、全画面のアプリとして起動し、オフラインでも動きます。</p>
+    <h3>別の端末に引き継ぐ</h3>
+    <p>設定 →「引き継ぎ」→「コードを作る」でできる文字列（<code>SUI1.</code> で始まる）を、新しい端末の同じ画面に貼って「読み込む」。物語の進み・戦績・実績・設定が移ります。</p>
+  </section>
+
+  <section id="faq">
+    <h2>よくある質問</h2>
+    <details><summary>横向きになりません</summary><p>端末の画面回転ロックを外してください。縦のまま遊ぶこともできます（「このまま縦で遊ぶ」）。ホーム画面に追加したアプリは Android では横向きに固定、iPhone では端末の回転に従います。</p></details>
+    <details><summary>記録（物語の進み・戦績）が消えました</summary><p>記録はブラウザの保存領域（端末の中）にあります。ブラウザの「サイトデータの削除」やシークレットモード、別のブラウザ・別の端末では引き継がれません。大事な記録は設定 →「引き継ぎ」でコードを作り、メモに控えておくことをおすすめします。</p></details>
+    <details><summary>対局の途中でアプリを閉じてしまいました</summary><p>ひとり用の対局は自動で保存されます。ホームの「続きから」で同じ場面から再開できます（レッスンと「みんなで対戦」は対象外）。</p></details>
+    <details><summary>オンライン対戦がつながりません</summary><p>全員が同じ版のアプリか確かめてください（待合室に「アプリの版が違います」と出ます）。会社や学校の回線など、直接つながらない環境では「みんなで対戦」→ オンライン →「つながりにくい時（中継サーバーの設定）」をお試しください。</p></details>
+    <details><summary>音が出ません</summary><p>iPhone は本体横のサイレントスイッチが入っていると音が出ません。設定 →「音楽・効果音」も確かめてください。音は端末の中で合成しているので、通信は要りません。</p></details>
+    <details><summary>振動しません</summary><p>ブラウザ版の iPhone では振動できません（iOS アプリ版で対応）。Android は端末の設定で振動が許可されている必要があります。設定 →「振動」で ON/OFF できます。</p></details>
+    <details><summary>CPU が強すぎる／弱すぎる</summary><p>設定 →「CPU の強さ」を変えてください（自由対局と「みんなで対戦」の CPU に効きます）。物語の相手は「おたすけモード」で少し弱くなります。</p></details>
+    <details><summary>点数計算のルールは？</summary><p>一般的なルールです（符計算あり、切り上げ満貫なし、役満は複合しても役満1つ分）。ルールブックの「点数」「特殊ルール」に説明があります。</p></details>
+    <details><summary>不具合を見つけました</summary><p>設定 →「不具合の記録」に、進めなくなった時の状況が端末の中に残ります。その内容と、いつ・どの画面で起きたかを下記の連絡先までお知らせください。</p></details>
+  </section>
+
+  <section id="privacy">
+    <h2>プライバシーポリシー</h2>
+    <p class="small">制定日：2026年9月25日</p>
+    <h3>1. 収集する情報</h3>
+    <p>本アプリ（雀荘 翠。ブラウザ版・iOS アプリ版）は、利用者の個人情報を収集しません。アカウント登録はなく、アクセス解析・広告・トラッキングの仕組みも入れていません。開発者がサーバーで利用者のデータを受け取ることも、保存することもありません。</p>
+    <h3>2. 端末の中に保存する情報</h3>
+    <p>物語の進み、戦績・役図鑑・実績、設定、途中の対局、不具合の記録は、利用者の端末の保存領域（ブラウザの localStorage、アプリ版は同等の領域）にのみ保存されます。ブラウザのサイトデータの削除やアプリの削除で消えます。アプリ内の「物語を最初から」「記録を消す」でも消せます。</p>
+    <h3>3. 「みんなで対戦」のオンラインを使う時の通信</h3>
+    <p>「みんなで対戦」でオンラインを選んだ時だけ、次の通信が発生します。ひとり用のモードでは発生しません。</p>
+    <ul>
+      <li><b>接続の仲介</b>：PeerJS の公開サーバー（0.peerjs.com）に、部屋コードから作った部屋 ID と、接続に必要な情報（IP アドレスなど）が渡ります。</li>
+      <li><b>対局の内容</b>：相手の端末と直接（WebRTC・暗号化）やり取りします。送られるのは、ニックネーム、部屋コード、対局の進行に必要な情報（配られた牌、捨て牌、点数など）、定型文チャットの番号です。自由入力の文章はありません。</li>
+      <li><b>中継</b>：直接つながらない時は、PeerJS の公開中継サーバー（turn.peerjs.com）、または利用者が自分で設定した中継サーバーを経由します（中身は暗号化されています）。</li>
+      <li><b>ライブラリ</b>：通信部品（PeerJS）を cdnjs.cloudflare.com から読み込みます。</li>
+    </ul>
+    <p>これらのサーバーは開発者が運営するものではなく、各運営者の規約・ポリシーに従います。開発者がこの通信の内容を受け取ることはありません。</p>
+    <h3>4. 引き継ぎコード</h3>
+    <p>引き継ぎコードは利用者が自分の端末で作り、自分でコピー・共有する文字列です。開発者に送られることはありません。コードには物語の進みや戦績などが含まれるため、他人に渡さないようご注意ください。</p>
+    <h3>5. 子どものプライバシー</h3>
+    <p>本アプリは個人情報を収集しないため、年齢にかかわらず同じ扱いです。対象年齢は 4 歳以上です。</p>
+    <h3>6. 変更</h3>
+    <p>このポリシーを変更する場合は、このページで告知します。</p>
+  </section>
+
+  <section id="contact">
+    <h2>お問い合わせ</h2>
+    <table>
+      <tr><th>提供</th><td>ltv.work</td></tr>
+      <tr><th>メール</th><td><a href="mailto:ai@ltv.work">ai@ltv.work</a></td></tr>
+      <tr><th>アプリ</th><td><a href="./">https://kiyotake1229.github.io/mahjong/</a></td></tr>
+    </table>
+    <p class="small">不具合のご連絡は、起きた画面・操作・端末（機種と OS の版）を添えていただけると助かります。</p>
+  </section>
+</main>
+<footer>© 2026 ltv.work　雀荘 翠</footer>
+</body>
+</html>

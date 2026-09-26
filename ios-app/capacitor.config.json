@@ -1,0 +1,10 @@
+{
+  "appId": "work.ltv.sui",
+  "appName": "雀荘 翠",
+  "webDir": "www",
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#0a3823",
+    "scrollEnabled": false
+  }
+}

@@ -1,8 +1,28 @@
 {
-  "next_no": 18,
-  "total": 16,
-  "generated_at": "2026-09-25T15:34:02.905383",
+  "next_no": 20,
+  "total": 18,
+  "generated_at": "2026-09-26T20:49:18.551051",
   "documents": [
+    {
+      "no": 19,
+      "date": "2026-09-25",
+      "type": "NEW",
+      "category": "IOS",
+      "title": "iOSアプリの土台とスクリーンショットと引き渡し手順",
+      "filename": "20260925_NEW_0019_IOS_iOSアプリの土台とスクリーンショットと引き渡し手順.md",
+      "extension": "md",
+      "summary": "App Store 申請に向けて、`habit/ios-app/` を雛形に iOS プロジェクトを作った。Xcode のない環境なので、プロジェクトの生成・CocoaPods の統合・アイコン・スクリーンショット・引き渡し手順までを済ませ、実機ビルドと確認は岩崎さんの環境で行う前提。"
+    },
+    {
+      "no": 18,
+      "date": "2026-09-25",
+      "type": "NEW",
+      "category": "ALL",
+      "title": "サポートページとプライバシーポリシー",
+      "filename": "20260925_NEW_0018_ALL_サポートページとプライバシーポリシー.md",
+      "extension": "md",
+      "summary": "App Store 申請に必須の「サポートURL」と「プライバシーポリシーURL」を用意した。GitHub Pages の同じリポジトリに `support.html` を置き、アプリの設定画面の版の横に「サポート・プライバシー」のリンクを付けた。"
+    },
     {
       "no": 17,
       "date": "2026-09-25",
