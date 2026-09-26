@@ -891,6 +891,7 @@ applyLook();
 /* ===== 触覚：iOSアプリ（Capacitor Haptics）／Android のブラウザ（navigator.vibrate）。ほかは何もしない ===== */
 const CAP_NATIVE=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform());
 const CAP_PL=(window.Capacitor&&window.Capacitor.Plugins)||{};
+let USER_TAPPED=false;document.addEventListener('pointerdown',()=>{USER_TAPPED=true;},{once:true,passive:true});   // ブラウザはタップ前の振動を拒むので、その前は呼ばない
 function haptic(kind){
   if(!HAPTIC)return;
   try{
@@ -901,7 +902,7 @@ function haptic(kind){
       else CAP_PL.Haptics.impact({style:kind==='heavy'?'HEAVY':kind==='medium'?'MEDIUM':'LIGHT'});
       return;
     }
-    if(navigator.vibrate){const p={light:8,medium:18,heavy:30,win:[20,60,40],lose:[60,40,60],warn:[30,30,30]}[kind]||8;navigator.vibrate(p);}
+    if(navigator.vibrate&&USER_TAPPED){const p={light:8,medium:18,heavy:30,win:[20,60,40],lose:[60,40,60],warn:[30,30,30]}[kind]||8;navigator.vibrate(p);}
   }catch(e){}
 }
 
@@ -978,6 +979,8 @@ const ACH=[
  {id:'stage1',t:'腕試し',d:'第二章の第一戦に勝つ',f:()=>stageProgress()>=1},
  {id:'story',t:'物語の終わり',d:'物語をすべてクリア',f:()=>!!storyNext().done},
  {id:'notes',t:'翠ノート完成',d:'翠ノートを全ページ開く',f:()=>HERO.notes.length>=NOTES.length},
+ {id:'daily1',t:'今日の一局',d:'今日の一局に挑戦する',f:()=>dailyData().n>=1||!!dailyData().last},
+ {id:'daily7',t:'七日通い',d:'今日の一局を7日連続で打つ',f:()=>dailyData().streak>=7},
 ];
 let ACHV=(()=>{try{return JSON.parse(lsGet('mjAch')||'{}')||{};}catch(e){return {};}})();
 function checkAch(){
@@ -1381,7 +1384,7 @@ function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
 /* ===== 対局の自動保存と再開（ひとり用。レッスンと「みんなで対戦」は対象外） ===== */
 const SAVE_SV=1;
 let TOUR_ON=false;
-function saveLabel(){let kind='自由対局';try{if(G.stage!=null){const st=storyPath()[G.stage];kind=st?(st.t+' 戦'):'物語の対局';}else if(G.storyFinal)kind='終節の一局';else if(G.practice!=null)kind='練習の一局';}catch(e){}
+function saveLabel(){let kind='自由対局';try{if(G.stage!=null){const st=storyPath()[G.stage];kind=st?(st.t+' 戦'):'物語の対局';}else if(G.storyFinal)kind='終節の一局';else if(G.practice!=null)kind='練習の一局';else if(G.daily)kind='今日の一局';}catch(e){}
   return kind+'　'+document.getElementById('roundName').textContent+'局';}
 function saveGame(){
   if(!G||G.tutorial||TOUR_ON||(typeof MP!=='undefined'&&MP.active)||typeof APP_VER==='undefined')return;
@@ -1440,8 +1443,10 @@ function newHand(keep,restart){
   let sticks=keep&&prev?(prev.riichiSticks||0):0;
   if(restart&&prev){scores=(prev.startScores||scores).slice();honba=prev.startHonba!=null?prev.startHonba:honba;sticks=prev.startSticks!=null?prev.startSticks:sticks;}
   else if(keep&&prev){if(prev.advance){dealer=(dealer+1)%4;if(dealer===0)round++;honba=prev.keepHonba?honba+1:0;}else honba=honba+1;}
-  let wall=[];for(let t=0;t<34;t++)for(let k=0;k<4;k++)wall.push(RED_ON&&REDABLE[t]&&k===0?t+0.5:t);
-  for(let i=wall.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;[wall[i],wall[j]]=[wall[j],wall[i]];}
+  const dailyNow=DAILY_NEXT;DAILY_NEXT=null;   // 今日の一局：日付の種で同じ配牌（赤ドラあり固定）
+  const rnd=dailyNow?mulberry32(dailyNow.seed):Math.random,redOn=dailyNow?true:RED_ON;
+  let wall=[];for(let t=0;t<34;t++)for(let k=0;k<4;k++)wall.push(redOn&&REDABLE[t]&&k===0?t+0.5:t);
+  for(let i=wall.length-1;i>0;i--){const j=(rnd()*(i+1))|0;[wall[i],wall[j]]=[wall[j],wall[i]];}
   const players=[0,1,2,3].map(i=>({id:i,hand:[],melds:[],discards:[],riichi:false,doubleRiichi:false,riichiIdx:-1,
     riichiFuriten:false,tempFuriten:false,score:scores[i],seatWind:(i-dealer+4)%4,isDealer:i===dealer,drawn:-1,pendingRiichi:false}));
   for(let r=0;r<13;r++)for(let i=0;i<4;i++)players[(dealer+i)%4].hand.push(wall.pop());
@@ -1452,8 +1457,8 @@ function newHand(keep,restart){
   if(cast){players.forEach((p,i)=>{p.style=cast[i].style;p.name=cast[i].name;p.level=cast[i].level;p.charId=cast[i].charId;p.cheat=cast[i].cheat;p.readHand=cast[i].readHand;p.ai=cast[i].ai;});}
   else if(MP.active){const pool=['hayato','shizuka','gen','master','ren','kuroda'].sort(()=>Math.random()-.5);let k=0;
     players.forEach((p,i)=>{const st=MP.seats[i];if(st.kind==='cpu'){const id=pool[k++];p.charId=id;p.name='CPU '+CHARS[id].n;p.style=CHAR_STYLE[id];p.level=CPU_LV_LEVEL[MP.lv]||1;p.ai=MP.lv;}else{p.name=st.name;p.style='normal';p.level=1;p.ai=null;}});}
-  else{const pick=freeCastPick();   // 指名があればその3人、なければ出会った相手からランダム
-    for(let i=1;i<4;i++){const id=pick[i-1];players[i].charId=id;players[i].name=CHARS[id].n;players[i].style=CHAR_STYLE[id];players[i].level=CPU_LV_LEVEL[CPU_LV]||1;players[i].ai=CPU_LV;}}
+  else{const pick=dailyNow?['hayato','shizuka','gen']:freeCastPick();   // 指名があればその3人、なければ出会った相手からランダム。今日の一局は常連3人・ふつう固定
+    for(let i=1;i<4;i++){const id=pick[i-1];players[i].charId=id;players[i].name=CHARS[id].n;players[i].style=CHAR_STYLE[id];players[i].level=dailyNow?CPU_LV_LEVEL.normal:(CPU_LV_LEVEL[CPU_LV]||1);players[i].ai=dailyNow?'normal':CPU_LV;}}
   const storyFinal=keep&&prev?prev.storyFinal:false;const dark=keep&&prev?!!prev.dark:false;
   const len=keep&&prev?(prev.len||'han'):GAME_LEN;   // 半荘か東風戦か（対局の間は変えない）
   const stage=keep&&prev?prev.stage:null;const wager=keep&&prev?!!prev.wager:false;
@@ -1464,6 +1469,7 @@ function newHand(keep,restart){
      tutorial:false,tutGate:null,gen:++GEN,skill:{foresight:false,peekTiles:null,god:false},storyFinal,stage,wager,stats,practice:null,dark,len,
      startScores:scores.slice(),startHonba:honba,startSticks:sticks,
      ctl:MP.active?MP.seats.map((st,i)=>st.kind==='cpu'?'cpu':(MODE==='hot'?'local':(i===MP.me?'local':'remote'))):['local','cpu','cpu','cpu']};
+  if(dailyNow)G.daily=dailyNow;
   players.forEach(p=>{if(p.cheat)rigHand(p,wall,p.cheat);});
   if(MODE==='hot'&&localHumans()>1){HIDE=true;HIDE_BY=-1;}
   document.getElementById('curtain').hidden=true;renderActions([],false);
@@ -2644,7 +2650,7 @@ function showResult(pid,fromPid,tsumo,hand,winTile,ev,pay,gained,sticks,after,mu
     ${rank?`<div class="rank hidden">${rank}</div>`:''}
     ${G.tutorial?'<div class="sub" style="color:var(--gold);font-size:14px;margin:8px 0">レッスンクリア。この調子で進めよう。</div>':''}
     ${chatRowHtml()}
-    <button class="btn hidden" id="nextBtn">${G.tutorial?'つづける':(G.storyFinal||G.practice!=null?'つづける':'次の局へ')}</button>`;
+    <button class="btn hidden" id="nextBtn">${G.tutorial?'つづける':(G.storyFinal||G.practice!=null?'つづける':(G.daily?'結果を見る':'次の局へ'))}</button>`;
   wireChatRow(m);
   {const rl=document.getElementById('rvLink');if(rl)rl.onclick=(e)=>{e.stopPropagation();showReview(G.review);};}
   // 役が出るたびに小さく音
@@ -2680,7 +2686,7 @@ function showDraw(tenpai,nag,abort){
     <div class="yaku">${G.players.map((p,i)=>`${esc(p.name||POS[(i-VIEW+4)%4])} ${WINDS[p.seatWind]}${p.isDealer?'親':''}<span class="h">${st(i)}${p.score}</span>`).join('<br>')}</div>
     ${reviewOK()?'<div><button class="linkbtn" id="rvLink">この局のふりかえり（全員の手牌と待ち）</button></div>':''}
     ${chatRowHtml()}
-    <button class="btn" id="nextBtn">${G.storyFinal||G.practice!=null?'つづける':'次の局へ'}</button>`;
+    <button class="btn" id="nextBtn">${G.storyFinal||G.practice!=null?'つづける':(G.daily?'結果を見る':'次の局へ')}</button>`;
   wireChatRow(m);
   {const rl=document.getElementById('rvLink');if(rl)rl.onclick=()=>showReview(G.review);}
   const wasFinal=G.storyFinal,meTen=!!(tenpai&&tenpai[0]),wasPrac=G.practice;
@@ -2698,6 +2704,7 @@ function gameOverAfter(adv,scores,dealerKeeps){
   return !!(AGARIYAME&&dealerKeeps&&scores[G.dealer]===top&&scores.filter(s=>s===top).length===1&&!(EXT_ON&&top<30000));
 }
 function endCheck(){
+  if(G.daily)return dailyEnd();
   if(gameOverAfter(G.advance,G.players.map(p=>p.score),!G.advance&&!G.abort))return showFinal();
   newHand(true);
 }
@@ -5615,6 +5622,7 @@ function showChooser(){if(MP.active)return mpMenu();showHome();}
 const APP_VER='2026.09.25';
 const BATTLE_FACE={domoto:'angry',kuroda:'angry',karasu:'smile',washio:'calm',minato:'calm',shizuka:'calm',master:'smile',hayato:'smile',gen:'smile',ren:'smile'};   // 「○○ 戦」のカットインの表情
 const HM_IC={
+ daily:'<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/><circle cx="12" cy="15.5" r="2"/>',
  free:'<rect x="5" y="2.5" width="14" height="19" rx="2.5"/><circle cx="12" cy="12" r="3.2"/><path d="M12 5.5v1M12 17.5v1"/>',
  vs:'<circle cx="8.5" cy="8" r="3"/><circle cx="16.5" cy="9" r="2.5"/><path d="M2.5 19.5c.6-3.6 3-5.5 6-5.5s5.4 1.9 6 5.5M14.5 19c.4-2.6 1.6-3.8 3-3.8 1.6 0 3 1.2 3.8 3.8"/>',
  dojo:'<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H20M8.5 7.5h7M8.5 11h4.5"/>',
@@ -5691,6 +5699,7 @@ function renderHome(){
   h.innerHTML=`<div class="hm">
    <div class="hm-top"><div class="lg">雀荘 <b>翠</b></div><div class="sp"></div>
      ${inGame?`<button class="ib go" id="hmBack">${hmIc('play')}<span>${G.tutorial?'レッスンにもどる':'対局にもどる'}</span></button>`:(sv?`<button class="ib go" id="hmResume">${hmIc('play')}<span>続きから（${esc(sv.lbl)}）</span></button>`:'')}
+     <button class="ib" id="hmDaily" title="今日の一局">${hmIc('daily')}<span>${dailyLabel()}</span></button>
      <button class="ib" id="hmSound" title="音楽・効果音">${hmIc(SOUND_ON?'sndOn':'sndOff')}<span>${SOUND_ON?'音あり':'音なし'}</span></button>
      <button class="ib" id="hmSet" title="設定">${hmIc('gear')}<span>設定</span></button>
      <button class="ib" id="hmTitle" title="タイトルへ" aria-label="タイトルへ">${hmIc('title')}</button></div>
@@ -5722,6 +5731,7 @@ function renderHome(){
   $('hmTour').onclick=()=>{hideHome();tourFromMenu();};
   $('hmRec').onclick=()=>showRecords(()=>renderHome());
   $('hmSound').onclick=()=>{setSound(!SOUND_ON);renderHome();};
+  $('hmDaily').onclick=()=>showDailyIntro();
   $('hmSet').onclick=()=>showSettings(()=>{renderHome();});
   $('hmTitle').onclick=()=>showTitle();
   if($('hmBack'))$('hmBack').onclick=()=>{hideHome();if(G&&G.tutorial)document.getElementById('coach').hidden=false;bgmPlay(G.dark?'boss':'match');};
@@ -5743,6 +5753,58 @@ function homeSay(btn,id){
   hmSayBtn=btn;btn.innerHTML=portraitSVG(id,'calm','laugh');   // 話す間は笑顔
   clearTimeout(hmSayT);hmSayT=setTimeout(()=>{el.hidden=true;btn.innerHTML=portraitSVG(id,'calm');if(hmSayBtn===btn)hmSayBtn=null;},2800);
 }
+/* ===== 今日の一局：日付で決まる同じ配牌で1局。あがりの点数を競う ===== */
+let DAILY_NEXT=null;
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+const dateKey=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const todayKey=()=>dateKey(new Date());
+function dailyData(){const b={today:'',n:0,pts:null,best:null,bestDate:'',streak:0,last:'',hist:[]};try{return Object.assign(b,JSON.parse(lsGet('mjDaily')||'{}'));}catch(e){return b;}}
+const fmtPts=p=>(p>0?'+':'')+p.toLocaleString();
+function dailyLabel(){const d=dailyData();return d.today===todayKey()&&d.pts!=null?'今日：'+fmtPts(d.pts):'今日の一局';}
+function showDailyIntro(){
+  {const _m=document.getElementById('modal');_m.classList.remove('done');_m.onclick=null;}
+  const ov=document.getElementById('overlay');ov.style.display='flex';const m=document.getElementById('modal');
+  const d=dailyData(),tk=todayKey(),dt=new Date();
+  const today=d.today===tk&&d.pts!=null?`今日のベスト <b>${fmtPts(d.pts)}</b>（${d.n}回目）`:'今日はまだ';
+  m.innerHTML=`<h2>今日の一局</h2><div class="sub">${dt.getMonth()+1}月${dt.getDate()}日の配牌</div>
+    <div class="st-intro" style="max-width:420px;margin:6px auto 10px">毎日ちがう、その日だけの配牌で<b>1局</b>だけ打つ。相手は常連3人（ふつう）、あなたが親。あがった点数から失点を引いた「収支」を競う。何度でも挑戦でき、その日のベストが残る。</div>
+    <div class="rc-grid" style="max-width:420px;margin:0 auto 6px">
+      <div class="rc-cell"><small>今日</small><b>${d.today===tk&&d.pts!=null?fmtPts(d.pts):'—'}</b><i>${d.today===tk&&d.n?d.n+'回挑戦':'未挑戦'}</i></div>
+      <div class="rc-cell"><small>自己ベスト</small><b>${d.best!=null?fmtPts(d.best):'—'}</b><i>${d.bestDate||''}</i></div>
+      <div class="rc-cell"><small>連続</small><b>${d.streak||0}日</b><i>${d.last?'最後：'+d.last:''}</i></div></div>
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px"><button class="btn" id="dlStart" style="min-width:150px">${d.today===tk&&d.n?'もう一度':'はじめる'}</button><button class="btn gray" id="dlClose">もどる</button></div>`;
+  document.getElementById('dlStart').onclick=()=>{ov.style.display='none';startDaily();};
+  document.getElementById('dlClose').onclick=()=>{ov.style.display='none';};
+}
+function startDaily(){
+  const inGame=!!(G&&!G.over&&!G.tutorial&&G.wall&&(G.wall.length<70||G.players.some(p=>p.discards&&p.discards.length)));
+  if(inGame&&!confirm('いまの対局を終えて、今日の一局を始めますか？'))return;
+  const sv=loadSave();if(!inGame&&sv&&!confirm('途中の対局（'+sv.lbl+'）を消して、今日の一局を始めますか？'))return;
+  clearSave();lsSet('mjHelpSeen','1');const tk=todayKey();DAILY_NEXT={date:tk,seed:parseInt(tk.replace(/-/g,''),10)};G=null;newHand(false);
+  setTimeout(()=>toast('今日の一局：この1局の収支を競います',2600),700);
+}
+function dailyEnd(){
+  clearSave();const d=dailyData(),tk=todayKey(),pts=G.players[0].score-25000,won=(G._winners||[]).includes(0);
+  if(d.today!==tk){d.today=tk;d.n=0;d.pts=null;}
+  d.n++;const newToday=d.pts==null||pts>d.pts;if(newToday)d.pts=pts;
+  const newBest=d.best==null||pts>d.best;if(newBest){d.best=pts;d.bestDate=tk;}
+  if(d.last!==tk){const y=new Date();y.setDate(y.getDate()-1);d.streak=(d.last===dateKey(y))?(d.streak||0)+1:1;d.last=tk;}
+  d.hist=(d.hist||[]).filter(h=>h.date!==tk).concat([{date:tk,pts:d.pts}]).slice(-30);
+  lsSet('mjDaily',JSON.stringify(d));checkAch();
+  {const _m=document.getElementById('modal');_m.classList.remove('done');_m.onclick=null;}
+  const ov=document.getElementById('overlay');ov.style.display='flex';const m=document.getElementById('modal');
+  m.innerHTML=`<h2>今日の一局　結果</h2><div class="sub">${tk}　${won?'あがり':(G.abort?'途中流局':(G._winners&&G._winners.length?'相手のあがり':'流局'))}</div>
+    <div class="score" style="margin:10px 0 4px"><span class="pts" style="color:${pts>=0?'var(--gold-hi)':'#e88'}">${fmtPts(pts)}</span>点</div>
+    ${newBest?'<div class="rank pop">自己ベスト更新</div>':(newToday&&d.n>1?'<div class="sub" style="color:var(--gold)">今日のベスト更新</div>':'')}
+    <div class="rc-grid" style="max-width:420px;margin:10px auto 6px">
+      <div class="rc-cell"><small>今日のベスト</small><b>${fmtPts(d.pts)}</b><i>${d.n}回目</i></div>
+      <div class="rc-cell"><small>自己ベスト</small><b>${fmtPts(d.best)}</b><i>${d.bestDate}</i></div>
+      <div class="rc-cell"><small>連続</small><b>${d.streak}日</b><i>明日も同じ時間に</i></div></div>
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px"><button class="btn" id="dlAgain" style="min-width:150px">もう一度（同じ配牌）</button><button class="btn gray" id="dlHome">ホームへ</button></div>`;
+  document.getElementById('dlAgain').onclick=()=>{ov.style.display='none';startDaily();};
+  document.getElementById('dlHome').onclick=()=>{ov.style.display='none';G=null;showHome();};
+}
+
 /* ===== 自由対局の相手えらび ===== */
 const STYLE_JA={call:'鳴き派',defense:'守り派',riichi:'リーチ派',normal:'バランス型'};
 let FREE_CAST=(()=>{try{const a=JSON.parse(lsGet('mjFreeCast')||'null');return Array.isArray(a)&&a.length===3?a:null;}catch(e){return null;}})();   // null＝おまかせ
