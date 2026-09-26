@@ -44,6 +44,7 @@ const STATE = `({hands:__soak.hands,games:__soak.games,errors:__soak.errors,inv:
     const page = await ctx.newPage();
     await page.setViewport({ width: 932, height: 430, deviceScaleFactor: 1 });
     page.on('pageerror', e => console.log(`卓${i + 1} pageerror:`, e.message));
+    page.on('dialog', async d => { console.log(`卓${i + 1} dialog（キャンセル扱い）:`, d.message().slice(0, 60)); try { await d.dismiss(); } catch (e) {} });
     await page.goto(URL + i, { waitUntil: 'load', timeout: 30000 });
     await page.evaluate(SETUP);
     pages.push({ page, sig: '', sigAt: Date.now(), lastHands: -1 });
