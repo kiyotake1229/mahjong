@@ -5637,7 +5637,7 @@ function showChooser(){if(MP.active)return mpMenu();showHome();}
 
 
 /* ===== タイトル画面・ホーム画面・対局中メニュー・設定 ===== */
-const APP_VER='2026.09.25';
+const APP_VER='2026.09.27';
 const BATTLE_FACE={domoto:'angry',kuroda:'angry',karasu:'smile',washio:'calm',minato:'calm',shizuka:'calm',master:'smile',hayato:'smile',gen:'smile',ren:'smile'};   // 「○○ 戦」のカットインの表情
 const HM_IC={
  daily:'<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/><circle cx="12" cy="15.5" r="2"/>',
@@ -5693,6 +5693,29 @@ function showHome(){
   if(!h.classList.contains('on')){h.classList.add('on','in');setTimeout(()=>h.classList.remove('in'),450);}
   bgmPlay('store');
   checkRotate();
+  setTimeout(maybeWhatsNew,450);
+}
+/* ===== 更新のお知らせ：版が変わって最初にホームを開いた時に1回。まっさらな端末には出さない ===== */
+const WHATS_NEW=[
+ '今日の一局：毎日ちがう、その日だけの配牌で1局。収支のベストと連続日数が残ります（ホーム右上）',
+ '局のふりかえり：和了・流局のあと、全員の手牌・待ち・打牌の流れを見られます',
+ '戦績・役図鑑・実績：和了率や放銃率、あがった役、実績30個（ホーム下）',
+ '自由対局の相手えらび、卓の色4色、BGMと効果音の音量、振動（設定）',
+ 'ルールの設定：途中流局・流し満貫・責任払い・西入・アガリやめ・喰いタン・東風戦',
+ '引き継ぎコード：別の端末やアプリ版へ記録を移せます（設定 → 引き継ぎ）',
+ '修正：「立直」ボタンのあとに牌を捨てると止まることがあった不具合',
+];
+function maybeWhatsNew(){
+  if(lsGet('mjSeenVer')===APP_VER)return;
+  const fresh=!lsGet('mjSeenVer')&&!lsGet('mjHero')&&!lsGet('mjStats')&&!lsGet('mjStage');
+  lsSet('mjSeenVer',APP_VER);if(fresh)return;
+  if(document.getElementById('overlay').style.display==='flex')return;   // 別の画面が開いていれば邪魔しない（次の版まで出ないが、それでよい）
+  {const _m=document.getElementById('modal');_m.classList.remove('done');_m.onclick=null;}
+  const ov=document.getElementById('overlay');ov.style.display='flex';const m=document.getElementById('modal');
+  m.innerHTML=`<h2>新しくなりました</h2><div class="sub">版 ${APP_VER}</div>
+    <div class="rb" style="max-width:480px"><ul style="margin:6px 0 0;padding-left:1.2em;font-size:13px;line-height:1.75">${WHATS_NEW.map(t=>`<li>${esc(t)}</li>`).join('')}</ul></div>
+    <button class="btn" id="wnClose" style="margin-top:14px;min-width:150px">とじる</button>`;
+  document.getElementById('wnClose').onclick=()=>{ov.style.display='none';};
 }
 function hideHome(){const h=document.getElementById('home');if(!h||!h.classList.contains('on'))return;h.classList.remove('on','in');const sy=document.getElementById('hmSay');if(sy)sy.hidden=true;checkRotate();}
 function storyNext(){
@@ -6084,7 +6107,7 @@ setInterval(()=>{try{
    &demo=1 を付けると見栄えのする記録をこの端末に書き込む（撮影用の空のプロファイルでだけ使う） ===== */
 function shotDemo(){
   HERO=Object.assign(blankHero(),{name:'ミナト',origin:'student',route:'protect',skills:['peek'],notes:['hayato','shizuka','gen','cross']});saveHero();
-  lsSet('mjZero',String(ZERO.length));lsSet('mjStory',String(STORY.length));lsSet('mjStage','3');lsSet('mjTour','1');lsSet('mjHelpSeen','1');
+  lsSet('mjZero',String(ZERO.length));lsSet('mjStory',String(STORY.length));lsSet('mjStage','3');lsSet('mjTour','1');lsSet('mjHelpSeen','1');lsSet('mjSeenVer',APP_VER);
   LESSONS.forEach((L,i)=>{if(i<6)lsSet('mjLesson_'+L.id,'1');});
   STATS=Object.assign(blankStats(),{games:23,rank:[9,6,5,3],tobi:1,best:52300,hands:212,win:51,tsumo:22,ron:29,dealIn:24,riichi:47,call:38,draw:31,drawTen:14,abort:2,nagashi:1,winPts:51*6100,maxPts:24000,maxHan:11,maxYaku:'立直 一発 門前清自摸和 平和 三色同順 ドラ（11翻）',mangan:12,yakuman:0,
     yaku:{'立直':38,'一発':9,'門前清自摸和':22,'平和':17,'断幺九':21,'一盃口':6,'白':5,'發':4,'中':3,'場風':4,'自風':5,'七対子':4,'対々和':3,'三色同順':5,'一気通貫':2,'混一色':4,'清一色':1,'混全帯幺九':2,'海底摸月':1,'嶺上開花':1}});saveStats();
