@@ -89,6 +89,15 @@
   .seg{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin:6px 0}
   .seg button{background:none;border:1px solid var(--line);color:var(--muted);border-radius:8px;padding:7px 12px;font-size:12.5px;cursor:pointer;font-family:var(--f-ui);transition:all .15s}
   .seg button.on{border-color:var(--gold);color:var(--gold-hi);background:rgba(201,169,97,.14)}
+  /* 自由対局の相手えらび */
+  .fs-seats{display:flex;gap:12px;justify-content:center;margin:6px 0 4px}
+  .fs-seat{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:var(--muted)}
+  .fs-seat b{font-size:12.5px;color:#ece9df}
+  .fs-port{background:none;border:2px solid var(--line);padding:0;width:66px;height:78px;border-radius:12px;overflow:hidden;cursor:pointer;transition:transform .15s,border-color .15s;box-shadow:0 3px 8px rgba(0,0,0,.4)}
+  .fs-port:hover{transform:translateY(-3px);border-color:var(--gold)}
+  .fs-port svg{width:100%;height:100%;display:block}
+  .fs-port.rand{display:flex;align-items:center;justify-content:center;font-family:var(--f-mincho);font-size:30px;color:var(--gold-hi);background:rgba(201,169,97,.08)}
+  .fs-style{font-size:10.5px;color:var(--muted)}
   .vs-card{border:1px solid var(--line);border-radius:12px;padding:14px;margin:10px auto;max-width:440px;text-align:left;background:rgba(255,255,255,.03)}
   .vs-card h3{margin:0 0 6px;font-size:15px;color:var(--gold-hi);font-family:var(--f-mincho);letter-spacing:.06em}
   .vs-card p{margin:0 0 8px;font-size:12px;color:var(--muted);line-height:1.6}
@@ -1410,8 +1419,8 @@ function newHand(keep,restart){
   if(cast){players.forEach((p,i)=>{p.style=cast[i].style;p.name=cast[i].name;p.level=cast[i].level;p.charId=cast[i].charId;p.cheat=cast[i].cheat;p.readHand=cast[i].readHand;p.ai=cast[i].ai;});}
   else if(MP.active){const pool=['hayato','shizuka','gen','master','ren','kuroda'].sort(()=>Math.random()-.5);let k=0;
     players.forEach((p,i)=>{const st=MP.seats[i];if(st.kind==='cpu'){const id=pool[k++];p.charId=id;p.name='CPU '+CHARS[id].n;p.style=CHAR_STYLE[id];p.level=CPU_LV_LEVEL[MP.lv]||1;p.ai=MP.lv;}else{p.name=st.name;p.style='normal';p.level=1;p.ai=null;}});}
-  else{const pool=['hayato','shizuka','gen','master'];if(parseInt(lsGet('mjStage')||'0',10)>=4)pool.push('ren','kuroda');
-    pool.sort(()=>Math.random()-.5);for(let i=1;i<4;i++){const id=pool[i-1];players[i].charId=id;players[i].name=CHARS[id].n;players[i].style=CHAR_STYLE[id];players[i].level=CPU_LV_LEVEL[CPU_LV]||1;players[i].ai=CPU_LV;}}
+  else{const pick=freeCastPick();   // 指名があればその3人、なければ出会った相手からランダム
+    for(let i=1;i<4;i++){const id=pick[i-1];players[i].charId=id;players[i].name=CHARS[id].n;players[i].style=CHAR_STYLE[id];players[i].level=CPU_LV_LEVEL[CPU_LV]||1;players[i].ai=CPU_LV;}}
   const storyFinal=keep&&prev?prev.storyFinal:false;const dark=keep&&prev?!!prev.dark:false;
   const len=keep&&prev?(prev.len||'han'):GAME_LEN;   // 半荘か東風戦か（対局の間は変えない）
   const stage=keep&&prev?prev.stage:null;const wager=keep&&prev?!!prev.wager:false;
@@ -5662,7 +5671,7 @@ function renderHome(){
        <span class="who">${portraitSVG(o?'hero_'+HERO.origin:nx.who,'calm',o?'smile':'calm')}</span>
      </button>
      <div class="hm-grid">
-       <button class="hm-card free" id="hmFree"><span class="ic">${hmIc('free')}</span><span class="tx"><b>自由対局</b><small>常連と半荘。CPUの強さ：${lvl}</small></span></button>
+       <button class="hm-card free" id="hmFree"><span class="ic">${hmIc('free')}</span><span class="tx"><b>自由対局</b><small>${FREE_CAST?'相手：'+FREE_CAST.map(id=>CHARS[id]?CHARS[id].n:'?').join('・'):'相手はおまかせ'}／${GAME_LEN==='ton'?'東風戦':'半荘'}／CPU：${lvl}</small></span></button>
        <button class="hm-card vs" id="hmVs"><span class="ic">${hmIc('vs')}</span><span class="tx"><b>みんなで対戦</b><small>この端末で交代／オンライン（部屋コード）</small></span></button>
        <button class="hm-card dojo" id="hmDojo"><span class="ic">${hmIc('dojo')}</span><span class="tx"><b>道場</b><small>8レッスンで基礎から。${done}/${LESSONS.length} クリア</small></span></button>
        <button class="hm-card notes" id="hmNotes"><span class="ic">${hmIc('notes')}</span><span class="tx"><b>翠ノート</b><small>集めた秘密と結末 ${HERO.notes.length}/${NOTES.length}</small></span></button>
@@ -5672,7 +5681,7 @@ function renderHome(){
    <div class="hm-say" id="hmSay" hidden></div></div>`;
   const $=id=>document.getElementById(id);
   $('hmStory').onclick=()=>{if(!HERO.origin)showPrologue();else showStory();};
-  $('hmFree').onclick=()=>startFreeGame();
+  $('hmFree').onclick=()=>showFreeSetup();
   $('hmVs').onclick=()=>showVersus();
   $('hmDojo').onclick=()=>showDojo();
   $('hmNotes').onclick=()=>showNotes();
@@ -5701,6 +5710,46 @@ function homeSay(btn,id){
   hmSayBtn=btn;btn.innerHTML=portraitSVG(id,'calm','laugh');   // 話す間は笑顔
   clearTimeout(hmSayT);hmSayT=setTimeout(()=>{el.hidden=true;btn.innerHTML=portraitSVG(id,'calm');if(hmSayBtn===btn)hmSayBtn=null;},2800);
 }
+/* ===== 自由対局の相手えらび ===== */
+const STYLE_JA={call:'鳴き派',defense:'守り派',riichi:'リーチ派',normal:'バランス型'};
+let FREE_CAST=(()=>{try{const a=JSON.parse(lsGet('mjFreeCast')||'null');return Array.isArray(a)&&a.length===3?a:null;}catch(e){return null;}})();   // null＝おまかせ
+function freeCastPool(){   // えらべる相手：常連4人＋物語で出会った人
+  const seen=['master','hayato','shizuka','gen'];const add=id=>{if(id&&CHARS[id]&&CHAR_STYLE[id]&&!seen.includes(id))seen.push(id);};
+  if(stageProgress()>=4){add('ren');add('kuroda');}
+  try{storyPath().slice(0,stageProgress()+1).forEach(st=>{if(!st)return;add(st.boss);Object.values(st.cast||{}).forEach(add);});}catch(e){}
+  return seen;
+}
+function freeCastPick(){const pool=freeCastPool();if(FREE_CAST&&FREE_CAST.length===3&&new Set(FREE_CAST).size===3&&FREE_CAST.every(id=>pool.includes(id)))return FREE_CAST.slice();return pool.slice().sort(()=>Math.random()-.5).slice(0,3);}
+function showFreeSetup(){
+  {const _m=document.getElementById('modal');_m.classList.remove('done');_m.onclick=null;}
+  const ov=document.getElementById('overlay');ov.style.display='flex';const m=document.getElementById('modal');
+  const pool=freeCastPool();let cast=(FREE_CAST&&FREE_CAST.every(id=>pool.includes(id)))?FREE_CAST.slice():null;
+  const draw=()=>{
+    const seatHtml=[1,2,3].map((sn,k)=>{const id=cast?cast[k]:null;return `<div class="fs-seat"><small>${POS[sn]}</small><button class="fs-port ${id?'':'rand'}" data-k="${k}" title="タップで入れ替え">${id?portraitSVG(id,'calm'):'？'}</button><b>${id?esc(CHARS[id].n):'おまかせ'}</b><span class="fs-style">${id?(STYLE_JA[CHAR_STYLE[id]]||''):'毎回ちがう相手'}</span></div>`;}).join('');
+    const cur=CPU_LEVELS.find(L=>L.id===CPU_LV)||CPU_LEVELS[1];
+    m.innerHTML=`<h2>自由対局</h2>
+      <div class="dojo-sec">相手（タップで入れ替え）</div>
+      <div class="fs-seats">${seatHtml}</div>
+      <div class="seg" id="fsRand"><button class="${cast?'':'on'}" data-v="rand">おまかせ</button><button class="${cast?'on':''}" data-v="pick">指名する</button></div>
+      <div style="font-size:11px;color:var(--muted);margin:0 0 4px">えらべる相手：${pool.map(id=>esc(CHARS[id].n)).join('・')}（物語を進めると増える）</div>
+      <div class="dojo-sec">CPUの強さ</div>
+      <div class="seg" id="fsLv">${CPU_LEVELS.map(L=>`<button data-lv="${L.id}" class="${CPU_LV===L.id?'on':''}">${L.t}</button>`).join('')}</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px">${cur.d}</div>
+      <div class="dojo-sec">対局の長さ</div>
+      <div class="seg" id="fsLen"><button data-v="han" class="${GAME_LEN==='han'?'on':''}">半荘（東・南）</button><button data-v="ton" class="${GAME_LEN==='ton'?'on':''}">東風戦（東のみ）</button></div>
+      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px"><button class="btn" id="fsStart" style="min-width:150px">はじめる</button><button class="btn gray" id="fsClose">もどる</button></div>`;
+    m.querySelectorAll('.fs-port').forEach(b=>b.onclick=()=>{const k=+b.dataset.k;
+      if(!cast)cast=freeCastPick();else{const used=cast.filter((x,i)=>i!==k),cands=pool.filter(id=>!used.includes(id));const i=cands.indexOf(cast[k]);cast[k]=cands[(i+1)%cands.length];}
+      try{sfx.select();}catch(e){}draw();});
+    m.querySelectorAll('#fsRand button').forEach(b=>b.onclick=()=>{cast=b.dataset.v==='rand'?null:(cast||freeCastPick());draw();});
+    m.querySelectorAll('#fsLv button').forEach(b=>b.onclick=()=>{CPU_LV=b.dataset.lv;lsSet('mjCpuLv',CPU_LV);draw();});
+    m.querySelectorAll('#fsLen button').forEach(b=>b.onclick=()=>{GAME_LEN=b.dataset.v;lsSet('mjLen',GAME_LEN);draw();});
+    document.getElementById('fsStart').onclick=()=>{FREE_CAST=cast;lsSet('mjFreeCast',cast?JSON.stringify(cast):'null');ov.style.display='none';startFreeGame();};
+    document.getElementById('fsClose').onclick=()=>{ov.style.display='none';};
+  };
+  draw();
+}
+
 /* ===== 引き継ぎコード（端末の記録をまとめて書き出す／読み込む） ===== */
 const XFER_SKIP=['mjSaveGame','mjErrLog','mjIce'];   // 途中の対局・不具合の記録・中継サーバーの設定は入れない
 function xferKeys(){const ks=[];try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('mj')&&!XFER_SKIP.includes(k))ks.push(k);}}catch(e){}return ks.sort();}
