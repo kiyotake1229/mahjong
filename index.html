@@ -1606,7 +1606,7 @@ function humanTurn(){
   }
   if(!p.riichi&&p.drawn>=0&&G.wall.length>0&&!G.tutorial){const ks=kanOptions(p);
     ks.forEach(k=>acts.push({label:'カン'+(ks.length>1?tileName(k.tile):''),cls:'gray',fn:()=>doKan(pid,k.tile,k.kind)}));}
-  if(abortRules()&&MODE!=='guest'&&p.drawn>=0&&firstTurn(p)&&kyushuOk(p.hand))acts.push({label:'九種九牌',cls:'gray',fn:()=>abortDraw('九種九牌')});   // 最初のツモで1・9・字牌が9種類以上なら流せる
+  if(abortRules()&&p.drawn>=0&&firstTurn(p)&&kyushuOk(p.hand))acts.push({label:'九種九牌',cls:'gray',fn:()=>{if(MODE==='guest')return netAct({a:'kyushu'});abortDraw('九種九牌');}});   // 最初のツモで1・9・字牌が9種類以上なら流せる（参加者は部屋主に頼む）
   renderActions(acts,true);
   if(G.tutorial)tutGuide();
   // リーチ後は自動でツモ切り（カンの選択がある時は待つ）
@@ -1678,7 +1678,8 @@ function humanDiscard(idx,auto){
   let riichi=false;
   if(p.pendingRiichi){
     riichi=true;p.pendingRiichi=false;
-    if(isFuriten(p,waits(r,p.melds.length))){if(MODE==='hot')toast('フリテンリーチ：ロンはできません。ツモを待とう',1200);else setTimeout(()=>{if(!HIDE&&VIEW===pid)toast('フリテンリーチ：ロンはできません。ツモを待とう');},700);}
+    const r2=p.hand.slice();r2.splice(idx,1);   // 宣言牌を除いた手（上の検査の r はブロックの外から見えない）
+    if(isFuriten(p,waits(r2,p.melds.length))){if(MODE==='hot')toast('フリテンリーチ：ロンはできません。ツモを待とう',1200);else setTimeout(()=>{if(!HIDE&&VIEW===pid)toast('フリテンリーチ：ロンはできません。ツモを待とう');},700);}
   }
   if(MODE==='guest'){netAct({a:'discard',idx,riichi,tile});G.phase='react';renderActions([],false);render();return;}
   seatDiscard(pid,idx,riichi);
@@ -3206,7 +3207,7 @@ function loadPeer(){
 function genCode(){const A='abcdefghjkmnpqrstuvwxyz23456789';let c='';const r=new Uint32Array(6);(crypto.getRandomValues?crypto.getRandomValues(r):r.forEach((_,i)=>r[i]=Math.random()*1e9));for(let i=0;i<6;i++)c+=A[r[i]%A.length];return c;}
 function netShutdown(delay){
   NET_TRY++;
-  const old=NET;
+  const old=NET;restoreNetRules(old);
   old.closing=true;clearTimeout(old.timerT);clearTimeout(old.syncT);clearInterval(old.hb);clearTimeout(old.resumeT);
   // delay：直前に送った「抜けます」が届くよう、少し待ってから切る
   const kill=()=>{try{old.conns.forEach(c=>c&&c.close());}catch(e){}try{old.host&&old.host.close();}catch(e){}try{old.peer&&old.peer.destroy();}catch(e){}};
@@ -3411,7 +3412,20 @@ function projectFor(s){
     wallLen:G.wall.length,deadLen:G.dead.length,doraInd:G.doraInd,roundWind:G.roundWind,round:G.round,dealer:G.dealer,honba:G.honba,riichiSticks:G.riichiSticks,
     turn:G.turn,phase:G.phase,over:G.over,lastDiscard:G.lastDiscard,discN:G.discN||0,ippatsu:G.ippatsu,rinshanFlag:G.rinshanFlag,callHappened:G.callHappened,gen:G.gen,
     ask:(NET.pending&&NET.pending.pid===s)?NET.pending.id:0,
+    rules:netRules(),
     ctl:G.ctl.map((c,i)=>i===s?'local':(c==='cpu'?'cpu':'remote'))};
+}
+/* ルール設定は部屋主のものを全員で使う。参加者は受け取った値で自分の設定を一時的に上書きし、部屋を出る時に戻す */
+const netRules=()=>({len:(G&&G.len)||'han',abort:ABORT_ON,nag:NAGASHI_ON,pao:PAO_ON,ext:EXT_ON,ay:AGARIYAME,kuitan:KUITAN,red:RED_ON});
+function applyNetRules(r){
+  if(!r||typeof r!=='object')return;
+  if(!NET.savedRules)NET.savedRules={len:GAME_LEN,abort:ABORT_ON,nag:NAGASHI_ON,pao:PAO_ON,ext:EXT_ON,ay:AGARIYAME,kuitan:KUITAN,red:RED_ON};
+  ABORT_ON=!!r.abort;NAGASHI_ON=!!r.nag;PAO_ON=!!r.pao;EXT_ON=!!r.ext;AGARIYAME=!!r.ay;KUITAN=!!r.kuitan;RED_ON=!!r.red;if(r.len==='ton'||r.len==='han')GAME_LEN=r.len;
+  if(G)G.len=GAME_LEN;NET.rules=r;
+}
+function restoreNetRules(n){
+  const sv=n&&n.savedRules;if(!sv)return;n.savedRules=null;
+  GAME_LEN=sv.len;ABORT_ON=sv.abort;NAGASHI_ON=sv.nag;PAO_ON=sv.pao;EXT_ON=sv.ext;AGARIYAME=sv.ay;KUITAN=sv.kuitan;RED_ON=sv.red;
 }
 function netFx(k,v){if(MODE!=='host'||!NET.started)return;netSendAll({t:'fx',k,v},true);}
 const NET_SFX=['call','riichi','ron','tsumo'];
@@ -3446,6 +3460,7 @@ function netTurn(pid){
     if(msg.a==='discard'){const i=msg.idx|0;if(msg.tile!==undefined&&p.hand[i]!==msg.tile)return false;return seatDiscard(pid,i,!!msg.riichi);}
     if(msg.a==='tsumo'){if(p.drawn<0||!isAgari(p.hand,p.melds.length)||!evaluate(p.hand,p.melds,buildCtx(pid,true,p.drawn)))return false;win(pid,pid,true,p.drawn);return true;}
     if(msg.a==='kan'){if(p.riichi||p.drawn<0||G.wall.length===0)return false;const k=kanOptions(p).find(o=>o.tile===msg.tile&&o.kind===msg.kind);if(!k)return false;doKan(pid,k.tile,k.kind);return true;}
+    if(msg.a==='kyushu'){if(!abortRules()||p.drawn<0||!firstTurn(p)||!kyushuOk(p.hand))return false;abortDraw('九種九牌');return true;}
     return false;
   },()=>{ // 時間切れ：ツモ切り
     if(!G||G.over||G.turn!==pid||G.phase!=='discard')return;
@@ -3584,6 +3599,7 @@ function guestApply(g){
     tutorial:false,tutGate:null,skill:{foresight:false,peekTiles:null,god:false},stage:null,storyFinal:false,practice:null,dark:false,stats:null,
     offering:!!(NET.ask&&NET.ask.req.kind!=='turn'),pendingRiichiDeclarer:-1});
   if(keepRiichi)G.players[VIEW].pendingRiichi=true;
+  if(g.rules)applyNetRules(g.rules);
   // 部屋主側で問い合わせが終わっていたら（時間切れ・切断など）、ボタンを消す
   if(NET.ask&&g.ask!==NET.ask.id){NET.ask=null;G.offering=false;stopAskBar();renderActions([],false);}
   if(NET.ask&&NET.ask.req.kind==='turn'&&(G.turn!==VIEW||G.phase!=='discard')){NET.ask=null;stopAskBar();renderActions([],false);}
@@ -5896,6 +5912,7 @@ function showSettings(back){
     <div class="setrow"><button class="btn ${TWO_TAP?'':'gray'} sm" id="setTwoTap">二段タップ：${TWO_TAP?'ON':'OFF'}</button><small>1回目で選び、同じ牌をもう一度タップで捨てる（誤タップ防止）</small></div>
     <div class="setrow"><button class="btn ${TILE_BIG?'':'gray'} sm" id="setTileBig">牌を大きめに：${TILE_BIG?'ON':'OFF'}</button><small>手牌を少し大きく（狭い画面ではボタンが手牌の上に浮く）</small></div>
     <div class="dojo-sec">ルール</div>
+    ${MODE==='guest'?'<div style="font-size:11px;color:var(--gold);margin:0 0 6px">オンライン対戦中は部屋主のルール設定が使われます（この端末の設定は部屋を出ると元に戻ります）</div>':''}
     <div class="setrow"><button class="btn sm" id="setLen">対局の長さ：${GAME_LEN==='ton'?'東風戦':'半荘'}</button><small>半荘＝東場と南場の8局。東風戦＝東場だけの4局。次の対局から（物語の戦は半荘のまま）</small></div>
     <div class="setrow"><button class="btn ${ABORT_ON?'':'gray'} sm" id="setAbort">途中流局：${ABORT_ON?'あり':'なし'}</button><small>九種九牌・四風連打・四家立直・四槓散了で流れる（親は続いて1本場）</small></div>
     <div class="setrow"><button class="btn ${NAGASHI_ON?'':'gray'} sm" id="setNagashi">流し満貫：${NAGASHI_ON?'あり':'なし'}</button><small>流局時、捨て牌が全部1・9・字牌で一度も鳴かれていなければ満貫</small></div>
