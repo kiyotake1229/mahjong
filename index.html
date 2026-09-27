@@ -4936,10 +4936,23 @@ function showNotes(){
   {const _m=document.getElementById('modal');_m.classList.remove('done');_m.onclick=null;}
   const ov=document.getElementById('overlay');ov.style.display='flex';const m=document.getElementById('modal');
   const rows=NOTES.map(n=>{const ok=HERO.notes.includes(n.id);const d=typeof n.d==='function'?n.d():n.d;
-    return `<div class="note ${ok?'on':''}"><b>${ok?n.t:'？？？'}</b><small>${ok?d:'まだ開かれていないページ'}</small></div>`;}).join('');
+    const endKey=ok&&n.id.startsWith('end_')&&endingLines(n.id.slice(4))?n.id.slice(4):null;
+    return `<div class="note ${ok?'on':''}"><b>${ok?n.t:'？？？'}</b><small>${ok?d:'まだ開かれていないページ'}</small>${endKey?`<button class="linkbtn" data-end="${endKey}" style="margin:4px 0 0">結末をもう一度見る</button>`:''}</div>`;}).join('');
   m.innerHTML=`<h2>翠ノート</h2><div class="st-intro">この店で知ったこと。${HERO.notes.length} / ${NOTES.length} ページ</div>
     <div id="dojo">${rows}</div><button class="btn gray" id="noteBack">もどる</button>`;
   document.getElementById('noteBack').onclick=()=>showStory();
+  m.querySelectorAll('[data-end]').forEach(b=>b.onclick=()=>replayEnding(b.dataset.end));
+}
+/* 結末の回想：見た結末を翠ノートからもう一度見る（進みや記録は変えない） */
+function endingLines(key){
+  if(typeof ENDINGS!=='undefined'&&ENDINGS[key]&&ENDINGS[key].lines)return ENDINGS[key].lines.concat((typeof EPILOGUE!=='undefined'&&EPILOGUE[key])||[]);
+  const st=key==='dark'?ST.domoto2:(key==='tower'?ST.washio:null);if(!st||!st.ending)return null;
+  return (st.win||[]).concat(st.ending.lines||(typeof DARK_END!=='undefined'?DARK_END:[]));
+}
+function replayEnding(key){
+  const L=endingLines(key);if(!L||!L.length)return;
+  document.getElementById('overlay').style.display='none';
+  say(L,()=>{hideTalk();showNotes();},{bg:(L[0]&&L[0].bg)||'store'});
 }
 
 /* ===== 第二章・第三章・第四章 ===== */
