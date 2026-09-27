@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 /*
  * 道場のレッスンと物語（第0章・第一章）の通し確認
- *   node tools/lessons.js [1項目あたりの秒数] [stages]   （既定 200秒。stages を付けると第二章以降の戦（腕試し）3つを半荘まるごと回す。puppeteer-core は ~/.cache/sui-shots）
+ *   node tools/lessons.js [1項目あたりの秒数] [stages] [開始位置]   （既定 200秒。stages を付けると第二章〜第六章の13項目（戦は半荘まるごと、岐路・序・結末を含む）。開始位置で途中から。puppeteer-core は ~/.cache/sui-shots）
  *   手元の Chrome を裏で動かし、コーチの指示（光っている牌・ボタン）、会話の送り、選択肢、結果画面を自動で押して
  *   各レッスン・各節を最後まで進める。練習の一局など自由に打つ場面は自分の席も自動で打つ。
  *   進めなくなった項目（時間切れ）と例外を報告する。終了コード 0=すべて通過 / 1=通らない項目あり
  */
 const path = require('path');
 const puppeteer = require('puppeteer-core');
-const LIMIT = +(process.argv[2] || 200), STAGES = process.argv[3] === 'stages';
+const LIMIT = +(process.argv[2] || 200), STAGES = process.argv[3] === 'stages', FROM = +(process.argv[4] || 0);
 const CHROME = process.env.CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const URL = 'file://' + path.resolve(__dirname, '..', 'index.html') + '?t=lessons';
 
@@ -29,7 +29,8 @@ const _sr=showResult;showResult=function(){_sr.apply(null,arguments);setTimeout(
 const _sd=showDraw;showDraw=function(){_sd.apply(null,arguments);setTimeout(()=>{if(G&&G.tutorial)return;const b=document.getElementById('nextBtn');if(b)b.click();},300);};
 window.__stageDone=false;const _ssr=showStageResult;showStageResult=function(){__stageDone=true;return _ssr.apply(null,arguments);};
 window.__driveTick=function(){try{
-  const skip=/やめる|中断|もどる|最初から/;
+  const skip=/やめる|中断|もどる|最初から|もう一度|やり直|あの日に戻る/;
+  {const ov0=document.getElementById('overlay');if(ov0.style.display==='flex'&&[...document.querySelectorAll('#modal .btn')].some(b=>/あの日に戻る|もう一度/.test(b.innerText)))window.__stageEndSeen=true;}
   const vn=document.getElementById('vn');
   if(vn&&!vn.hidden){const ch=document.querySelector('#vnChoices button');if(ch){ch.click();__drv.steps++;__drv.log.push('choice:'+ch.innerText.slice(0,6));return;}vnAdvance();__drv.steps++;return;}
   const ov=document.getElementById('overlay');
@@ -59,14 +60,14 @@ window.__driveTick=function(){try{
   await page.evaluate(SETUP);
   // 項目の一覧（道場8つ、第0章3節、第一章の各節）
   const items = STAGES
-    ? await page.evaluate(`(()=>{if(!HERO.origin){HERO=Object.assign(blankHero(),{name:'テスト',origin:'student'});saveHero();}return [0,1,2].map(i=>({kind:'stage',id:i,name:'第二章 第'+(i+1)+'戦：'+(storyPath()[i]||{}).t}));})()`)
+    ? await page.evaluate(`(()=>{if(!HERO.origin){HERO=Object.assign(blankHero(),{name:'テスト',origin:'student'});saveHero();}const L=['第二章 第一戦','第二章 第二戦','第二章 第三戦','第三章 岐路','第三章 第四戦','第四章 最終戦','第五章 第一夜','第五章 第二夜','第五章 決戦','第六章 序','第六章 第一戦','第六章 第二戦','第六章 決戦'];return L.map((n,i)=>({kind:'stage',id:i,name:n}));})()`)
     : await page.evaluate(`[].concat(
     LESSONS.map(L=>({kind:'lesson',id:L.id,name:'道場：'+L.t})),
     ZERO.map((z,i)=>({kind:'zero',id:i,name:'第0章 第'+(i+1)+'節：'+z.t})),
     STORY.map((c,i)=>({kind:'story',id:i,name:'第一章 '+(c.final?'終節':'第'+(i+1)+'節')+'：'+c.t})))`);
   const results = [];
   let bad = false;
-  for (const it of items) {
+  for (const it of items.filter((x, i) => i >= FROM)) {
     const t0 = Date.now();
     await page.evaluate((it) => {
       __drv = { steps: 0, errors: [], log: [] };
@@ -76,19 +77,29 @@ window.__driveTick=function(){try{
       if (it.kind === 'lesson') { localStorage.removeItem('mjLesson_' + it.id); tut = { lesson: it.id, mode: '', phase: '', i: 0 }; showHome(); showDojo(); const b = [...document.querySelectorAll('button')].find(x => x.innerText.includes(it.name.split('：')[1])); if (b) b.click(); else __drv.errors.push('道場のボタンが見つからない'); }
       if (it.kind === 'zero') { if (!HERO.origin) { HERO = Object.assign(blankHero(), { name: 'テスト', origin: 'student' }); saveHero(); } lsSet('mjZero', String(it.id)); showHome(); zeroStart(it.id); }
       if (it.kind === 'story') { if (!HERO.origin) { HERO = Object.assign(blankHero(), { name: 'テスト', origin: 'student' }); saveHero(); } lsSet('mjZero', String(ZERO.length)); lsSet('mjStory', String(it.id)); showHome(); storyStart(it.id); }
-      if (it.kind === 'stage') { __stageDone = false; localStorage.removeItem('mjSaveGame'); lsSet('mjZero', String(ZERO.length)); lsSet('mjStory', String(STORY.length)); lsSet('mjStage', String(it.id)); showHome(); startStage(it.id); }
+      if (it.kind === 'stage') { __stageDone = false; localStorage.removeItem('mjSaveGame'); lsSet('mjZero', String(ZERO.length)); lsSet('mjStory', String(STORY.length)); lsSet('mjStage', String(it.id));
+        if (!storyPath()[it.id] && !HERO.route) { HERO.route = 'protect'; saveHero(); }
+        window.__endBefore = Object.keys(localStorage).filter(k => k.startsWith('mjEnd_')).length; window.__stName = (storyPath()[it.id] || {}).t || '?'; window.__stageEndSeen = false;
+        showHome(); startStage(it.id); }
       window.__drvT = setInterval(__driveTick, 300);
     }, it);
     let done = false, last = '';
     while (Date.now() - t0 < LIMIT * 1000) {
       await new Promise(r => setTimeout(r, 2000));
       const s = await Promise.race([new Promise(r => setTimeout(() => r({ ok: false, steps: -1, errors: ['evaluate が20秒応答しない（ダイアログか無限ループの疑い）'], log: '' }), 20000)), page.evaluate((it) => {
-        const ok = it.kind === 'lesson' ? lsGet('mjLesson_' + it.id) === '1' : it.kind === 'zero' ? zeroProgress() >= it.id + 1 : it.kind === 'stage' ? !!window.__stageDone : storyProgress() >= it.id + 1;
+        let ok;
+        if (it.kind === 'lesson') ok = lsGet('mjLesson_' + it.id) === '1';
+        else if (it.kind === 'zero') ok = zeroProgress() >= it.id + 1;
+        else if (it.kind === 'stage') { const st = storyPath()[it.id]; const endNow = Object.keys(localStorage).filter(k => k.startsWith('mjEnd_')).length;
+          if (st && st.scene) ok = stageProgress() >= it.id + 1;
+          else if (st && (st.ending || st.id === 'master')) ok = (endNow > window.__endBefore && document.getElementById('vn').hidden) || !!window.__stageEndSeen;   // 勝って結末まで、または負けて「もう一度」の画面まで
+          else ok = !!window.__stageDone; }
+        else ok = storyProgress() >= it.id + 1;
         return { ok, steps: __drv.steps, errors: __drv.errors, log: __drv.log.slice(-12).join(' ') };
       }, it)]);
       last = s.log;
       if (s.errors.length) { console.log(`NG  ${it.name}: 例外 ${JSON.stringify(s.errors.slice(0, 3))}  直前: ${s.log}`); bad = true; results.push({ ...it, ok: false }); break; }
-      if (s.ok) { done = true; console.log(`OK  ${it.name}: ${Math.round((Date.now() - t0) / 1000)}s  ${s.steps}操作`); results.push({ ...it, ok: true }); break; }
+      if (s.ok) { done = true; const nm = it.kind === 'stage' ? await page.evaluate('window.__stName') : ''; const lost = it.kind === 'stage' ? await page.evaluate('!!window.__stageEndSeen') : false; console.log(`OK  ${it.name}${nm ? '：' + nm : ''}: ${Math.round((Date.now() - t0) / 1000)}s  ${s.steps}操作${lost ? '（負けて「もう一度」の画面まで）' : ''}`); results.push({ ...it, ok: true }); break; }
     }
     if (!done && !results.find(r => r === it || (r.kind === it.kind && r.id === it.id))) { console.log(`NG  ${it.name}: ${LIMIT}秒で終わらない  直前: ${last}`); bad = true; results.push({ ...it, ok: false }); }
     await page.evaluate(() => { clearInterval(window.__drvT); });
