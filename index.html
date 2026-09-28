@@ -197,6 +197,9 @@
     box-shadow:none}
   .tile.peek{outline:1px solid var(--teal);outline-offset:1px}
   .tile.pulse{outline:1.5px solid var(--gold);outline-offset:2px;animation:breathe 1.8s ease-in-out infinite;z-index:3}
+  /* 読み筋：リーチ者に対する危険度（緑=安全、黄=スジ・壁、赤=危険） */
+  .tile.dg0::after,.tile.dg1::after,.tile.dg2::after{content:"";position:absolute;left:3px;top:3px;width:7px;height:7px;border-radius:50%;z-index:2;box-shadow:0 0 0 1.5px rgba(0,0,0,.35)}
+  .tile.dg0::after{background:#4fbfa8}.tile.dg1::after{background:#e3cd97}.tile.dg2::after{background:#e06a5e}
   @keyframes breathe{0%,100%{outline-color:rgba(201,169,97,.45)}50%{outline-color:rgba(227,205,151,1)}}
   /* ===== 下部 ===== */
   .skill{display:inline-flex;align-items:center;gap:5px;font-family:var(--f-ui);background:rgba(255,255,255,.07);
@@ -938,8 +941,10 @@ function statHandEnd(kind,o){
   if(kind==='draw'){S.draw++;if(o.tenpai)S.drawTen++;if(o.nagashi)S.nagashi++;}
   else if(kind==='abort'){S.abort++;if(o.reason==='九種九牌'&&o.by===0)S.kyushu++;}
   else if(kind==='win'){if(o.fromPid===0&&!(o.winners||[]).includes(0))S.dealIn++;}
+  S.vs=S.vs||{};G.players.forEach((p,i)=>{if(i===0||!p.charId)return;const v=S.vs[p.charId]||(S.vs[p.charId]={hands:0,riichi:0,call:0,win:0,dealIn:0});v.hands++;if(p.riichi)v.riichi++;if(p.melds.some(m=>!m.concealed))v.call++;if(kind==='win'&&(o.winners||[]).includes(i))v.win++;if(kind==='win'&&o.fromPid===i&&!(o.winners||[]).includes(i))v.dealIn++;});
   saveStats();checkAch();
 }
+function vsLine(id){const v=STATS.vs&&STATS.vs[id];if(!v||!v.hands)return '';const pc=(a)=>Math.round(a/v.hands*100)+'%';return `${v.hands}局　リーチ${pc(v.riichi)}　鳴き${pc(v.call)}　和了${pc(v.win)}`;}
 /* 半荘（東風）の終わり */
 function statGameEnd(){
   if(!statOK()||G._statGame)return;G._statGame=true;const S=STATS;
@@ -981,6 +986,11 @@ const ACH=[
  {id:'notes',t:'翠ノート完成',d:'翠ノートを全ページ開く',f:()=>HERO.notes.length>=NOTES.length},
  {id:'daily1',t:'今日の一局',d:'今日の一局に挑戦する',f:()=>dailyData().n>=1||!!dailyData().last},
  {id:'daily7',t:'七日通い',d:'今日の一局を7日連続で打つ',f:()=>dailyData().streak>=7},
+ {id:'p2teach',t:'師匠の顔',d:'ナオへの教えを全部終える（第二部）',f:()=>stageProgress()>=28},
+ {id:'p2team',t:'二人で一つ',d:'団体戦で勝つ（第二部）',f:()=>stageProgress()>=20},
+ {id:'p2rev',t:'逆転の目',d:'二十年前のオーラスを条件つきで突破する',f:()=>lsGet('mjFlag_past2')==='1'},
+ {id:'p2clear',t:'翠杯',d:'第二部をクリアする',f:()=>['twin','light','depart'].some(k=>lsGet('mjEnd_'+k)==='1')},
+ {id:'p2two',t:'二つの灯',d:'第二部の結末を2つ見る',f:()=>['twin','light','depart'].filter(k=>lsGet('mjEnd_'+k)==='1').length>=2},
 ];
 let ACHV=(()=>{try{return JSON.parse(lsGet('mjAch')||'{}')||{};}catch(e){return {};}})();
 function checkAch(){
@@ -1339,6 +1349,7 @@ const THEMES={
   boss:{vol:.10,build:(ac,g)=>{_pad(ac,g,[82.41,98,123.47],'sawtooth',5,.06);_pad(ac,g,[164.81],'sine',0,.16);
     const id=setInterval(()=>_pluck(ac,g,65.41,.28,.3,'sine'),900);BGM.timers.push(id);_melody(ac,g,[329.63,392,466.16,493.88],1900,.05,'triangle',1.2,.5);}}
 };
+THEMES.hisui=THEMES.storeNight;THEMES.hall=THEMES.match;THEMES.hospital=THEMES.alley;   // 第二部の場所の音楽
 function bgmPlay(key){
   if(!THEMES[key])return;
   if(!SOUND_ON){BGM.pending=key;return;}
@@ -2146,7 +2157,7 @@ function applyWin(pid,fromPid,tsumo,ev,takeSticks){
   }else{G.players[fromPid].score-=pay.total+G.honba*300;gained=pay.total+G.honba*300;}
   const sticks=takeSticks?G.riichiSticks*1000:0;p.score+=gained+sticks;if(takeSticks)G.riichiSticks=0;
   if(pid===0)statWin(ev,tsumo,gained,pay);
-  if(G.stats){if(pid===0){G.stats.maxHan=Math.max(G.stats.maxHan,ev.han);if(!tsumo&&fromPid===2)G.stats.ronBoss=true;}else if(!tsumo&&fromPid===0)G.stats.dealIns++;}
+  if(G.stats){const bs=G.bossSeat!=null?G.bossSeat:2;if(pid===0){G.stats.maxHan=Math.max(G.stats.maxHan,ev.han);if(!tsumo&&fromPid===bs)G.stats.ronBoss=true;if(tsumo)G.stats.tsumo=true;}else if(!tsumo&&fromPid===0)G.stats.dealIns++;}
   if(pid===0&&!MP.active)gaugeAdd(30);
   return {pay,gained,sticks};
 }
@@ -2251,7 +2262,10 @@ function render(){
   const myTurn=G.turn===VIEW&&G.phase==='discard'&&!G.over;
   let recIdx=-1;
   if(beg&&myTurn&&!G.tutorial&&!me.riichi&&!(me.drawn>=0&&isAgari(me.hand,me.melds.length)))recIdx=recommendDiscard(me);
+  const yomi=typeof HERO!=='undefined'&&HERO.skills.includes('yomi')&&!G.tutorial&&!me.riichi&&riichiOpponents(me).length>0;
+  const yv=yomi?visibleCounts(me):null,yo=yomi?riichiOpponents(me):null;
   me.hand.forEach((t,i)=>{const el=tileEl(t);
+    if(yomi){const dg=Math.max(...yo.map(o=>dangerOf(nt(t),o,yv,'hard')));el.classList.add(dg<=0.5?'dg0':dg<=3?'dg1':'dg2');}
     if(t===me.drawn&&myTurn)el.classList.add('drawn');
     if(me.riichi&&t!==me.drawn)el.classList.add('dim');
     if(i===recIdx)el.classList.add('rec');
@@ -2263,6 +2277,8 @@ function render(){
   if(typeof netAfterRender==='function')netAfterRender();
   saveGame();   // ひとり用の対局は毎回ここで保存（ホームの「続きから」で再開）
 }
+/* 自分から見えている牌の枚数（読み筋の危険度の計算に使う） */
+function visibleCounts(me){const c=new Array(34).fill(0);const add=t=>{if(t>=0)c[nt(t)]++;};me.hand.forEach(add);G.players.forEach(p=>{discTiles(p).forEach(add);p.melds.forEach(m=>expandMeld(m).forEach(add));});(G.doraInd||[]).forEach(add);return c;}
 function renderPeek(){
   const ps=document.getElementById('peekStrip');
   if(!G.skill||!G.skill.peekTiles){ps.hidden=true;return;}
@@ -3912,7 +3928,7 @@ function coachShow(html,btns,showSkip){
   document.getElementById('coachMsg').innerHTML=html;
   const bc=document.getElementById('coachBtns');bc.innerHTML='';bc.classList.remove('choice');
   if(showSkip){const s=document.createElement('button');s.className='skip';s.textContent='やめる';
-    s.onclick=()=>{if(confirm('レッスンを中断しますか？')){document.getElementById('coach').hidden=true;clearHL();if(G)G.tutGate=null;const st=tut.story!=null||!G||!G.tutorial;tut.story=null;setSpeaker(null);if(G&&G.stage!=null){G.over=true;G.gen++;G.stage=null;}st?showStory():showDojo();}};bc.appendChild(s);}
+    s.onclick=()=>{if(confirm('レッスンを中断しますか？')){document.getElementById('coach').hidden=true;clearHL();if(G)G.tutGate=null;const st=tut.story!=null||tut.teach!=null||!G||!G.tutorial;tut.story=null;tut.teach=null;setSpeaker(null);if(G&&G.stage!=null){G.over=true;G.gen++;G.stage=null;}st?showStory():showDojo();}};bc.appendChild(s);}
   (btns||[]).forEach(b=>{const el=document.createElement('button');el.className='btn '+(b.cls||'');el.textContent=b.label;el.onclick=b.fn;bc.appendChild(el);});
   setTimeout(placeCoach,0);   // 呼び出した側がボタンや牌を光らせた後で決める
 }
@@ -3963,14 +3979,14 @@ function infoNext(){const last=tut.i>=tut.steps.length-1;if(!last){tut.i++;infoR
 function infoRun(){clearHL();const s=tut.steps[tut.i];
   if(s.quiz){renderQuiz(s.quiz,infoNext);return;}
   const last=tut.i>=tut.steps.length-1;
-  coachShow(s.html,[{label:last?(tut.story!=null?'つづける':'道場に戻る'):'次へ',fn:infoNext}],true);
+  coachShow(s.html,[{label:last?((tut.story!=null||tut.teach!=null)?'つづける':'道場に戻る'):'次へ',fn:infoNext}],true);
   (s.hl||[]).forEach(v=>hlTile(v));}
 function renderQuiz(q,onOk){
   clearHL();const c=document.getElementById('coach');c.hidden=false;
   document.getElementById('coachMsg').innerHTML=`<span class="qtag">クイズ</span> ${q.q}<div class="qfb" id="quizFb"></div>`;
   const bc=document.getElementById('coachBtns');bc.innerHTML='';bc.classList.add('quizrow');
   const skip=document.createElement('button');skip.className='skip';skip.textContent='やめる';
-  skip.onclick=()=>{if(confirm('レッスンを中断しますか？')){document.getElementById('coach').hidden=true;bc.classList.remove('quizrow');clearHL();const st=tut.story!=null;tut.story=null;setSpeaker(null);st?showStory():showDojo();}};
+  skip.onclick=()=>{if(confirm('レッスンを中断しますか？')){document.getElementById('coach').hidden=true;bc.classList.remove('quizrow');clearHL();const st=tut.story!=null||tut.teach!=null;tut.story=null;tut.teach=null;setSpeaker(null);st?showStory():showDojo();}};
   bc.appendChild(skip);
   q.opts.forEach(o=>{const b=document.createElement('button');b.className='btn gray qopt';b.innerHTML='<span>'+o.h+'</span>';
     b.onclick=()=>{ const fb=document.getElementById('quizFb');
@@ -4201,6 +4217,13 @@ function lessonComplete(id){
   clearHL();if(G)G.tutGate=null;
   if(tut.mode==='zero'){zeroDone();return;}
   if(tut.story!=null){storyChapterDone(id);return;}
+  if(tut.teach!=null){   // 第二部の教える段が終わった
+    const i=tut.teach;tut.teach=null;setSpeaker(null);const st=storyPath()[i];
+    if(stageProgress()<i+1)lsSet('mjStage',String(i+1));
+    if(st&&st.skill&&!HERO.skills.includes(st.skill)){HERO.skills.push(st.skill);saveHero();}
+    if(st&&st.note)addNote(st.note);
+    if(G){G.over=true;G.gen++;}G=null;checkAch();
+    say((st&&st.after)||[],()=>{hideTalk();showStory();},{bg:(st&&st.bg)||'store'});return;}
   setSpeaker(null);
   if(!id){showDojo();return;}
   lsSet('mjLesson_'+id,'1');checkAch();
@@ -4210,6 +4233,16 @@ function lessonComplete(id){
 
 /* ===== 卓上の掛け合い ===== */
 const BANTER={
+ nao:{start:['お願いします！','教わったこと、全部出します','今日は記録係じゃなくて選手です'],myRiichi:['えっ、リーチ……','{n}さんのリーチ、怖い'],riichi:['リーチ！ 両面です！','リーチ、します！'],
+  win:['あがれた！','やった、両面！'],winHero:['{n}さん、ごめんなさい！','あ、あがっちゃった'],lose:['うう、振り込んだ……','現物、なかった……'],heroTsumo:['きれい……ツモだ'],call:['ポン！ ……で合ってます？'],draw:['流局、ふう'],south:['まだいけます！']},
+ yakumo:{start:['始めよう。','師匠の麻雀を見せる。','読みで勝つ。それだけだ。'],myRiichi:['……読める。','リーチか。待ちは見えている。'],riichi:['リーチだ。','……乗るぞ。'],
+  win:['そういうことだ。','これが翡翠だ。'],winHero:['翠の打ち手も、こんなものか。','甘い。'],lose:['……ほう。','読み切れなかったか。'],heroTsumo:['ツモか。……読めんな。'],call:['もらう。'],draw:['流れたか。'],south:['ここからが本番だ。']},
+ shino:{start:['データどおりに打ちます。','感情は入れません。','東雲、シノです。'],myRiichi:['期待値、下がりました。','……計算し直します。'],riichi:['リーチ。押します。','リーチ。統計的に有利です。'],
+  win:['想定内です。','期待値どおり。'],winHero:['サンプルが一つ増えました。','統計は嘘をつきません。'],lose:['……誤差の範囲、と言いたいところですが。','計算外です。'],heroTsumo:['ツモは読めません。'],call:['ポン。効率です。'],draw:['流局。分散です。'],south:['後半、修正します。']},
+ fukuju:{start:['ほっほ、よろしく。','賭けない、飲まない、吸わない。','負けもせんよ。'],myRiichi:['ほう、若いのう。','リーチか。降りるかの。'],riichi:['リーチ、しとこうかの。','たまには攻めるぞい。'],
+  win:['ほっほ、あがった。','年寄りの冷や水じゃ。'],winHero:['焦ったのう。','若い、若い。'],lose:['むう、振り込んだか。','年じゃのう。'],heroTsumo:['ツモか、見事じゃ。'],call:['ポン、じゃ。'],draw:['流局、それも麻雀。'],south:['まだまだ。']},
+ tome:{start:['よろしくねえ。','鳴くのが好きなの。','孫の話、聞く？'],myRiichi:['あらまあ。','怖いわねえ。'],riichi:['リーチ、しちゃった。'],win:['あら、あがったわ。'],winHero:['ごめんなさいねえ。'],
+  lose:['あらあら。','振り込んじゃった。'],heroTsumo:['お上手ねえ。'],call:['ポン！ 好きなのよ。','チー！'],draw:['お茶にしましょ。'],south:['まだ元気よ。']},
  master:{start:['さあ、始めようか。急がなくていい。','卓は嘘をつかない。今日も楽しもう。'],
   myRiichi:['……いい仕掛けだ。','来たね。受けて立とう。'],riichi:['リーチ。……久しぶりに、本気だ。','リーチだ。若い頃を思い出すよ。'],
   win:['これで一局。','歳をとっても、手は覚えている。'],winHero:['……今のは、河を見ていれば止まった牌だ。','痛いだろう。だが、その痛みが君を強くする。'],
@@ -4323,11 +4356,26 @@ const CHARS={
   domoto:{n:'堂本',ic:'<path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17v.5"/>'},
   karasu:{n:'カラス',ic:'<path d="M4 14c4-8 12-8 16 0"/><path d="M12 6v3M9 20l3-4 3 4"/>'},
   washio:{n:'鷲尾',ic:'<path d="M4 20L12 4l8 16"/><path d="M8 14h8M12 9v11"/>'},
-  minato:{n:'ミナト',ic:'<circle cx="12" cy="8" r="4"/><path d="M5 20c1-4 4-6 7-6s6 2 7 6"/>'}
+  minato:{n:'ミナト',ic:'<circle cx="12" cy="8" r="4"/><path d="M5 20c1-4 4-6 7-6s6 2 7 6"/>'},
+  nao:{n:'ナオ',ic:'<path d="M12 3v18M5 9l7-6 7 6"/>'},
+  yakumo:{n:'八雲',ic:'<path d="M4 15c3-6 13-6 16 0"/><path d="M4 19c3-6 13-6 16 0"/>'},
+  shino:{n:'シノ',ic:'<path d="M4 18L12 5l8 13z"/><path d="M12 11v4"/>'},
+  fukuju:{n:'福寿会長',ic:'<circle cx="12" cy="12" r="8"/><path d="M8 12h8M12 8v8"/>'},
+  tome:{n:'トメ',ic:'<circle cx="12" cy="9" r="4"/><path d="M6 20c1-4 3-6 6-6s5 2 6 6"/>'}
 };
 /* ===== 立ち絵（フラットなイラスト調・線画つき） viewBox 0 0 120 140 ===== */
 const PT_LINE='#2a2320';
 const PORTRAITS={
+ nao:{bg:['#f6e7d2','#e0913e'],acc:'#e88d3a',skin:'#f3d2b6',hair:'#2f2622',hairD:'#1b1512',iris:'#5a3d2e',face:'round',lean:-3,
+   eye:{lid:.05,lash:1},brow:'up',mouth:'grin',outfit:'hoodie',extras:['blush']},
+ yakumo:{bg:['#dfe9e4','#3f6b5d'],acc:'#4a8a76',skin:'#e2c1a2',hair:'#6f7570',hairD:'#3e4441',iris:'#3a4a44',face:'square',
+   eye:{lid:.3},brow:'thick',mouth:'neutral',outfit:'jacket',extras:['stubble','glassesHalf']},
+ shino:{bg:['#e9ecf2','#7c8aa6'],acc:'#8fa3c7',skin:'#f4dcc6',hair:'#8a6a4a',hairD:'#5a4330',iris:'#4a4a5a',face:'slim',
+   eye:{lid:.2,lash:1},brow:'thin',mouth:'small',outfit:'openshirt',extras:[]},
+ fukuju:{bg:['#f1ead6','#a88f4a'],acc:'#c9a961',skin:'#e6c6a3',hair:'#d8d3c8',hairD:'#a9a297',iris:'#4a3b32',face:'oval',
+   eye:{lid:.45},brow:'soft',mouth:'smile',outfit:'polo',extras:['ageLines','glassesRound']},
+ tome:{bg:['#f3e6ea','#a86f86'],acc:'#b8748c',skin:'#efd2c0',hair:'#cfc9c4',hairD:'#9a938e',iris:'#4a3b32',face:'round',
+   eye:{lid:.4,lash:1},brow:'soft',mouth:'smile',outfit:'kimono',extras:['ageLines']},
  master:{bg:['#f4ecd4','#c9a961'],acc:'#b8524a',skin:'#e8c4a3',hair:'#d9d3c8',hairD:'#a9a297',iris:'#4a3b32',face:'oval',
    eye:{lid:.3},brow:'soft',mouth:'smile',outfit:'apron',extras:['beardGray','ageLines']},
  hayato:{bg:['#f3e4c6','#d99d3e'],acc:'#e0762a',skin:'#f0c69c',hair:'#c9702e',hairD:'#8d4a1c',iris:'#7a4a1e',face:'round',lean:-6,
@@ -4363,6 +4411,11 @@ const PT_FACE={
  square:'M37,50 C37,32 46,26 60,26 C74,26 83,32 83,50 L83,66 C83,78 74,86 60,86 C46,86 37,78 37,66 Z'
 };
 const PT_HAIR={
+ nao:{front:'M34,58 C33,32 46,22 60,22 C76,22 88,30 87,56 L84,56 C82,46 76,40 68,40 L56,44 C48,46 42,50 38,58 Z',hi:'M52,30 C50,36 49,40 51,44'},
+ yakumo:{front:'M33,58 C31,36 42,22 60,22 C78,22 89,36 87,58 L84,58 C84,46 78,40 68,40 C60,39 48,41 42,48 C38,52 36,56 36,58 Z',hi:'M44,32 C50,27 58,26 66,27'},
+ shino:{back:'M34,60 C32,30 88,30 86,60 L86,70 L34,70 Z',front:'M36,60 C34,36 46,26 62,26 C78,26 88,34 86,54 C84,44 76,38 66,40 C58,42 52,48 50,55 C46,58 40,58 36,60 Z',hi:'M48,33 C54,29 62,28 70,30'},
+ fukuju:{front:'M36,54 C36,34 48,26 60,26 C74,26 86,34 86,52 L83,52 C81,44 74,40 66,40 L54,43 C47,45 41,48 39,54 Z',hi:'M50,34 C56,31 62,31 68,33'},
+ tome:{back:'M34,60 C32,30 88,30 86,60 Z',bun:1,front:'M36,60 C34,36 46,26 62,26 C78,26 88,34 86,54 C84,44 76,38 66,40 C58,42 52,48 50,55 C46,58 40,58 36,60 Z',hi:'M48,33 C54,29 62,28 70,30'},
  master:{front:'M33,58 C31,36 42,22 60,22 C78,22 89,36 87,58 L84,58 C84,46 78,40 68,40 C60,39 48,41 42,48 C38,52 36,56 36,58 Z',hi:'M44,32 C50,27 58,26 66,27'},
  hayato:{front:'M33,56 C31,40 34,30 40,26 L44,36 L47,12 L56,32 L62,8 L70,32 L79,12 L82,36 L88,22 L90,42 C92,48 90,54 87,58 C82,46 74,42 60,42 C46,42 38,46 33,56 Z',hi:'M50,24 L53,32 M63,20 L65,30'},
  shizuka:{back:'M34,60 C32,30 88,30 86,60 Z',bun:1,front:'M36,60 C34,36 46,26 62,26 C78,26 88,34 86,54 C84,44 76,38 66,40 C58,42 52,48 50,55 C46,58 40,58 36,60 Z',hi:'M48,33 C54,29 62,28 70,30'},
@@ -4597,7 +4650,7 @@ function addNote(id){if(!HERO.notes.includes(id)){HERO.notes.push(id);saveHero()
 function fmt(t){return t.replace(/\{n\}/g,heroName());}
 /* セリフを順に表示（if:主人公条件、{n}:名前） */
 /* ===== 会話シーンの背景（SVGで描く） ===== */
-const SCENE_NAME={store:'雀荘 翠',storeNight:'翠　閉店後',alley:'駅裏の路地',tower:'白い塔　最上階',kurohai:'雀荘 黒牌'};
+const SCENE_NAME={store:'雀荘 翠',storeNight:'翠　閉店後',alley:'駅裏の路地',tower:'白い塔　最上階',kurohai:'雀荘 黒牌',hisui:'雀荘 翡翠',hall:'商店街会館　翠杯',hospital:'市民病院　前'};
 function sceneSVG(key){
   const H=`<svg viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">`;
   const rnd=(n)=>{let x=Math.sin(n*12.9898)*43758.5453;return x-Math.floor(x);};
@@ -4642,6 +4695,36 @@ function sceneSVG(key){
       <rect width="800" height="440" fill="url(#gl)"/>
       <rect x="0" y="430" width="800" height="70" fill="#0c0f16"/><rect x="0" y="426" width="800" height="6" fill="#2a2f3a"/>
       <rect x="0" y="440" width="800" height="60" fill="#1c2a24" opacity=".8"/></svg>`;
+  }
+  if(key==='hisui'){   // 翡翠：翠と同じ間取りで、色だけ冷たい翡翠色。壁に額（写真）
+    let lamps='';[200,400,600].forEach(x=>{lamps+=`<line x1="${x}" y1="0" x2="${x}" y2="70" stroke="#1d3330" stroke-width="2"/><rect x="${x-30}" y="70" width="60" height="10" rx="3" fill="#2b4a45"/><circle cx="${x}" cy="118" r="70" fill="url(#hl)"/>`;});
+    return H+`<defs><linearGradient id="hw" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#10201e"/><stop offset="1" stop-color="#081211"/></linearGradient>
+      <radialGradient id="hl"><stop offset="0" stop-color="#bfeadf" stop-opacity=".4"/><stop offset="1" stop-color="#bfeadf" stop-opacity="0"/></radialGradient></defs>
+      <rect width="800" height="500" fill="url(#hw)"/>${lamps}
+      <rect x="60" y="150" width="680" height="120" fill="#0d1a18" stroke="#2b4a45" stroke-width="3"/>
+      ${[0,1,2,3,4,5].map(i=>`<rect x="${90+i*110}" y="168" width="70" height="84" rx="4" fill="#0a1413" stroke="#3a6a62" stroke-width="2"/>`).join('')}
+      <rect x="350" y="176" width="100" height="68" rx="3" fill="#e9e2cf" opacity=".85"/><circle cx="375" cy="205" r="9" fill="#5a4a3a"/><circle cx="400" cy="200" r="9" fill="#5a4a3a"/><circle cx="425" cy="205" r="9" fill="#5a4a3a"/>
+      <rect x="0" y="400" width="800" height="100" fill="#123a34"/><rect x="0" y="396" width="800" height="6" fill="#2b4a45"/>
+      <rect x="0" y="0" width="800" height="500" fill="#0a1a18" opacity=".15"/></svg>`;
+  }
+  if(key==='hall'){   // 商店街会館：横断幕「翠杯」と折りたたみ机、蛍光灯
+    return H+`<defs><linearGradient id="cw" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a2620"/><stop offset="1" stop-color="#171410"/></linearGradient></defs>
+      <rect width="800" height="500" fill="url(#cw)"/>
+      ${[160,400,640].map(x=>`<rect x="${x-60}" y="30" width="120" height="14" rx="4" fill="#f6f1dc" opacity=".9"/><rect x="${x-80}" y="44" width="160" height="90" fill="#f6f1dc" opacity=".08"/>`).join('')}
+      <rect x="150" y="90" width="500" height="70" rx="6" fill="#b8392e"/><rect x="160" y="100" width="480" height="50" rx="4" fill="none" stroke="#f3d58a" stroke-width="2"/>
+      <text x="400" y="138" text-anchor="middle" font-size="40" font-family="serif" font-weight="700" fill="#f6f1dc" letter-spacing="8">第一回 翠杯</text>
+      ${[0,1,2,3,4,5,6].map(i=>`<rect x="${40+i*110}" y="300" width="90" height="60" rx="3" fill="#3a3128" stroke="#5a4d3c" stroke-width="2"/>`).join('')}
+      <rect x="0" y="400" width="800" height="100" fill="#3a352c"/><rect x="0" y="396" width="800" height="6" fill="#5a5142"/></svg>`;
+  }
+  if(key==='hospital'){   // 市民病院の前：夕方、自動ドアの明かりとベンチ
+    return H+`<defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a2a44"/><stop offset=".55" stop-color="#7a4a4a"/><stop offset="1" stop-color="#c9855a"/></linearGradient></defs>
+      <rect width="800" height="500" fill="url(#sky)"/>
+      <rect x="120" y="120" width="560" height="280" fill="#dcd8d0"/><rect x="120" y="120" width="560" height="16" fill="#8fa8b8"/>
+      ${[0,1,2,3,4,5,6,7].map(i=>`<rect x="${150+i*66}" y="160" width="40" height="46" fill="${i%3===0?'#f3e2a8':'#6c7f8f'}" opacity=".9"/>`).join('')}
+      ${[0,1,2,3,4,5,6,7].map(i=>`<rect x="${150+i*66}" y="230" width="40" height="46" fill="${i%2===0?'#f3e2a8':'#6c7f8f'}" opacity=".85"/>`).join('')}
+      <rect x="340" y="300" width="120" height="100" fill="#fff4cf"/><rect x="398" y="300" width="4" height="100" fill="#8fa8b8"/>
+      <rect x="0" y="400" width="800" height="100" fill="#4a4540"/><rect x="60" y="370" width="120" height="14" fill="#5a4a3a"/><rect x="70" y="384" width="8" height="26" fill="#5a4a3a"/><rect x="162" y="384" width="8" height="26" fill="#5a4a3a"/>
+      <rect x="0" y="0" width="800" height="500" fill="#000" opacity=".12"/></svg>`;
   }
   if(key==='kurohai'){
     return H+`<defs><radialGradient id="rv" cx="50%" cy="40%" r="70%"><stop offset="0" stop-color="#3a1414"/><stop offset="1" stop-color="#050404"/></radialGradient>
@@ -4903,6 +4986,7 @@ function showPrologue(){
     const nm=document.getElementById('heroName').value.trim().slice(0,8);
     HERO=blankHero();HERO.name=nm;HERO.origin=sel;HERO.notes=['origin'];saveHero();
     ['mjStory','mjZero','mjStage','mjTitle','mjRoute','mjFlag_hayato','mjFlag_shizuka','mjFlag_gen','mjFlag_ren','mjFlag_kuroda','mjInter_hayato','mjInter_shizuka','mjInter_gen','mjInter_ren','mjInter_kuroda','mjInter2_hayato','mjInter2_shizuka','mjInter2_gen','mjInter2_ren','mjInter2_kuroda'].forEach(k=>{try{localStorage.removeItem(k)}catch(e){}});
+  try{Object.keys(localStorage).filter(k=>/^mj(Flag|End|Inter|Inter2)_/.test(k)).forEach(k=>localStorage.removeItem(k));}catch(e){}   // 第二部の分も
     ov.style.display='none';zeroStart(0);
   };
 }
@@ -4910,6 +4994,7 @@ function resetStory(){
   if(!confirm('物語の進行をすべて消して、最初から始めますか？（道場の記録は残ります）'))return;
   clearSave();HERO=blankHero();saveHero();
   ['mjStory','mjZero','mjStage','mjTitle','mjRoute','mjFlag_hayato','mjFlag_shizuka','mjFlag_gen','mjFlag_ren','mjFlag_kuroda','mjEnd_true','mjEnd_top','mjEnd_neo','mjEnd_close','mjEnd_dark','mjEnd_tower','mjFlag_karasu','mjFlag_domoto','mjFlag_minato','mjFlag_hayato2','mjInter_karasu','mjInter_domoto','mjInter_minato','mjInter_hayato2','mjInter_hayato','mjInter_shizuka','mjInter_gen','mjInter_ren','mjInter_kuroda','mjInter2_hayato','mjInter2_shizuka','mjInter2_gen','mjInter2_ren','mjInter2_kuroda'].forEach(k=>{try{localStorage.removeItem(k)}catch(e){}});
+  try{Object.keys(localStorage).filter(k=>/^mj(Flag|End|Inter|Inter2)_/.test(k)).forEach(k=>localStorage.removeItem(k));}catch(e){}   // 第二部の分も
   showStory();
 }
 
@@ -4930,8 +5015,22 @@ const NOTES=[
  {id:'end_close',t:'結末「閉店」',d:'届かなかった。翠はその月の末に閉まった。'},
  {id:'end_neo',t:'結末「新しい翠」',d:'看板は変わった。卓は残った。'},
  {id:'end_top',t:'結末「翠の頂」',d:'一番強くなった。だが店は、まだ渡されない。'},
- {id:'end_true',t:'結末「翠の主」',d:'店を託された。今度は君が「いらっしゃい」と言う。'}
+ {id:'end_true',t:'結末「翠の主」',d:'店を託された。今度は君が「いらっしゃい」と言う。'},
+ {id:'nao',t:'ナオの本音',d:'八百屋を継ぎたくない。でも父に「八百屋の卓」を用意したくて、麻雀を覚えることにした。'},
+ {id:'shino',t:'東雲の裏側',d:'シノはマルヨシの教材で育った店長。翠杯で初めて「相手を見る」麻雀を見た。'},
+ {id:'fukuju',t:'福寿会長の若い頃',d:'街で一番振り込む男だった。先代ユウジの一言で守りを覚え、健康麻雀の店を作った。'},
+ {id:'yakumo',t:'八雲の恨み',d:'写真の三人目は八雲の師匠。二十年前に翠を出て、翠の誰も探しに来なかった。'},
+ {id:'minato2',t:'ミナトのプロ時代',d:'辞めたのは鷲尾のためではない。勝つためだけの麻雀が、つまらなくなったから。'},
+ {id:'past1',t:'あの夜の三着',d:'三人目は南三局で三着のまま終えた。ユウジを飛ばさないため、あがりを見送っていた。'},
+ {id:'past2',t:'保証人の判',d:'オーラスに店を賭けて届かなかった翌朝、ユウジの借金の保証人になった。負けても友の店を残す方を選んだ。'},
+ {id:'master2',t:'マスターの診断書',d:'心臓。前から分かっていた。病名の紙はシズカが預かり、翠ノートには書かない。'},
+ {id:'photo3',t:'写真の裏の言葉',d:'「三人で始めた店は、誰か一人が残れば続く」。恨みの言葉ではなく、翠への祝福だった。'},
+ {id:'diary',t:'三人目の日記の続き',d:'「翠が続くなら、それでいい。俺の弟子にも、いつか翠で打たせてやってくれ」。'},
+ {id:'end_twin',t:'結末「二つの翠」',d:'翡翠と翠は姉妹店に。マスターは店を降り、カウンターの一番奥の客になった。'},
+ {id:'end_light',t:'結末「灯を継ぐ」',d:'店は主人公に。ナオが最初の客に「いらっしゃい」と言った。'},
+ {id:'end_depart',t:'結末「旅立ち」',d:'主人公はプロ試験へ。翠はゲンとナオに。灯は二つに増えた。'}
 ];
+const P2_NOTE_IDS=['nao','shino','fukuju','yakumo','minato2','past1','past2','master2','photo3','diary'];
 function showNotes(){
   {const _m=document.getElementById('modal');_m.classList.remove('done');_m.onclick=null;}
   const ov=document.getElementById('overlay');ov.style.display='flex';const m=document.getElementById('modal');
@@ -4946,6 +5045,7 @@ function showNotes(){
 /* 結末の回想：見た結末を翠ノートからもう一度見る（進みや記録は変えない） */
 function endingLines(key){
   if(typeof ENDINGS!=='undefined'&&ENDINGS[key]&&ENDINGS[key].lines)return ENDINGS[key].lines.concat((typeof EPILOGUE!=='undefined'&&EPILOGUE[key])||[]);
+  if(typeof P2_ENDINGS!=='undefined'&&P2_ENDINGS[key])return P2_ENDINGS[key].lines.concat((typeof P2_EPILOGUE!=='undefined'&&P2_EPILOGUE[key])||[]);
   const st=key==='dark'?ST.domoto2:(key==='tower'?ST.washio:null);if(!st||!st.ending)return null;
   return (st.win||[]).concat(st.ending.lines||(typeof DARK_END!=='undefined'?DARK_END:[]));
 }
@@ -4956,7 +5056,7 @@ function replayEnding(key){
 }
 
 /* ===== 第二章・第三章・第四章 ===== */
-const CHAR_STYLE={hayato:'call',shizuka:'defense',gen:'riichi',ren:'normal',master:'normal',kuroda:'normal',domoto:'riichi',karasu:'call',washio:'normal',minato:'defense'};
+const CHAR_STYLE={hayato:'call',shizuka:'defense',gen:'riichi',ren:'normal',master:'normal',kuroda:'normal',domoto:'riichi',karasu:'call',washio:'normal',minato:'defense',nao:'normal',yakumo:'normal',shino:'riichi',fukuju:'defense',tome:'call'};
 const ST={
  hayato:{id:'hayato',boss:'hayato',t:'ハヤト',sub:'鳴き速攻',cast:{2:'hayato',1:'gen',3:'shizuka'},title:'ハヤト超え',skill:'peek',
   cond:{text:'ハヤトから直撃（ロン）で決める',test:(s,r)=>!!s.ronBoss},
@@ -5300,7 +5400,160 @@ const EPILOGUE={
    N('新しい名札には、手書きで「翠」とだけ書いた。',isO('clerk')),
    N('今度は君が「いらっしゃい」と言う番だ。')]
 };
-function storyPath(){const r=HERO.route;return [ST.hayato,ST.shizuka,ST.gen,ST.cross,r==='neo'?ST.kuroda:(r==='protect'?ST.ren:null),ST.master,ST.karasu,ST.domoto,ST.domoto2,ST.tower0,ST.minato,ST.hayato2,ST.washio];}
+/* ===== 物語 第二部『翠、継ぐ者』 ===== */
+const P2_PARTNERS=['gen','shizuka','hayato','minato'];
+const p2partner=()=>HERO.partner||'gen';
+const HY=(who,t,pose,face)=>({who,t,pose,face});
+ST.nao0={id:'nao0',scene:true,who:'nao',t:'弟子',sub:'隣の八百屋の子、ナオ',bg:'store',lines:[
+  N('翠の灯りが全部ついた春から、二か月。'),
+  HY('master','{n}。表で女の子が、三十分も看板を見ている。'),
+  N('扉が開く。隣の八百屋のエプロンのまま、ナオが立っていた。'),
+  HY('nao','あの……麻雀、教えてくれる店って、ここですか？','point','smile'),
+  HY('hayato','おう、八百屋のナオじゃねえか。親父さんに聞いたぞ、白い塔の夜にずっと店の前にいたって。','point'),
+  HY('nao','再開発の話、うちも潰れるところだったから。……あの夜、ここの灯りだけついてた。'),
+  HY('nao','私、この店を守った人に教わりたいんです。','point'),
+  HY('master','なら、教えるのは私じゃない。{n}だ。','point'),
+  HY('gen','……マスター、咳が。'),
+  HY('master','年だ。気にするな。{n}、頼めるか。君が扉を開けた日を、思い出しながらでいい。'),
+  N('そうして、翠に二人目の新人が来た。教える側になる日が、こんなに早く来るとは思わなかった。')]};
+ST.teach1={id:'teach1',teach:true,who:'nao',t:'一の教え',sub:'孤立牌と受け入れ',hand:[1,2,3,4,4,14,15,20,21,25,25,26,30],
+  pre:[HY('nao','{n}さん、この手……何から切ればいいですか？')],
+  steps:[
+   {html:'ナオの手だ。まず<b>どこにも繋がっていない牌</b>を探す。字牌の1枚持ち、両隣が離れている数牌は、あがりに向かう力が弱い。',hl:[30]},
+   {quiz:{q:'この手で、一番いらない牌は？',opts:[{h:thtml(30),ok:true},{h:thtml(4),ok:false},{h:thtml(20),ok:false}]}},
+   {html:'次は<b>受け入れ</b>。テンパイに近づく牌が何枚あるか。<b>6筒7筒</b>は5筒と8筒の<b>8枚</b>、<b>1筒3筒</b>なら2筒の<b>4枚</b>。同じ「あと1枚」でも、待つ牌の数が違う。',hl:[14,15]},
+   {quiz:{q:'受け入れが多いのはどっち？',opts:[{h:thtml(14,15),ok:true},{h:thtml(9,11),ok:false},{h:thtml(0,1),ok:false}]}},
+   {html:'孤立牌でも<b>3〜7の数牌</b>は残す価値がある。両隣に繋がりやすい（くっつき）からだ。1・9・字牌の孤立から先に切る。北を切った次に切るなら、繋がりの弱い<b>9索</b>。',hl:[26]},
+   {quiz:{q:'北を切ったあと、次に切るなら？',opts:[{h:thtml(26),ok:true},{h:thtml(4),ok:false},{h:thtml(20),ok:false}]}},
+   {html:'ナオ「孤立牌から切って、受け入れの多い形を残す……」。うん、それだけで初心者の壁は一つ越えられる。'}],
+  after:[HY('nao','孤立牌から！ 受け入れは数える！ ……覚えました。','point','smile'),HY('hayato','俺が一年かかったことを一日で言うなよ。'),N('教えると、自分の打ち方も言葉になる。それが少し、嬉しかった。')]};
+ST.teach2={id:'teach2',teach:true,who:'nao',t:'二の教え',sub:'待ちの形とフリテン',hand:[1,2,3,12,13,14,21,22,23,4,4,24,25],
+  pre:[HY('nao','テンパイしました！ ……で、どっちの待ちにすればいいんですか？')],
+  steps:[
+   {html:'テンパイの形。<b>7索8索</b>は6索と9索の<b>両面待ち</b>。同じテンパイでも、待ちの形で<b>あがれる確率が全然違う</b>。',hl:[24,25]},
+   {quiz:{q:'一番あがりやすい待ちはどれ？',opts:[{h:thtml(24,25)+'<small>（6索・9索）</small>',ok:true},{h:thtml(22,24)+'<small>（8索だけ）</small>',ok:false},{h:thtml(4)+'<small>（5萬だけ）</small>',ok:false}]}},
+   {html:'<b>フリテン</b>：自分の河に待ち牌があると<b>ロンできない</b>（ツモは可）。待ちを選ぶ時は、自分の河も見る。'},
+   {quiz:{q:'自分の河に6索がある。7索8索待ちで、相手が9索を捨てた。ロンできる？',opts:[{h:'できない（フリテン）',ok:true},{h:'できる',ok:false}]}},
+   {html:'選べる時は<b>両面や三面張</b>。字牌の単騎待ちは相手が切りやすいという利点もあるが、まずは<b>枚数の多い待ち</b>を取る癖をつける。'},
+   {quiz:{q:'待ちを広くするなら？',opts:[{h:'両面・三面張にとる',ok:true},{h:'とりあえず字牌単騎',ok:false},{h:'ドラを待ちにする',ok:false}]}}],
+  after:[HY('nao','両面……フリテン……。{n}さん、私、昨日まで待ちなんて考えてなかった。'),HY('shizuka','いいのよ。私も先代に、同じことを三回聞いたわ。')]};
+ST.teach3={id:'teach3',teach:true,who:'nao',t:'三の教え',sub:'現物・スジ・壁',hand:[0,3,6,10,11,12,19,20,21,27,27,31,32],skill:'yomi',
+  pre:[HY('nao','相手にリーチされると、頭が真っ白になります。何を切ればいいんですか？')],
+  steps:[
+   {html:'相手がリーチ。ここからは<b>振り込まない</b>ことが最優先。安全な順は <b>現物</b>（相手が捨てた牌）→ <b>スジ</b> → <b>壁</b> → それ以外。'},
+   {quiz:{q:'リーチした人の河に「4萬・1筒・東」。一番安全なのは？',opts:[{h:thtml(3),ok:true},{h:thtml(6),ok:false},{h:thtml(33),ok:false}]}},
+   {html:'<b>スジ</b>：4萬が現物なら、1萬と7萬は「4萬で待つ両面」に当たらない。完全に安全ではないが、危険度は下がる。',hl:[0,6]},
+   {quiz:{q:'4萬が現物のとき、スジで比較的安全なのは？',opts:[{h:thtml(0,6),ok:true},{h:thtml(4),ok:false},{h:thtml(1),ok:false}]}},
+   {html:'<b>壁</b>：ある牌が4枚全部見えていると、その牌を使う両面待ちは作れない。5索が4枚見えているなら、<b>8索</b>や<b>2索</b>は両面に当たりにくい。'},
+   {quiz:{q:'5索が4枚見えている。両面待ちに当たりにくいのは？',opts:[{h:thtml(25),ok:true},{h:thtml(21),ok:false},{h:thtml(23),ok:false}]}},
+   {html:'ナオに説明していて気づいた。自分の頭の中でも、牌に色がついて見える。……これは、使える。'}],
+  after:[N('この日から、リーチが入ると自分の手牌に「危険度の印」が見えるようになった（読み筋：緑＝安全、黄＝スジ・壁、赤＝危険）。'),HY('nao','現物、スジ、壁！ 私も見えるようになりますか？','point'),HY('gen','見えるようになるさ。振り込みながらな。')]};
+ST.nao1={id:'nao1',boss:'nao',easy:true,len:'ton',t:'ナオ',sub:'弟子との東風戦',chap:'第七章　弟子',cast:{2:'nao',1:'hayato',3:'shizuka'},title:'師匠',flagKey:'nao',noWager:true,
+  cond:{text:'ツモあがりで決める（教える側の勝ち方）',test:(s,r)=>!!s.tsumo},
+  pre:[HY('nao','{n}さん、お願いします。東風戦、手加減なしで。','point'),HY('shizuka','私とハヤトも入るわ。四人いないと麻雀にならないもの。'),HY('hayato','ナオ、遠慮すんな。師匠を負かした弟子は出世する。','point'),N('教えたことが、ナオの手にどれだけ残っているか。それを見る一局。')],
+  win:[HY('nao','……強い。教わったことを全部やっても、届かない。','cross'),HY('nao','でも楽しかった！ もう一回、明日も！','point','smile')],
+  narrow:[HY('nao','{n}さんには勝てなかったけど、ハヤトさんには勝ちました！')],
+  lose:[HY('nao','え、私、トップ？ ……{n}さん、手加減しました？',null,'shock'),HY('hayato','してねえよ。お前が上手かった。')],
+  condOnly:[],
+  secret:[HY('nao','ツモであがるの、きれいですね。誰からも取らない。'),HY('nao','……私、本当は八百屋を継ぎたくないんです。でも再開発で店が潰れかけた時、父が卓で戦ってる{n}さんを見て「まだやれる」って言った。'),HY('nao','だから麻雀を覚えたい。父に、八百屋の卓を用意してあげたくて。','point'),N('ナオの本音。翠ノートに書き足した。')],
+  after:[N('夜。ハヤトが競馬新聞を、丸めて屑籠に入れた。'),HY('hayato','……見んなよ。やめるって決めただけだ。'),N('シズカのところには、封筒が一通。差出人は市の再開発課。ユウジの墓のことだった。'),HY('shizuka','移転は、なくなったそうよ。……あの人、動かさずに済んだ。')]};
+ST.p2cross={id:'p2cross',scene:true,who:'ren',t:'相棒',sub:'街の雀荘対抗戦',bg:'store',
+  lines:[N('初夏。翠に、マルヨシのロゴが入った封筒が届いた。'),HY('ren','街の雀荘対抗戦。翠、東雲、福寿、そして隣町の翡翠。四軒で二人一組の団体戦を。'),HY('kuroda','再開発の代わりに、街に人を呼ぶ企画です。マルヨシが会場と賞品を出します。私は審判役で。'),HY('gen','二人一組か。……{n}、お前が出ろ。相棒は選べ。'),HY('master','誰と組むかで、打ち方が変わる。それも麻雀だ。')],
+  choice:{who:'master',q:'対抗戦の相棒は、誰にする？',opts:[
+    {label:'ゲン',sub:'高打点のリーチ派。一番弟子',set:()=>{HERO.partner='gen';},lines:[HY('gen','……そう来るか。いいだろう、一番弟子の名にかけて。','point')]},
+    {label:'シズカ',sub:'鉄壁の守り。振り込まない',set:()=>{HERO.partner='shizuka';},lines:[HY('shizuka','私が守るわ。あなたは、取ってきて。')]},
+    {label:'ハヤト',sub:'鳴きの速攻。競馬はやめた',set:()=>{HERO.partner='hayato';},lines:[HY('hayato','よっしゃ！ 速さで場を作る、お前が決めろ！','point')]},
+    {label:'ミナト',sub:'元プロ。読みが深い',set:()=>{HERO.partner='minato';},lines:[HY('minato','いいでしょう。……プロの卓を思い出しますね。')]}]}};
+ST.shino={id:'shino',team:true,bossSeat:1,boss:'shino',level3:false,t:'シノ',sub:'東雲のデジタル',chap:'第八章　街の卓　一回戦',oppName:'東雲',cast:()=>({1:'shino',2:p2partner(),3:'karasu'}),strong:P2_PARTNERS,noWager:true,title:'東雲破り',flagKey:'shino',
+  cond:{text:'シノから直撃（ロン）で決める',test:(s,r)=>!!s.ronBoss},
+  pre:[N('商店街会館。折りたたみの卓が七つ。横断幕に「第一回 翠杯」。'),HY('shino','東雲のシノです。データで打ちます。感情は入れません。'),HY('karasu','……よう。堂本さんとこ辞めて、東雲でバイトしてる。今日は仕事だ、手加減しねえ。',null,'smile'),HY('nao','{n}さん、がんばって！ 私、記録係やります！','point'),N('団体戦。相棒との合計点で勝負が決まる。自分だけ勝っても、二人で負ければ負けだ。')],
+  win:[HY('shino','……計算外です。二人の合計で負けるとは。'),HY('karasu','シノさん、この人ら、数字じゃねえんだ。')],
+  narrow:[HY('shino','あなたには負けました。ですが合計は東雲の勝ちです。麻雀は四人でやるものなので。')],
+  lose:[HY('shino','期待値どおりです。次はもう少し、押し引きを。')],
+  condOnly:[],
+  secret:[HY('shino','直撃……。私の待ち、読まれてましたか。',null,'shock'),HY('shino','東雲は本部の教材どおりに打つ店です。私はそれで店長になった。……でも今日、初めて「相手を見る」麻雀を見ました。'),HY('shino','今度、翠に打ちに行っていいですか。データにない打ち方を、見に。','point'),N('東雲の裏側。シノはマルヨシの教材で育った店長だった。')],
+  after:[HY('nao','{n}さん、相棒の点も合わせて勝つって、難しいんですね。'),HY('master','一人であがる麻雀と、二人で勝つ麻雀は別物だ。……次は福寿。あそこは手強いぞ。')]};
+ST.fukuju={id:'fukuju',team:true,bossSeat:1,boss:'fukuju',t:'福寿会長',sub:'健康麻雀の鉄壁',chap:'第八章　街の卓　二回戦',oppName:'福寿',cast:()=>({1:'fukuju',2:p2partner(),3:'tome'}),strong:P2_PARTNERS,noWager:true,title:'街の顔',flagKey:'fukuju',
+  cond:{text:'振り込み1回以下で勝つ',test:(s,r)=>s.dealIns<=1},
+  pre:[HY('fukuju','福寿の会長をしとります。健康麻雀、賭けない・飲まない・吸わない。だが負けもせん。',null,'smile'),HY('tome','トメです。孫が四人おります。鳴くのが好きでねえ。',null,'smile'),HY('hayato','……じいさんとばあさん相手に、なんで冷や汗が出るんだ。'),N('勝たなくても負けない麻雀。振り込みを待つ相手に、こちらから崩れてはいけない。')],
+  win:[HY('fukuju','ほっほ、若いのに我慢ができる。振り込まん麻雀は、年寄りの専売特許じゃなかったか。',null,'laugh')],
+  narrow:[HY('fukuju','あなた個人には負けたが、二人分では福寿の勝ちじゃ。ほっほ。')],
+  lose:[HY('tome','あらあら、若い人は焦るのねえ。',null,'smile')],
+  condOnly:[],
+  secret:[HY('fukuju','振り込み一回以下、か。……儂は昔、この街で一番振り込む男じゃった。'),HY('fukuju','ユウジ君に言われたんじゃ。「会長、あがるより先に、振り込まん打ち方を覚えなさい」と。それで福寿を作った。','cross'),HY('fukuju','翠の打ち手なら、ユウジ君の教えは君にも流れとる。'),N('福寿会長の若い頃。先代ユウジの言葉が、街のもう一軒の店を作っていた。')],
+  after:[N('二回戦のあと、会館の入り口に見慣れない男が立っていた。'),HY('yakumo','翠の打ち手は君か。翡翠の八雲だ。'),HY('yakumo','決勝で会う前に、一つ聞いておく。……三人目の名前を、翠は覚えているか？','point'),HY('master','……八雲。まだ、そのことを。','cross'),HY('yakumo','忘れたのはそちらだ。翠は、あの人を捨てた。決勝で、思い出させてやる。'),N('写真の三人目。八雲はその人を「捨てられた人」と呼んだ。')]};
+ST.pro={id:'pro',scene:true,who:'minato',t:'誘い',sub:'ミナトからの手紙',bg:'storeNight',note:'minato2',
+  lines:[N('閉店後。ミナトが、封筒を卓に置いた。'),HY('minato','プロ団体の入団試験。来春です。私の推薦枠が一つある。'),HY('minato','私がプロを辞めたのは、鷲尾のためじゃない。……勝つためだけの麻雀が、つまらなくなったからです。'),HY('minato','翠で打っていて、思い出した。麻雀は、卓の向こうに人がいるゲームだった。'),HY('minato','{n}さんなら、プロの卓にそれを持ち込める。返事は決勝の前でいい。','point'),N('ミナトのプロ時代。辞めた理由を、初めて聞いた。')],
+  choice:{who:'minato',q:'プロ試験の推薦、どうする？',opts:[
+    {label:'受ける',sub:'決勝でミナトが横に座る。結末が変わることがある',set:()=>{HERO.pro='yes';},lines:[HY('minato','……そう言うと思っていました。では決勝、私が横に座ります。プロの目で。',null,'smile'),HY('gen','おい、相棒はどうなる。……いや、いい。勝てばいい。')]},
+    {label:'翠に残る',sub:'決勝でミナトは翡翠側に座る。翠の四人で戦う',set:()=>{HERO.pro='no';},lines:[HY('minato','……分かりました。では決勝、私は八雲さんの隣に座ります。仕事ですから。'),HY('minato','手は抜きません。それが、あなたへの敬意です。')]}]}};
+ST.hisui0={id:'hisui0',scene:true,who:'yakumo',t:'翡翠',sub:'隣町の店で',bg:'hisui',note:'yakumo',
+  lines:[N('隣町。駅から十分。「翡翠」の看板は、翠とよく似た緑だった。'),HY('yakumo','来たか。……そこの写真を見ろ。'),N('カウンターの奥に、色あせた写真。三人の若者。真ん中がユウジ、右がマスター。左の一人は――'),HY('yakumo','左が、俺の師匠だ。翠を三人で始めて、五年目に店を出た。'),N('祖父だ。日記の写真と同じ顔だった。',isO('student')),HY('yakumo','二十年前、ユウジが堂本に追い込まれた時、師匠は保証人の判を押した。自分の店を担保に。','cross'),HY('yakumo','翠の借金は消えた。師匠の店は消えた。……それから師匠は、翠に一度も行かなかった。'),HY('yakumo','翠の人間は、誰も師匠を探しに来なかった。俺はそれを、忘れない。','point'),HY('master','……探した。だが、あの人は会わなかった。「翠は俺の店じゃない、ユウジの店だ」と。'),HY('yakumo','言い訳は卓で聞く。決勝の前に、師匠の局を打ってもらう。二十年前の、あの夜の点数からだ。'),N('八雲の恨みは、憎しみではなかった。置いていかれた弟子の、二十年分の意地だった。')]};
+ST.past1={id:'past1',boss:'yakumo',t:'二十年前の南三局',sub:'3着・21,000点から',chap:'第九章　翡翠　二十年前の局',cast:{2:'yakumo',1:'minato',3:'gen'},strong:['minato','gen'],start:{round:1,dealer:2,scores:[21000,25000,31000,23000],honba:0},passRank:2,noWager:true,flagKey:'past1',
+  cond:{text:'2着以上で終える',test:(s,r)=>r<=2},
+  pre:[HY('yakumo','あの夜、師匠は南三局で三着だった。二万一千点。親は堂本。……ここからだ。'),HY('minato','私が堂本の代わりに座ります。ゲンさんはユウジさんの席に。'),HY('gen','先代の席か。……重いな。'),N('点数状況から始まる局。何点差で、何を狙うか。それを考える麻雀。')],
+  win:[HY('yakumo','……二着に上げたか。師匠はここで、三着のまま終わった。')],narrow:[],
+  lose:[HY('yakumo','点差を数えなかったな。三着のままでは、あの夜と同じだ。')],condOnly:[],
+  secret:[HY('yakumo','師匠が三着で終わった理由を教えてやる。オーラス、堂本の待ちを読み切って、あがりを見送ったんだ。ユウジを飛ばさないために。'),N('あの夜の三着は、負けではなかった。')],after:[]};
+ST.past2={id:'past2',boss:'yakumo',t:'二十年前のオーラス',sub:'親・18,000点から',chap:'第九章　翡翠　二十年前の局',cast:{2:'yakumo',1:'minato',3:'gen'},strong:['minato','gen'],start:{round:1,dealer:0,scores:[18000,32000,25000,25000],honba:0},passRank:2,noWager:true,flagKey:'past2',
+  cond:{text:'満貫以上であがる',test:(s,r)=>s.maxHan>=5},
+  pre:[HY('yakumo','次はオーラス。師匠は親で一万八千。トップのユウジまで一万四千。'),HY('yakumo','親の満貫ツモで並ぶ。跳満なら抜く。師匠はここで、賭けに出なかった。','point'),N('逆転の条件を数える。届く手を作る。降りるなら、いつ降りるか。')],
+  win:[HY('yakumo','……そこまで届くか。')],narrow:[],
+  lose:[HY('yakumo','条件を満たす手を作れなかったな。焦って安い手であがるのも、負けだ。')],condOnly:[],
+  secret:[HY('yakumo','師匠は、この局で自分の店を賭けた。あがれば全部返せた。……あがれなかった。'),HY('yakumo','翌朝、保証人の判を押した。ユウジの借金ごと、自分の店を手放して。','cross'),N('保証人の判。三人目は、負けて店を失ったのではない。負けてもなお、友の店を残す方を選んだ。')],after:[]};
+ST.yakumo={id:'yakumo',boss:'yakumo',level3:true,t:'八雲',sub:'翡翠の主',chap:'第九章　翡翠',cast:{2:'yakumo',1:'minato',3:'shino'},strong:['minato','shino'],noWager:true,title:'翡翠殺し',flagKey:'photo3',
+  cond:{text:'八雲から直撃（ロン）で決める',test:(s,r)=>!!s.ronBoss},
+  pre:[HY('yakumo','二十年前の局は終わりだ。ここからは、俺の卓だ。'),HY('yakumo','師匠の麻雀は俺が継いだ。翠に残っているのは、看板だけだと証明する。','point'),HY('shino','東雲のシノです。翡翠の助っ人として。……データにない打ち方、見せてもらいます。'),N('八雲はイカサマをしない。読みと押し引きだけで、街で一番強い。')],
+  win:[HY('yakumo','……翠の看板の下で、こんな麻雀が育っていたか。','cross')],
+  narrow:[HY('yakumo','俺には勝ったが、トップじゃない。師匠なら、トップを取った。')],
+  lose:[HY('yakumo','これが二十年の差だ。決勝までに、埋めてみせろ。')],condOnly:[],
+  secret:[HY('yakumo','直撃……。師匠の得意技だ。相手の待ちを読んで、あえてその牌で――'),HY('yakumo','……写真の裏を見ろ。師匠の字だ。「三人で始めた店は、誰か一人が残れば続く」。'),HY('yakumo','俺はこの言葉を、二十年間、恨みの言葉だと思っていた。','cross'),N('写真の三人目が残した言葉。それは恨みではなく、翠への祝福だった。')],
+  after:[N('翡翠からの帰り道、ナオが電話をかけてきた。翡翠の若手と打って、負けたという。'),HY('nao','……悔しいです。でも、何で負けたかは分かりました。'),N('翠に戻ると、店の灯りが消えていた。'),HY('gen','{n}！ マスターが、店で倒れた。……救急車で市民病院だ。','cross')]};
+ST.hosp={id:'hosp',scene:true,who:'gen',t:'序',sub:'マスター不在の翠',bg:'hospital',note:'master2',
+  lines:[N('市民病院。面会は十五分だけ。'),HY('master','……騒がせたな。心臓だ。前から分かっていた。'),HY('master','医者は「無理をするな」と言う。雀荘の店主に、無理をするなと。'),HY('shizuka','ユウジも、同じことを言われていたわ。'),HY('master','{n}。決勝は出ろ。八雲に見せてやれ。翠は看板じゃない、卓に着く人間だと。','point'),HY('gen','……マスター。店は、俺と{n}で回す。帰ってくるまで。'),HY('master','帰るとも。……その時に、話がある。店のことだ。',null,'smile'),N('診断書の病名は、シズカが預かった。翠ノートには、書かないことにした。'),N('翠に戻る。灯りをつける。今夜は、二人で店を開ける。')]};
+ST.teach4={id:'teach4',teach:true,who:'nao',t:'最後の一言',sub:'押すか、引くか',hand:[1,2,3,5,6,7,10,11,12,19,20,22,23],
+  pre:[HY('nao','{n}さん。決勝の前に、一つだけ教えてください。押すか引くか、どうやって決めてるんですか。')],
+  steps:[
+   {html:'<b>押し引き</b>に正解の表はない。でも、決め方はある。<b>今の順位</b>・<b>点差</b>・<b>自分の手の価値</b>・<b>相手の危なさ</b>。この四つを毎回、口に出す。'},
+   {quiz:{q:'オーラス、2着。3着との差は1,000点。相手がリーチ。自分は愚形の1シャンテン。どうする？',opts:[{h:'降りる（2着を守る）',ok:true},{h:'押す（あがりを狙う）',ok:false}]}},
+   {html:'守る時は<b>現物 → スジ → 壁</b>の順。手を崩しても、順位を守れれば勝ち。'},
+   {quiz:{q:'トップとは満貫ツモで逆転できる。テンパイ。安全牌はない。どうする？',opts:[{h:'押す（条件を満たす手なら勝負）',ok:true},{h:'降りる',ok:false}]}},
+   {html:'団体戦ならもう一つ。<b>相棒がリーチしたら、自分は守りに回る</b>。二人で一人分の振り込みもしない。'},
+   {quiz:{q:'相棒がリーチ。自分は1シャンテン。相手二人はまだ。どうする？',opts:[{h:'相棒の待ちに振り込まないよう現物で回す',ok:true},{h:'自分もリーチを目指して全部押す',ok:false}]}},
+   {html:'ナオ「順位、点差、手の価値、相手の危なさ……」。それでいい。決勝でも、それを口に出す。'}],
+  after:[HY('nao','私、来年は選手で出ます。記録係は今年で最後！','point','smile'),HY('hayato','言ったな。じゃあ今年は、俺たちが優勝して見せねえとな。')]};
+ST.final1={id:'final1',team:true,bossSeat:1,boss:'shino',t:'東雲・福寿 連合',sub:'代表決定戦',chap:'第十章　翠杯　代表決定戦',oppName:'東雲・福寿',cast:()=>({1:'shino',2:p2partner(),3:'fukuju'}),strong:P2_PARTNERS.concat(['fukuju']),noWager:true,
+  pre:[N('翠杯、決勝の朝。翡翠と戦う街の代表を、もう一戦で決める。'),HY('shino','東雲と福寿で組みます。データと我慢。相性は悪くないはずです。'),HY('fukuju','若い者と組むのは久しぶりじゃ。ほっほ。',null,'smile'),HY('nao','{n}さん！ マスターから電話です。「負けたら見舞いに来るな」って！','point'),N('マスターの声は、電話越しでも笑っていた。')],
+  win:[HY('shino','……データでは翡翠が優勝でした。修正します。'),HY('fukuju','翠の代表じゃ。ユウジ君も、そう言うじゃろう。',null,'smile')],
+  narrow:[HY('shino','あなたは上でした。ですが二人の合計は、こちらが上です。')],
+  lose:[HY('fukuju','焦りが見えたのう。決勝の卓は、まだ早い。')],condOnly:[],secret:[],after:[]};
+ST.final2={id:'final2',team:true,p2final:true,bossSeat:1,boss:'yakumo',level3:true,t:'八雲',sub:'決勝　翠 対 翡翠',chap:'第十章　翠杯　決勝',oppName:'翡翠',
+  cast:()=>HERO.pro==='yes'?({1:'yakumo',2:'minato',3:'shino'}):({1:'yakumo',2:p2partner(),3:'minato'}),strong:P2_PARTNERS.concat(['shino']),noWager:true,flagKey:'diary',
+  cond:{text:'八雲から直撃（ロン）で決める',test:(s,r)=>!!s.ronBoss},
+  badText:'決勝で届かなかった。翡翠の優勝。だが翠の灯は消えない。来年の翠杯まで、卓は続く。',
+  pre:[N('決勝。会館は満員だった。商店街の人、東雲の客、福寿の老人会。'),HY('yakumo','来たか。師匠の写真は、持ってきた。'),
+    {who:'minato',t:'約束どおり、横に座ります。プロの目で見ています。',if:H=>H.pro==='yes'},{who:'minato',t:'翡翠側で打ちます。手は抜きません。',if:H=>H.pro!=='yes'},
+    {who:'shino',t:'翡翠の助っ人です。今日はデータどおりに勝ちます。',if:H=>H.pro==='yes'},
+    HY('kuroda','審判のクロダです。イカサマは……この卓には要りませんね。'),N('二人の合計点で決まる。翠の灯りを、街の真ん中で見せる一戦。')],
+  win:[HY('yakumo','……負けた。翡翠が、翠に。','cross'),HY('yakumo','師匠、見ていたか。あんたの店は、あんたを捨ててなんかいなかった。')],
+  lose:[HY('yakumo','翡翠の優勝だ。……だが翠の卓は、悪くなかった。来年も出ろ。')],
+  secret:[HY('yakumo','直撃……。師匠の技だ。最後に、これを渡す。'),N('八雲が差し出したのは、古い手帳だった。三人目の日記の続き。'),N('最後の頁。「翠が続くなら、それでいい。俺の弟子にも、いつか翠で打たせてやってくれ」。'),HY('yakumo','……二十年、読めなかった。読んだら、恨めなくなるからだ。','cross')]};
+function P2_PATH(){return [ST.nao0,ST.teach1,ST.teach2,ST.teach3,ST.nao1,ST.p2cross,ST.shino,ST.fukuju,ST.pro,ST.hisui0,ST.past1,ST.past2,ST.yakumo,ST.hosp,ST.teach4,ST.final1,ST.final2];}
+const P2_ENDINGS={
+ twin:{num:'第十章　完',h2:'二つの翠',title:'翠杯王者',port:'yakumo',sub:'翡翠と翠は姉妹店になった。写真は二枚、それぞれの店に。',hint:'（秘密を6つ以上集め、第一部の結末を持っていると、別の結末が見られる）',
+  lines:[N('翠杯の優勝旗は、商店街の会館に飾られた。'),HY('yakumo','……翡翠と翠、姉妹店にしないか。師匠が望んだのは、そういうことだった気がする。'),HY('master','退院祝いに、いい話だ。',null,'smile'),N('退院したマスターは、店を降りると言った。'),HY('master','店は、ゲンと{n}に任せる。私はカウンターの一番奥で、客をやらせてもらう。'),HY('gen','……はい。はい。','cross'),N('看板は変わらない。卓も、人も。')]},
+ light:{num:'第十章　完',h2:'灯を継ぐ',title:'灯を継ぐ者',port:'master',sub:'翠の灯は、次の手に渡った。看板の下で、ナオが最初の客に言う。「いらっしゃい」。',
+  lines:[N('翠杯の優勝旗と、三人目の日記。翠の壁に、二つ並んだ。'),HY('yakumo','姉妹店の話、受けてくれ。師匠の弟子として、翠で打ちたい夜もある。'),HY('master','退院した。……話がある、と言ったな。',null,'smile'),HY('master','店は{n}に渡す。ゲンは料理番と用心棒。私はカウンターの一番奥の客だ。','point'),HY('gen','……用心棒は余計だ。だが、それでいい。'),HY('shizuka','ユウジも、こういう日を見たかったのね。'),HY('hayato','よし、じゃあ新しい主の初仕事だ。あいつに教えてやれ。','point'),N('ナオが、店の扉を開けて入ってきた客に、初めて言った。'),HY('nao','いらっしゃい！ 雀荘「翠」へようこそ！','point','smile')]},
+ depart:{num:'第十章　完',h2:'旅立ち',title:'灯を継ぐ者',port:'minato',sub:'主人公はプロ試験へ。翠はゲンとナオに。灯は二つに増えた。',
+  lines:[N('翠杯の優勝旗と、三人目の日記。翠の壁に、二つ並んだ。'),HY('minato','約束です。来春の試験、推薦状は書きました。'),HY('master','行ってきなさい。翠はゲンと、そこの弟子で回す。',null,'smile'),HY('gen','言っとくが、帰ってくる場所は残しておく。カウンターの一番奥は、マスターの席だがな。','point'),HY('nao','私が{n}さんの卓を守ります！ 来年の翠杯、私が出ます！','point','smile'),HY('shizuka','……行ってらっしゃい。振り込まないでね。'),N('扉を開けると、春の風。背中で、ナオの声がした。'),HY('nao','いらっしゃい！ 雀荘「翠」へようこそ！',null,'smile')]}
+};
+const P2_TAIL=[N('数日後。翠に一通の封筒が届いた。差出人は「全日本雀荘連盟」。'),HY('kuroda','全国の雀荘対抗戦。翠杯の優勝店に、招待状が来ています。'),HY('hayato','次は全国かよ。……上等だ。','point'),
+  N('祖父の日記の続きは、翠の壁にかけた。八雲は月に一度、それを読みに来る。',isO('student')),N('借金は、去年の暮れに完済した。財布の千円札は、今日も二枚。',isO('gambler')),{who:'ren',t:'本部の教材、第二章は「団体戦」にしたわ。翠式の。',if:isO('clerk')},
+  N('そして扉が開き、見たことのない顔が立っていた。'),N('「……ここが翠か。話は、翡翠の八雲から聞いている」'),N('灯りは、全部ついている。物語は、まだ続く。')];
+const P2_EPILOGUE={twin:P2_TAIL,light:P2_TAIL,depart:P2_TAIL};
+function storyPath(){const r=HERO.route;return [ST.hayato,ST.shizuka,ST.gen,ST.cross,r==='neo'?ST.kuroda:(r==='protect'?ST.ren:null),ST.master,ST.karasu,ST.domoto,ST.domoto2,ST.tower0,ST.minato,ST.hayato2,ST.washio].concat(typeof P2_PATH==='function'?P2_PATH():[]);}
+const STAGE_LABELS=['第二章 第一戦','第二章 第二戦','第二章 第三戦','第三章 岐路','第三章 第四戦','第四章 最終戦','第五章 第一夜','第五章 第二夜','第五章 決戦','第六章 序','第六章 第一戦','第六章 第二戦','第六章 決戦',
+ '第七章 序','第七章 一の教え','第七章 二の教え','第七章 三の教え','第七章 弟子との一局','第八章 相棒','第八章 一回戦','第八章 二回戦','第八章 誘い','第九章 翡翠','第九章 南三局','第九章 オーラス','第九章 八雲','第十章 序','第十章 最後の一言','第十章 代表決定戦','第十章 決勝'];
 function stageProgress(){return parseInt(lsGet('mjStage')||'0',10);}
 function part1Done(){return storyProgress()>=STORY.length;}
 function flagCount(){return ['hayato','shizuka','gen','ren'].filter(id=>lsGet('mjFlag_'+id)==='1').length;}
@@ -5315,21 +5568,31 @@ function bossLevel(st,wager){
 function castStage(st,idx,wager){
   let lv=bossLevel(st,wager),sub=HERO.origin==='gambler'?2:1;
   if(ASSIST){lv=Math.max(1,lv-1);sub=1;}
-  for(const seat in st.cast){const id=st.cast[seat];const p=G.players[+seat];
-    p.name=CHARS[id].n;p.style=CHAR_STYLE[id];p.level=(id===st.boss)?lv:sub;p.charId=id;p.ai=null;}
-  if(HERO.origin==='gambler')G.players[0].score=20000;
-  G.stage=idx;G.len='han';G.wager=!!wager||!!st.forceWager;G.dark=!!st.dark;if(G.dark)bgmPlay('boss');   // 物語の戦はいつも半荘
+  if(st.easy)lv=1;
+  const cast=typeof st.cast==='function'?st.cast():st.cast;
+  for(const seat in cast){const id=cast[seat];const p=G.players[+seat];
+    p.name=CHARS[id].n;p.style=CHAR_STYLE[id];p.level=(id===st.boss)?lv:((st.strong||[]).includes(id)?Math.max(sub,lv-1):sub);p.charId=id;p.ai=null;}
+  if(HERO.origin==='gambler'&&!st.start)G.players[0].score=20000;
+  G.stage=idx;G.len=st.len||'han';G.bossSeat=st.bossSeat!=null?st.bossSeat:2;G.wager=!!wager||!!st.forceWager;G.dark=!!st.dark;if(G.dark)bgmPlay('boss');   // 物語の戦はふつう半荘（st.len で東風も）
+  if(st.start)applyStart(st.start);
   if(st.cheat){const b=G.players[2];b.cheat=st.cheat;rigHand(b,G.wall,st.cheat);}
   if(st.readHand)G.players[2].readHand=true;
   render();updateSkillbar();
 }
+/* 状況スタート：局・親・点数を差し替えて途中から始める（配牌は配り直さない） */
+function applyStart(sx){
+  const d=sx.dealer|0;G.round=sx.round|0;G.roundWind=G.round;G.dealer=d;G.turn=d;G.honba=sx.honba|0;G.startHonba=G.honba;
+  G.players.forEach((p,i)=>{p.seatWind=(i-d+4)%4;p.isDealer=i===d;if(sx.scores)p.score=sx.scores[i];});
+  G.startScores=G.players.map(p=>p.score);
+}
 function startStage(i){
   const path=storyPath(),st=path[i];if(!st)return;
-  {const sv=loadSave();if(sv&&sv.G.stage!==i&&!st.scene&&!confirm('途中の対局（'+sv.lbl+'）を消して、この戦を始めますか？'))return;if(!st.scene)clearSave();}
+  {const sv=loadSave();if(sv&&sv.G.stage!==i&&!st.scene&&!st.teach&&!confirm('途中の対局（'+sv.lbl+'）を消して、この戦を始めますか？'))return;if(!st.scene&&!st.teach)clearSave();}
   document.getElementById('overlay').style.display='none';
   tut={lesson:'',mode:'',phase:'',i:0,story:null};
   G=null;
-  if(st.scene)return st.id==='cross'?runCrossroad(i):runScene(i);
+  if(st.scene)return st.id==='cross'?runCrossroad(i):(st.choice?runChoice(i):runScene(i));
+  if(st.teach)return runTeach(i);
   const go=w=>{const after=st.wager?(w?st.wager.accept:st.wager.decline):[];
     say(after,()=>{hideTalk();newHand(false);castStage(st,i,w);setTimeout(()=>cutin(st.t+' 戦','MATCH START',st.boss),380);});};
   say(st.pre,()=>{
@@ -5342,7 +5605,24 @@ function startStage(i){
 }
 function runScene(i){
   const st=storyPath()[i];
-  say(st.lines,()=>{if(stageProgress()<i+1)lsSet('mjStage',String(i+1));hideTalk();showStory();},{bg:st.bg||'store'});
+  say(st.lines,()=>{if(st.note)addNote(st.note);if(stageProgress()<i+1)lsSet('mjStage',String(i+1));hideTalk();showStory();},{bg:st.bg||'store'});
+}
+/* 場面＋選択（第二部の岐路。選んだ結果は HERO に持たせる） */
+function runChoice(i){
+  const st=storyPath()[i],c=st.choice;
+  say(st.lines,()=>{if(st.note)addNote(st.note);
+    choose(c.who,c.pose||'calm',c.q,c.opts.map(o=>({label:o.label,sub:o.sub,fn:()=>{
+      try{o.set&&o.set();}catch(e){}saveHero();if(stageProgress()<i+1)lsSet('mjStage',String(i+1));
+      say(o.lines||[],()=>{hideTalk();showStory();});}})));
+  },{bg:st.bg||'store'});
+}
+/* 教える段：ナオの手牌を出して、説明とクイズを進める（道場のレッスンの部品を使う） */
+function runTeach(i){
+  const st=storyPath()[i];
+  const begin=()=>{hideTalk();rigGame((st.hand||[0,1,2,9,10,11,18,19,20,27,27,31,33]).slice(),[]);
+    tut={lesson:'p2t'+i,mode:'info',phase:'',i:0,steps:st.steps,story:null,teach:i};
+    setSpeaker(st.speaker||'nao','calm');infoRun();};
+  if(st.pre&&st.pre.length)say(st.pre,begin,{bg:st.bg||'store'});else begin();
 }
 function runCrossroad(i){
   const st=ST.cross;
@@ -5361,20 +5641,25 @@ function runCrossroad(i){
 function showStageResult(){
   clearSave();
   {const _m=document.getElementById('modal');_m.classList.remove('done');_m.onclick=null;}
-  const path=storyPath(),idx=G.stage,st=path[idx],wager=!!G.wager,bossSeat=2;
+  const path=storyPath(),idx=G.stage,st=path[idx],wager=!!G.wager,bossSeat=st.bossSeat!=null?st.bossSeat:2;
   const order=G.players.map((p,i)=>({i,score:p.score})).sort((a,b)=>b.score-a.score);
   const rank=order.findIndex(o=>o.i===0)+1,bossRank=order.findIndex(o=>o.i===bossSeat)+1;
-  const outcome=rank===1?'win':(rank<bossRank?'narrow':'lose');
+  let outcome=rank===1?'win':(rank<bossRank?'narrow':'lose'),teamLine='';
+  if(st.team){const my=G.players[0].score+G.players[2].score,op=G.players[1].score+G.players[3].score;   // 団体戦：自分＋対面 対 上家＋下家の合計
+    outcome=my>op?'win':(rank<bossRank?'narrow':'lose');
+    teamLine=`<div class="sub">翠（${esc(G.players[0].name||'あなた')}・${esc(G.players[2].name)}）<b>${my.toLocaleString()}</b>　対　${esc(st.oppName||'相手')} <b>${op.toLocaleString()}</b></div>`;}
+  if(st.passRank)outcome=rank<=st.passRank?'win':'lose';   // 状況スタート：決められた順位以内で突破
   const stats=Object.assign({dealIns:0,maxHan:0,ronBoss:false},G.stats||{});stats.tobi=G.players.some(p=>p.score<0);
   const special=outcome!=='lose'&&!!st.cond&&st.cond.test(stats,rank);
   const fk=st.flagKey||st.boss;const hadFlag=lsGet('mjFlag_'+fk)==='1';
-  const gotFlag=special&&wager;
+  const gotFlag=special&&(wager||!!st.noWager);
   if(outcome!=='lose'&&stageProgress()<idx+1)lsSet('mjStage',String(idx+1));
   if(gotFlag){lsSet('mjFlag_'+fk,'1');addNote(fk);if(st.skill&&!HERO.skills.includes(st.skill)){HERO.skills.push(st.skill);saveHero();}}
   checkAch();
   G.stage=null;G.wager=false;
   const rows=order.map((o,k)=>`${k+1}位 ${G.players[o.i].name||POS[o.i]}<span class="h">${G.players[o.i].score}</span>`).join('<br>');
   if(st.final)return showEnding(outcome,rows,idx);
+  if(st.p2final)return showP2Ending(outcome,rows,idx,teamLine);
   if(st.darkFinal&&outcome!=='lose')return showDarkEnding(outcome,rows,idx);
   const ov=document.getElementById('overlay');ov.style.display='flex';
   const hide=()=>{hideTalk();};
@@ -5391,11 +5676,11 @@ function showStageResult(){
   }
   const head=outcome==='win'?'完全勝利':(outcome==='narrow'?'辛勝':'敗北');
   const title=outcome==='win'?st.title:null;
-  const note=outcome==='win'?'':(outcome==='narrow'?`${st.t}より上の順位で突破。称号は1位の時だけ。`:'1位（またはボスより上）で突破。もう一度挑戦できます。');
-  document.getElementById('modal').innerHTML=`<div class="chap-num">${st.dark?(st.part||'黒い手')+'　'+(st.stake||'証文を賭けた一戦'):(idx<3?'第二章　腕試し':'第三章　岐路')+'　'+(wager?'本気の賭け':'通常')}</div>
+  const note=st.team?(outcome==='win'?'':(outcome==='narrow'?`${st.t}には勝ったが、二人の合計で届かなかった。`:'二人の合計点で上回ると突破。もう一度挑戦できます。')):st.passRank?(outcome==='win'?'':`${st.passRank}着以内で突破。もう一度挑戦できます。`):(outcome==='win'?'':(outcome==='narrow'?`${st.t}より上の順位で突破。称号は1位の時だけ。`:'1位（またはボスより上）で突破。もう一度挑戦できます。'));
+  document.getElementById('modal').innerHTML=`<div class="chap-num">${st.chap?st.chap:(st.dark?(st.part||'黒い手')+'　'+(st.stake||'証文を賭けた一戦'):(idx<3?'第二章　腕試し':'第三章　岐路')+'　'+(wager?'本気の賭け':'通常'))}</div>
     <h2>${head}</h2>
     <div class="port-big">${portraitSVG(st.boss,outcome==='lose'?'point':'calm',outcome==='win'?'shock':(outcome==='lose'?'laugh':'angry'))}</div>
-    <div class="yaku">${rows}</div>
+    <div class="yaku">${rows}</div>${teamLine}
     ${special?`<div class="cond-ok">${gotFlag?'流儀を制した　':'流儀は満たしたが賭けなし　'}${st.cond.text}</div>`:''}
     ${title?`<div class="title-earn">称号「${title}」を獲得</div>`:''}
     ${note?`<div class="sub">${note}</div>`:''}
@@ -5409,6 +5694,31 @@ function showStageResult(){
     const inter=outcome!=='lose'&&((first&&st.after)||(second&&st.after2));
     say(lines,()=>{if(!inter)return done();
       if(first){lsSet('mjInter_'+st.id,'1');say(st.after,done,{bg:'storeNight'});}else{lsSet('mjInter2_'+st.id,'1');say(st.after2,done,{bg:'storeNight'});}});};
+}
+/* 第二部の結末：負けは「もう一度、翠杯」、勝ちは秘密の数とプロ試験の返事で3つに分かれる */
+function showP2Ending(outcome,rows,idx,teamLine){
+  const st=storyPath()[idx],ov=document.getElementById('overlay'),hide=()=>hideTalk();
+  if(outcome!=='win'){
+    hide();say(st.lose||[],()=>{hide();ov.style.display='flex';
+      document.getElementById('modal').innerHTML=`<div class="chap-num">第十章　翠杯</div><h2>もう一度、翠杯</h2>
+        <div class="port-big">${portraitSVG(st.boss,'calm','smile')}</div><div class="yaku">${rows}</div>${teamLine||''}
+        <div class="sub">${st.badText||'決勝で届かなかった。だが翠の灯は消えない。もう一度、卓に着ける。'}</div>
+        <div style="display:flex;gap:8px;justify-content:center;margin-top:10px"><button class="btn" id="p2Retry">もう一度</button><button class="btn gray" id="p2Back">雀荘へ</button></div>`;
+      document.getElementById('p2Retry').onclick=()=>startStage(idx);document.getElementById('p2Back').onclick=()=>showStory();});
+    return;
+  }
+  const notes=P2_NOTE_IDS.filter(id=>HERO.notes.includes(id)).length;
+  const strong=lsGet('mjEnd_true')==='1'||lsGet('mjEnd_dark')==='1'||lsGet('mjEnd_tower')==='1';
+  const key=(notes>=6&&strong)?(HERO.pro==='yes'?'depart':'light'):'twin';
+  const E=P2_ENDINGS[key];
+  if(stageProgress()<idx+1)lsSet('mjStage',String(idx+1));lsSet('mjTitle',E.title);lsSet('mjEnd_'+key,'1');addNote('end_'+key);checkAch();
+  const got=lsGet('mjFlag_'+(st.flagKey||st.boss))==='1';
+  hide();say((st.win||[]).concat(got?(st.secret||[]):[]).concat(E.lines).concat(P2_EPILOGUE[key]||[]),()=>{hide();ov.style.display='flex';
+    document.getElementById('modal').innerHTML=`<div class="chap-num">${E.num}</div><h2>${E.h2}</h2>
+      <div class="port-big">${portraitSVG(E.port||'master','point','laugh')}</div><div class="yaku">${rows}</div>${teamLine||''}
+      <div class="title-earn">称号「${E.title}」を獲得</div><div class="sub">${E.sub}</div>${E.hint?`<div class="sub">${E.hint}</div>`:''}
+      <button class="btn" id="p2Back">雀荘へ</button>`;
+    confetti();document.getElementById('p2Back').onclick=()=>showStory();});
 }
 function showDarkEnding(outcome,rows,idx){
   const st=storyPath()[idx],E=st.ending,ov=document.getElementById('overlay');
@@ -5490,6 +5800,10 @@ function showStory(){
   const rows4=row(path[5],5,'最終戦');
   const rows5=[row(path[6],6,'第一夜'),row(path[7],7,'第二夜'),row(path[8],8,'決戦')].join('');
   const rows6=[row(path[9],9,'序'),row(path[10],10,'第一戦'),row(path[11],11,'第二戦'),row(path[12],12,'決戦')].join('');
+  const rows7=[row(path[13],13,'序'),row(path[14],14,'一の教え'),row(path[15],15,'二の教え'),row(path[16],16,'三の教え'),row(path[17],17,'一局')].join('');
+  const rows8=[row(path[18],18,'相棒'),row(path[19],19,'一回戦'),row(path[20],20,'二回戦'),row(path[21],21,'誘い')].join('');
+  const rows9=[row(path[22],22,'翡翠'),row(path[23],23,'南三局'),row(path[24],24,'オーラス'),row(path[25],25,'八雲')].join('');
+  const rows10=[row(path[26],26,'序'),row(path[27],27,'最後の一言'),row(path[28],28,'代表決定戦'),row(path[29],29,'決勝')].join('');
   const title=currentTitle();const ended=sprog>=path.length;
   const inGame=!!(G&&!G.over&&!G.tutorial&&(G.wall.length<70||G.players.some(p=>p.discards.length)));
   // 章は解放されたものだけ。次の章は「？？？」として1行だけ予告
@@ -5498,10 +5812,14 @@ function showStory(){
     {n:'第三章　岐路',open:sprog>=3,rows:rows3,hint:'第三戦を突破すると開く'},
     {n:'第四章　最後の一局',open:sprog>=5,rows:rows4,hint:'第四戦を突破すると開く'},
     {n:'第五章　黒い手',open:sprog>=6,rows:rows5,hint:'第四章をクリアすると開く'},
-    {n:'第六章　白い塔',open:sprog>=9,rows:rows6,hint:'第五章をクリアすると開く'}];
+    {n:'第六章　白い塔',open:sprog>=9,rows:rows6,hint:'第五章をクリアすると開く'},
+    {n:'第七章　弟子　―第二部―',open:sprog>=13,rows:rows7,hint:'第六章をクリアすると開く'},
+    {n:'第八章　街の卓',open:sprog>=18,rows:rows8,hint:'第七章をクリアすると開く'},
+    {n:'第九章　翡翠',open:sprog>=22,rows:rows9,hint:'第八章をクリアすると開く'},
+    {n:'第十章　翠杯',open:sprog>=26,rows:rows10,hint:'第九章をクリアすると開く'}];
   let secs='';for(const c of CH){if(c.open){secs+=`<div class="dojo-sec">${c.n}</div><div id="dojo2">${c.rows}</div>`;}else{secs+=`<div class="dojo-sec">${c.n.split('　')[0]}　？？？<span style="opacity:.6;font-weight:400">　（${c.hint}）</span></div>`;break;}}
   m.innerHTML=`<h2>雀荘「翠」</h2>
-    <div class="hero-card"><span class="hpt">${portraitSVG('hero_'+HERO.origin,'calm')}</span><span class="hn">${heroName()}</span><span class="ho">${o?o.t:''}　<em>難易度 ${o?o.diff:''}</em></span>${title?`<span class="ttl-now">称号：${title}</span>`:''}${ASSIST?'<span class="ttl-now">おたすけ中</span>':''}${HERO.route?`<span class="ttl-now">${HERO.route==='neo'?'新しい翠の道':'翠を守る道'}</span>`:''}</div>
+    <div class="hero-card"><span class="hpt">${portraitSVG('hero_'+HERO.origin,'calm')}</span><span class="hn">${heroName()}</span><span class="ho">${o?o.t:''}　<em>難易度 ${o?o.diff:''}</em></span>${title?`<span class="ttl-now">称号：${title}</span>`:''}${ASSIST?'<span class="ttl-now">おたすけ中</span>':''}${HERO.partner?`<span class="ttl-now">相棒：${CHARS[HERO.partner]?CHARS[HERO.partner].n:''}</span>`:''}${HERO.route?`<span class="ttl-now">${HERO.route==='neo'?'新しい翠の道':'翠を守る道'}</span>`:''}</div>
     <div class="dojo-sec">第0章　はじめの一歩</div><div id="dojo">${rows0}</div>
     ${z0?`<div class="dojo-sec">第一章　翠の教え</div><div id="dojo">${rows1}</div>${secs}`:`<div class="dojo-sec">第一章　？？？<span style="opacity:.6;font-weight:400">　（第0章をクリアすると開く）</span></div>`}
     <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px">
@@ -5650,8 +5968,8 @@ function showChooser(){if(MP.active)return mpMenu();showHome();}
 
 
 /* ===== タイトル画面・ホーム画面・対局中メニュー・設定 ===== */
-const APP_VER='2026.09.27';
-const BATTLE_FACE={domoto:'angry',kuroda:'angry',karasu:'smile',washio:'calm',minato:'calm',shizuka:'calm',master:'smile',hayato:'smile',gen:'smile',ren:'smile'};   // 「○○ 戦」のカットインの表情
+const APP_VER='2026.09.28';
+const BATTLE_FACE={nao:'smile',yakumo:'calm',shino:'calm',fukuju:'smile',tome:'smile',domoto:'angry',kuroda:'angry',karasu:'smile',washio:'calm',minato:'calm',shizuka:'calm',master:'smile',hayato:'smile',gen:'smile',ren:'smile'};   // 「○○ 戦」のカットインの表情
 const HM_IC={
  daily:'<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/><circle cx="12" cy="15.5" r="2"/>',
  free:'<rect x="5" y="2.5" width="14" height="19" rx="2.5"/><circle cx="12" cy="12" r="3.2"/><path d="M12 5.5v1M12 17.5v1"/>',
@@ -5710,13 +6028,11 @@ function showHome(){
 }
 /* ===== 更新のお知らせ：版が変わって最初にホームを開いた時に1回。まっさらな端末には出さない ===== */
 const WHATS_NEW=[
- '今日の一局：毎日ちがう、その日だけの配牌で1局。収支のベストと連続日数が残ります（ホーム右上）',
- '局のふりかえり：和了・流局のあと、全員の手牌・待ち・打牌の流れを見られます',
- '戦績・役図鑑・実績：和了率や放銃率、あがった役、実績30個（ホーム下）',
- '自由対局の相手えらび、卓の色4色、BGMと効果音の音量、振動（設定）',
- 'ルールの設定：途中流局・流し満貫・責任払い・西入・アガリやめ・喰いタン・東風戦',
- '引き継ぎコード：別の端末やアプリ版へ記録を移せます（設定 → 引き継ぎ）',
- '修正：「立直」ボタンのあとに牌を捨てると止まることがあった不具合',
+ '物語 第二部『翠、継ぐ者』：第七章〜第十章＋終章。弟子ナオ、街の雀荘対抗戦、翡翠の八雲、翠杯。結末は3つ（第六章のあとに続きます）',
+ '新しい遊び方：状況スタート（点数状況から始める局）、団体戦（二人の合計点）、読み筋（リーチ者に対する危険度の印）',
+ '相手の手帳：同じ相手との記録（リーチ率・鳴き率・和了率）が相手えらびに出ます',
+ '翠ノートの結末ページから「結末をもう一度見る」',
+ '9月25〜27日の更新：今日の一局、局のふりかえり、戦績・役図鑑・実績、引き継ぎコード、卓の色と音量、ルールの設定',
 ];
 function maybeWhatsNew(){
   if(lsGet('mjSeenVer')===APP_VER)return;
@@ -5737,7 +6053,7 @@ function storyNext(){
   if(!HERO.origin)return {ch:'序章',t:'扉の前で',who:'master',n:0,total};
   if(zp<ZERO.length)return {ch:'第0章 第'+['一','二','三'][zp]+'節',t:ZERO[zp].t,who:'master',n:zp,total};
   if(prog<STORY.length){const c=STORY[prog];return {ch:'第一章 '+(c.final?'終節':'第'+['一','二','三','四','五','六','七'][prog]+'節'),t:c.t,who:c.who||'master',n:ZERO.length+prog,total};}
-  const L=['第二章 第一戦','第二章 第二戦','第二章 第三戦','第三章 岐路','第三章 第四戦','第四章 最終戦','第五章 第一夜','第五章 第二夜','第五章 決戦','第六章 序','第六章 第一戦','第六章 第二戦','第六章 決戦'];
+  const L=STAGE_LABELS;
   if(sprog<path.length){const st=path[sprog];return {ch:L[sprog]||'',t:st?st.t:'？？？',who:st?(st.boss||st.who||'master'):'master',n:ZERO.length+STORY.length+sprog,total};}
   return {ch:'',t:'物語はすべてクリア',who:'master',n:total,total,done:true};
 }
@@ -5874,7 +6190,7 @@ function showFreeSetup(){
   const ov=document.getElementById('overlay');ov.style.display='flex';const m=document.getElementById('modal');
   const pool=freeCastPool();let cast=(FREE_CAST&&FREE_CAST.every(id=>pool.includes(id)))?FREE_CAST.slice():null;
   const draw=()=>{
-    const seatHtml=[1,2,3].map((sn,k)=>{const id=cast?cast[k]:null;return `<div class="fs-seat"><small>${POS[sn]}</small><button class="fs-port ${id?'':'rand'}" data-k="${k}" title="タップで入れ替え">${id?portraitSVG(id,'calm'):'？'}</button><b>${id?esc(CHARS[id].n):'おまかせ'}</b><span class="fs-style">${id?(STYLE_JA[CHAR_STYLE[id]]||''):'毎回ちがう相手'}</span></div>`;}).join('');
+    const seatHtml=[1,2,3].map((sn,k)=>{const id=cast?cast[k]:null;return `<div class="fs-seat"><small>${POS[sn]}</small><button class="fs-port ${id?'':'rand'}" data-k="${k}" title="タップで入れ替え">${id?portraitSVG(id,'calm'):'？'}</button><b>${id?esc(CHARS[id].n):'おまかせ'}</b><span class="fs-style">${id?(STYLE_JA[CHAR_STYLE[id]]||''):'毎回ちがう相手'}</span>${id&&vsLine(id)?`<span class="fs-style" title="この相手との記録">${vsLine(id)}</span>`:''}</div>`;}).join('');
     const cur=CPU_LEVELS.find(L=>L.id===CPU_LV)||CPU_LEVELS[1];
     m.innerHTML=`<h2>自由対局</h2>
       <div class="dojo-sec">相手（タップで入れ替え）</div>

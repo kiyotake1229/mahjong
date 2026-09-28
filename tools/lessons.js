@@ -60,7 +60,7 @@ window.__driveTick=function(){try{
   await page.evaluate(SETUP);
   // 項目の一覧（道場8つ、第0章3節、第一章の各節）
   const items = STAGES
-    ? await page.evaluate(`(()=>{if(!HERO.origin){HERO=Object.assign(blankHero(),{name:'テスト',origin:'student'});saveHero();}const L=['第二章 第一戦','第二章 第二戦','第二章 第三戦','第三章 岐路','第三章 第四戦','第四章 最終戦','第五章 第一夜','第五章 第二夜','第五章 決戦','第六章 序','第六章 第一戦','第六章 第二戦','第六章 決戦'];return L.map((n,i)=>({kind:'stage',id:i,name:n}));})()`)
+    ? await page.evaluate(`(()=>{if(!HERO.origin){HERO=Object.assign(blankHero(),{name:'テスト',origin:'student'});saveHero();}const L=(typeof STAGE_LABELS!=='undefined')?STAGE_LABELS:[];return L.map((n,i)=>({kind:'stage',id:i,name:n}));})()`)
     : await page.evaluate(`[].concat(
     LESSONS.map(L=>({kind:'lesson',id:L.id,name:'道場：'+L.t})),
     ZERO.map((z,i)=>({kind:'zero',id:i,name:'第0章 第'+(i+1)+'節：'+z.t})),
@@ -91,8 +91,8 @@ window.__driveTick=function(){try{
         if (it.kind === 'lesson') ok = lsGet('mjLesson_' + it.id) === '1';
         else if (it.kind === 'zero') ok = zeroProgress() >= it.id + 1;
         else if (it.kind === 'stage') { const st = storyPath()[it.id]; const endNow = Object.keys(localStorage).filter(k => k.startsWith('mjEnd_')).length;
-          if (st && st.scene) ok = stageProgress() >= it.id + 1;
-          else if (st && (st.ending || st.id === 'master')) ok = (endNow > window.__endBefore && document.getElementById('vn').hidden) || !!window.__stageEndSeen;   // 勝って結末まで、または負けて「もう一度」の画面まで
+          if (st && (st.scene || st.teach)) ok = stageProgress() >= it.id + 1;
+          else if (st && (st.ending || st.p2final || st.id === 'master')) ok = (endNow > window.__endBefore && document.getElementById('vn').hidden) || !!window.__stageEndSeen;   // 勝って結末まで、または負けて「もう一度」の画面まで
           else ok = !!window.__stageDone; }
         else ok = storyProgress() >= it.id + 1;
         return { ok, steps: __drv.steps, errors: __drv.errors, log: __drv.log.slice(-12).join(' ') };
