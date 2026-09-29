@@ -121,7 +121,7 @@
   .rb-tabs button{background:none;border:1px solid var(--line);color:var(--muted);border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer;font-family:var(--f-ui)}
   .rb-tabs button.on{border-color:var(--gold);color:var(--gold-hi);background:rgba(201,169,97,.12)}
   /* 戦績・役図鑑 */
-  .rb.rc{width:min(88vw,520px);box-sizing:border-box}
+  .rb.rc{width:min(calc(94vw - 54px),466px);max-width:100%;box-sizing:border-box}   /* 戦績：枠（#modal 最大520px）の内側の幅＝左右の余白26px×2と枠線を引いた幅。スクロールバーが出る時は max-width で内側に収める（広いと右端のカードが切れる） */
   .rc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:6px;margin:4px 0 8px}
   .rc-cell{background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:9px;padding:7px 9px;text-align:left;min-width:0}
   .rc-cell small{display:block;font-size:10.5px;color:var(--muted)}
@@ -655,6 +655,7 @@
   /* 横画面の背の低い画面：結果・メニューの枠、会話、コーチを詰める */
   @media (max-height:500px) and (orientation:landscape){
     #modal{padding:14px 20px;max-height:calc(100vh - 16px)}
+    .rb.rc{width:min(calc(94vw - 42px),478px)}   /* 余白が20pxの時の内側の幅 */
     #modal h2{font-size:18px;margin-bottom:6px}
     #modal .yaku{line-height:1.6;margin:6px 0}
     #modal .handshow{margin:6px 0}
