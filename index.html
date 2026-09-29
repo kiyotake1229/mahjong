@@ -489,7 +489,7 @@
   .rinfo .wdora{display:inline-flex;align-items:center;gap:3px}
   .rinfo .wdora .tile.sm{width:calc(var(--fs)*1.45);height:calc(var(--fs)*1.97)}
   /* 右上のボタンの下：いまの順位と点差（左上は高さの余裕がないのでこちら） */
-  .corner.tr .rk{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:4px 6px;max-width:100%;padding:2px 9px;border-radius:8px;
+  .corner.tr .rk{display:flex;align-items:center;justify-content:flex-end;flex-wrap:nowrap;overflow:hidden;gap:4px 6px;max-width:100%;padding:2px 9px;border-radius:8px;
     background:rgba(10,18,14,.55);border:1px solid var(--line);font-size:calc(var(--fs)*.92);color:var(--muted);line-height:1.4;white-space:nowrap}
   .corner.tr .rk[hidden]{display:none}
   .corner.tr .rk b{color:var(--gold-hi);font-weight:700;font-variant-numeric:tabular-nums}
@@ -2715,10 +2715,16 @@ function renderRank(){
   if(!G||G.tutorial||G.daily||G.practice!=null||!G.players||G.players.length<4){el.hidden=true;return;}
   const sc=G.players.map(p=>p.score);const order=[0,1,2,3].sort((a,b)=>sc[b]-sc[a]||a-b);
   const r=order.indexOf(VIEW);
-  const s=r===0?`<b>1着</b><span>2着と <b>${(sc[VIEW]-sc[order[1]]).toLocaleString()}</b>差</span>`:`<b>${r+1}着</b><span>${r}着まで <b>${(sc[order[r-1]]-sc[VIEW]).toLocaleString()}</b></span>`;
+  const gap=(r===0?sc[VIEW]-sc[order[1]]:sc[order[r-1]]-sc[VIEW]).toLocaleString();
+  const s=r===0?`<b>1着</b><span>2着と <b>${gap}</b>差</span>`:`<b>${r+1}着</b><span>${r}着まで <b>${gap}</b></span>`;
+  const cmp=`<b>${r+1}着</b><span><b>${r===0?'+':'−'}${gap}</b></span>`;   // 短い書き方：+は2着との差、−はすぐ上の順位との差
   const lw=lastWind();const tag=G.roundWind>lw?'<i class="ol">延長</i>':(G.roundWind===lw&&G.dealer===3?'<i class="ol">オーラス</i>':'');
-  el.innerHTML=tag+s+'<svg class="chev" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 2.5 8 6l-3.5 3.5"/></svg>';el.hidden=false;
-  if(!el.onclick){el.setAttribute('role','button');el.tabIndex=0;el.title='タップで順位が入れ替わる条件';
+  const chev='<svg class="chev" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 2.5 8 6l-3.5 3.5"/></svg>';
+  el.hidden=false;el.innerHTML=tag+s+chev;
+  el.style.justifyContent='flex-start';const over=el.scrollWidth>el.clientWidth+1;el.style.justifyContent='';   // 右寄せのままだと、はみ出しが左に出て scrollWidth に数えられない
+  if(over)el.innerHTML=tag+cmp+chev;   // 1行に入らない画面（オーラスの印が付いた時など）は短い書き方にする
+  el.title=(r===0?'2着との差 ':`${r}着との差 `)+gap+'点（タップで順位が入れ替わる条件）';
+  if(!el.onclick){el.setAttribute('role','button');el.tabIndex=0;
     el.onclick=(e)=>{e.stopPropagation();showRankModal();};el.onkeydown=(e)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();showRankModal();}};}
 }
 /* 符・翻の組み合わせで出せる点数（安い順、同じ点数は1つ）。条件の計算に使う */
