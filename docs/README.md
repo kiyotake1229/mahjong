@@ -49,6 +49,7 @@ YYYYMMDD_種類_連番_場所_内容.拡張子
 | NET | オンライン対戦（「みんなで対戦」のオンライン部分） |
 | PWA | PWA（`manifest.json` / `sw.js` / アイコン） |
 | IOS | iOSアプリ（`ios-app/`） |
+| WEB | 公開ページ（紹介ページ `about/`・サポートページ `support.html`） |
 
 ---
 
