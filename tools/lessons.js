@@ -5,6 +5,8 @@
  *   手元の Chrome を裏で動かし、コーチの指示（光っている牌・ボタン）、会話の送り、選択肢、結果画面を自動で押して
  *   各レッスン・各節を最後まで進める。練習の一局など自由に打つ場面は自分の席も自動で打つ。
  *   進めなくなった項目（時間切れ）と例外を報告する。終了コード 0=すべて通過 / 1=通らない項目あり
+ *   ブラウザ（headless Chrome）自体が落ちた時は「再起動」と表示して開き直し、その項目を1回だけやり直す。
+ *   通過した項目にはページの使用メモリ（MB）を添える（項目を重ねて増え続けるならメモリの漏れを疑う）
  */
 const path = require('path');
 const puppeteer = require('puppeteer-core');
@@ -49,15 +51,73 @@ window.__driveTick=function(){try{
 }catch(e){__drv.errors.push('drv '+e.message);}};
 `;
 
-(async () => {
-  const browser = await puppeteer.launch({ executablePath: CHROME, headless: 'shell',
+let browser = null, page = null;
+// ブラウザを開いてアプリを読み込み、自動操作の準備をする（ブラウザ自体が落ちた時の開き直しにも使う）
+async function openBrowser() {
+  browser = await puppeteer.launch({ executablePath: CHROME, headless: 'shell',
     args: ['--mute-audio', '--no-first-run', '--disable-gpu', '--disable-background-timer-throttling', '--disable-renderer-backgrounding'] });
-  const page = await browser.newPage();
+  page = await browser.newPage();
   await page.setViewport({ width: 932, height: 430, deviceScaleFactor: 1 });
   page.on('pageerror', e => console.log('pageerror:', e.message));
   page.on('dialog', async d => { console.log('dialog（キャンセル扱い）:', d.message().slice(0, 60)); try { await d.dismiss(); } catch (e) {} });
   await page.goto(URL, { waitUntil: 'load', timeout: 30000 });
   await page.evaluate(SETUP);
+}
+// ブラウザ（headless Chrome）自体が落ちた時のエラーか（アプリの例外とは別に扱う）
+const isCrash = e => /Target closed|Session closed|Protocol error|detached|Connection closed/i.test(String(e && e.message || e));
+const firstLine = e => String(e && e.message || e).split('\n')[0].slice(0, 90);
+// 開き直しの確認用：LESSONS_CRASH_TEST=<項目の番号> を付けると、その項目の1回目の3秒後にブラウザを強制終了する
+const CRASH_TEST = process.env.LESSONS_CRASH_TEST != null ? +process.env.LESSONS_CRASH_TEST : -1;
+
+// 1項目を最後まで進める。true=通過。ブラウザが落ちた時は例外のまま呼び出し元へ返す
+async function runItem(it) {
+  const t0 = Date.now();
+  await page.evaluate((it) => {
+    __drv = { steps: 0, errors: [], log: [] };
+    clearInterval(window.__drvT);
+    hideTalk(); document.getElementById('overlay').style.display = 'none'; document.getElementById('coach').hidden = true;
+    if (G) { G.over = true; G.gen++; }
+    localStorage.removeItem('mjSaveGame');   // 前の項目の途中の対局が残っていると「消して新しく始めますか？」の確認が出るので、先に消す
+    window.__stageEndSeen = false;
+    if (it.kind === 'lesson') { localStorage.removeItem('mjLesson_' + it.id); tut = { lesson: it.id, mode: '', phase: '', i: 0 }; showHome(); showDojo(); const b = [...document.querySelectorAll('button')].find(x => x.innerText.includes(it.name.split('：')[1])); if (b) b.click(); else __drv.errors.push('道場のボタンが見つからない'); }
+    if (it.kind === 'zero') { if (!HERO.origin) { HERO = Object.assign(blankHero(), { name: 'テスト', origin: 'student' }); saveHero(); } lsSet('mjZero', String(it.id)); showHome(); zeroStart(it.id); }
+    if (it.kind === 'story') { if (!HERO.origin) { HERO = Object.assign(blankHero(), { name: 'テスト', origin: 'student' }); saveHero(); } lsSet('mjZero', String(ZERO.length)); lsSet('mjStory', String(it.id)); showHome(); storyStart(it.id); }
+    if (it.kind === 'stage') { __stageDone = false; localStorage.removeItem('mjSaveGame'); lsSet('mjZero', String(ZERO.length)); lsSet('mjStory', String(STORY.length)); lsSet('mjStage', String(it.id));
+      if (!storyPath()[it.id] && !HERO.route) { HERO.route = 'protect'; saveHero(); }
+      window.__endBefore = Object.keys(localStorage).filter(k => k.startsWith('mjEnd_')).length; window.__stName = (storyPath()[it.id] || {}).t || '?'; window.__stageEndSeen = false;
+      showHome(); startStage(it.id); }
+    window.__drvT = setInterval(__driveTick, 300);
+  }, it);
+  let last = '';
+  while (Date.now() - t0 < LIMIT * 1000) {
+    await new Promise(r => setTimeout(r, 2000));
+    const s = await Promise.race([new Promise(r => setTimeout(() => r({ ok: false, steps: -1, errors: ['evaluate が20秒応答しない（ダイアログか無限ループの疑い）'], log: '' }), 20000)), page.evaluate((it) => {
+      let ok;
+      if (it.kind === 'lesson') ok = lsGet('mjLesson_' + it.id) === '1';
+      else if (it.kind === 'zero') ok = zeroProgress() >= it.id + 1;
+      else if (it.kind === 'stage') { const st = storyPath()[it.id]; const endNow = Object.keys(localStorage).filter(k => k.startsWith('mjEnd_')).length;
+        if (st && (st.scene || st.teach)) ok = stageProgress() >= it.id + 1;
+        else if (st && (st.ending || st.p2final || st.id === 'master')) ok = (endNow > window.__endBefore && document.getElementById('vn').hidden) || !!window.__stageEndSeen;   // 勝って結末まで、または負けて「もう一度」の画面まで
+        else ok = !!window.__stageDone; }
+      else ok = storyProgress() >= it.id + 1 || (!!(STORY[it.id] && STORY[it.id].final) && !!window.__stageEndSeen);   // 第一章の終節（一局勝負）は、負けて「もう一度」の画面までで流れの確認としては通過
+      return { ok, steps: __drv.steps, errors: __drv.errors, log: __drv.log.slice(-12).join(' ') };
+    }, it)]);
+    last = s.log;
+    if (s.errors.length) { console.log(`NG  ${it.name}: 例外 ${JSON.stringify(s.errors.slice(0, 3))}  直前: ${s.log}`); return false; }
+    if (s.ok) {
+      const nm = it.kind === 'stage' ? await page.evaluate('window.__stName') : '';
+      const lost = (it.kind === 'stage' || it.kind === 'story') ? await page.evaluate('!!window.__stageEndSeen') : false;
+      const heap = await page.evaluate('(performance.memory&&Math.round(performance.memory.usedJSHeapSize/1048576))||0');   // ページの使用メモリ（MB）。項目を重ねて増え続けるならメモリの漏れを疑う
+      console.log(`OK  ${it.name}${nm ? '：' + nm : ''}: ${Math.round((Date.now() - t0) / 1000)}s  ${s.steps}操作${lost ? '（負けて「もう一度」の画面まで）' : ''}${heap ? '  メモリ ' + heap + 'MB' : ''}`);
+      return true;
+    }
+  }
+  console.log(`NG  ${it.name}: ${LIMIT}秒で終わらない  直前: ${last}`);
+  return false;
+}
+
+(async () => {
+  await openBrowser();
   // 項目の一覧（道場8つ、第0章3節、第一章の各節）
   const items = STAGES
     ? await page.evaluate(`(()=>{if(!HERO.origin){HERO=Object.assign(blankHero(),{name:'テスト',origin:'student'});saveHero();}const L=(typeof STAGE_LABELS!=='undefined')?STAGE_LABELS:[];return L.map((n,i)=>({kind:'stage',id:i,name:n}));})()`)
@@ -65,46 +125,30 @@ window.__driveTick=function(){try{
     LESSONS.map(L=>({kind:'lesson',id:L.id,name:'道場：'+L.t})),
     ZERO.map((z,i)=>({kind:'zero',id:i,name:'第0章 第'+(i+1)+'節：'+z.t})),
     STORY.map((c,i)=>({kind:'story',id:i,name:'第一章 '+(c.final?'終節':'第'+(i+1)+'節')+'：'+c.t})))`);
-  const results = [];
-  let bad = false;
+  let bad = false, restarts = 0;
   for (const it of items.filter((x, i) => i >= FROM)) {
-    const t0 = Date.now();
-    await page.evaluate((it) => {
-      __drv = { steps: 0, errors: [], log: [] };
-      clearInterval(window.__drvT);
-      hideTalk(); document.getElementById('overlay').style.display = 'none'; document.getElementById('coach').hidden = true;
-      if (G) { G.over = true; G.gen++; }
-      if (it.kind === 'lesson') { localStorage.removeItem('mjLesson_' + it.id); tut = { lesson: it.id, mode: '', phase: '', i: 0 }; showHome(); showDojo(); const b = [...document.querySelectorAll('button')].find(x => x.innerText.includes(it.name.split('：')[1])); if (b) b.click(); else __drv.errors.push('道場のボタンが見つからない'); }
-      if (it.kind === 'zero') { if (!HERO.origin) { HERO = Object.assign(blankHero(), { name: 'テスト', origin: 'student' }); saveHero(); } lsSet('mjZero', String(it.id)); showHome(); zeroStart(it.id); }
-      if (it.kind === 'story') { if (!HERO.origin) { HERO = Object.assign(blankHero(), { name: 'テスト', origin: 'student' }); saveHero(); } lsSet('mjZero', String(ZERO.length)); lsSet('mjStory', String(it.id)); showHome(); storyStart(it.id); }
-      if (it.kind === 'stage') { __stageDone = false; localStorage.removeItem('mjSaveGame'); lsSet('mjZero', String(ZERO.length)); lsSet('mjStory', String(STORY.length)); lsSet('mjStage', String(it.id));
-        if (!storyPath()[it.id] && !HERO.route) { HERO.route = 'protect'; saveHero(); }
-        window.__endBefore = Object.keys(localStorage).filter(k => k.startsWith('mjEnd_')).length; window.__stName = (storyPath()[it.id] || {}).t || '?'; window.__stageEndSeen = false;
-        showHome(); startStage(it.id); }
-      window.__drvT = setInterval(__driveTick, 300);
-    }, it);
-    let done = false, last = '';
-    while (Date.now() - t0 < LIMIT * 1000) {
-      await new Promise(r => setTimeout(r, 2000));
-      const s = await Promise.race([new Promise(r => setTimeout(() => r({ ok: false, steps: -1, errors: ['evaluate が20秒応答しない（ダイアログか無限ループの疑い）'], log: '' }), 20000)), page.evaluate((it) => {
-        let ok;
-        if (it.kind === 'lesson') ok = lsGet('mjLesson_' + it.id) === '1';
-        else if (it.kind === 'zero') ok = zeroProgress() >= it.id + 1;
-        else if (it.kind === 'stage') { const st = storyPath()[it.id]; const endNow = Object.keys(localStorage).filter(k => k.startsWith('mjEnd_')).length;
-          if (st && (st.scene || st.teach)) ok = stageProgress() >= it.id + 1;
-          else if (st && (st.ending || st.p2final || st.id === 'master')) ok = (endNow > window.__endBefore && document.getElementById('vn').hidden) || !!window.__stageEndSeen;   // 勝って結末まで、または負けて「もう一度」の画面まで
-          else ok = !!window.__stageDone; }
-        else ok = storyProgress() >= it.id + 1;
-        return { ok, steps: __drv.steps, errors: __drv.errors, log: __drv.log.slice(-12).join(' ') };
-      }, it)]);
-      last = s.log;
-      if (s.errors.length) { console.log(`NG  ${it.name}: 例外 ${JSON.stringify(s.errors.slice(0, 3))}  直前: ${s.log}`); bad = true; results.push({ ...it, ok: false }); break; }
-      if (s.ok) { done = true; const nm = it.kind === 'stage' ? await page.evaluate('window.__stName') : ''; const lost = it.kind === 'stage' ? await page.evaluate('!!window.__stageEndSeen') : false; console.log(`OK  ${it.name}${nm ? '：' + nm : ''}: ${Math.round((Date.now() - t0) / 1000)}s  ${s.steps}操作${lost ? '（負けて「もう一度」の画面まで）' : ''}`); results.push({ ...it, ok: true }); break; }
+    let ok = false;
+    if (items.indexOf(it) === CRASH_TEST) { const b = browser; setTimeout(() => { try { b.process().kill('SIGKILL'); } catch (e) {} }, 3000); }
+    try { ok = await runItem(it); }
+    catch (e) {
+      if (!isCrash(e)) throw e;
+      // ブラウザ自体が落ちた：開き直して、この項目を1回だけやり直す（落ちたことは必ず表示する）
+      restarts++;
+      console.log(`再起動  ${it.name}: ブラウザが落ちた（${firstLine(e)}）。開き直して1回だけやり直す`);
+      try { await browser.close(); } catch (_) {}
+      await openBrowser();
+      try { ok = await runItem(it); }
+      catch (e2) {
+        if (!isCrash(e2)) throw e2;
+        console.log(`NG  ${it.name}: 開き直しても落ちた（${firstLine(e2)}）`);
+        try { await browser.close(); } catch (_) {}
+        await openBrowser();
+      }
     }
-    if (!done && !results.find(r => r === it || (r.kind === it.kind && r.id === it.id))) { console.log(`NG  ${it.name}: ${LIMIT}秒で終わらない  直前: ${last}`); bad = true; results.push({ ...it, ok: false }); }
-    await page.evaluate(() => { clearInterval(window.__drvT); });
+    if (!ok) bad = true;
+    try { await page.evaluate(() => { clearInterval(window.__drvT); }); } catch (e) {}
   }
-  await browser.close();
-  console.log(bad ? '通らない項目あり' : 'すべて通過');
+  try { await browser.close(); } catch (e) {}
+  console.log((bad ? '通らない項目あり' : 'すべて通過') + (restarts ? `（途中でブラウザが${restarts}回落ち、開き直した）` : ''));
   process.exit(bad ? 1 : 0);
 })().catch(e => { console.error(e); process.exit(2); });
