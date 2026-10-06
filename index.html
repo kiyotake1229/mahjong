@@ -264,6 +264,7 @@
   .rv-ev i{font-style:normal;font-weight:700;width:15px;height:15px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:9px;color:#111;flex:0 0 auto}
   .rv-ev.ri{border-color:#b8372a;color:#f0b0a8}.rv-ev.call{border-color:var(--gold);color:var(--gold-hi)}.rv-ev.end{border-color:var(--gold-hi);color:var(--gold-hi);font-weight:700}
   .rv-foot{display:flex;justify-content:center;gap:8px;margin-top:14px}
+  .wn-foot{position:sticky;bottom:0;margin:10px -26px 0;padding:14px 0 2px;background:linear-gradient(180deg,rgba(27,37,32,0),#1b2520 42%)}   /* お知らせの「とじる」：常に見える帯 */
   #modal h2{margin:0 0 10px;color:var(--gold-hi);font-family:var(--f-mincho);font-weight:700;font-size:21px;letter-spacing:.01em}
   #modal .yaku{text-align:left;display:inline-block;margin:10px 0;font-size:14px;line-height:1.9;min-width:220px}
   #modal .yaku .h{color:var(--muted);float:right;margin-left:24px;font-variant-numeric:tabular-nums}
@@ -659,6 +660,7 @@
   @media (max-height:500px) and (orientation:landscape){
     #modal{padding:14px 20px;max-height:calc(100vh - 16px)}
     .rb.rc{width:min(calc(94vw - 42px),478px)}   /* 余白が20pxの時の内側の幅 */
+    .wn-foot{margin:8px -20px 0}
     #modal h2{font-size:18px;margin-bottom:6px}
     #modal .yaku{line-height:1.6;margin:6px 0}
     #modal .handshow{margin:6px 0}
@@ -1620,7 +1622,7 @@ function askDecision(pid,req,cb){
 function reactionUI(pid,req,cb){
   let done=false;const pick=ch=>{if(done)return;done=true;G.offering=false;renderActions([],false);cb(ch);};
   const pass={label:'スルー',cls:'gray',fn:()=>pick({a:'pass'})};
-  const noCall={label:'この局は鳴かない',cls:'gray',fn:()=>{(G.noCall||(G.noCall={}))[pid]=true;toast('この局はポン・チーの確認を出しません（ロンは聞きます）',2200);pick({a:'pass'});}};
+  const noCall={label:'この局は鳴かない',cls:'gray',fn:()=>{(G.noCall||(G.noCall={}))[pid]=true;if(MODE==='guest')NET.noCall=guestHandKey();toast('この局はポン・チーの確認を出しません（ロンは聞きます）',2200);pick({a:'pass'});}};
   const callOpt=!G.tutorial&&ctlOf(pid)==='local';   // 画面の人の実戦だけ「この局は鳴かない」を出す
   let opts,guide;
   if(req.kind==='ron'){
@@ -2600,6 +2602,14 @@ function buildRiver(p,per,rowsMax){
   if(!row)addRow(0);
   return rv;
 }
+/* 名前が欄に入らない時は、文字を少しずつ小さくして収める（「プレイヤー1」「プレイヤー2」がどちらも「プレイ…」になって見分けられなかった）。
+   maxPx を渡すと、その幅を上限にする（em で上限を決めている欄は、文字を小さくすると上限も縮んでしまうため） */
+function fitName(n,maxPx){
+  if(!n)return;n.style.fontSize='';n.style.maxWidth='';
+  if(n.scrollWidth<=n.clientWidth+1)return;
+  if(maxPx)n.style.maxWidth=maxPx+'px';
+  for(const k of [.9,.8,.7]){n.style.fontSize=k+'em';if(n.scrollWidth<=n.clientWidth+1)return;}
+}
 function renderSeat(id,p,pos){
   const el=document.getElementById(id);el.innerHTML='';
   const turn=G.turn===p.id&&!G.over;
@@ -2617,13 +2627,13 @@ function renderSeat(id,p,pos){
     const backs=`<span class="backs" aria-label="手牌${p.hand.length}枚">${Array.from({length:p.hand.length},(_,i)=>`<i${drew&&i===p.hand.length-1?' class="drew"':''}></i>`).join('')}</span>`;
     ph.innerHTML=`<div class="l1">${wd}<span class="nm">${name}</span>${sc}</div><div class="l2">${pills}</div><div class="l3">${backs}</div>`;
     if(p.melds.length)ph.appendChild(meldBox());
-    el.appendChild(ph);el.appendChild(buildRiver(p,6,0));
+    el.appendChild(ph);fitName(ph.querySelector('.nm'));el.appendChild(buildRiver(p,6,0));
   }else{
     ph.classList.add('col');
     const hc=pos==='top'?`<span class="hc">手牌<b>${p.hand.length}</b></span>`:'';
     ph.innerHTML=`<div class="l1">${wd}<span class="nm">${name}</span></div><div class="l1">${sc}${hc}</div><div class="l2">${pills}</div>`;
     if(pos==='top'&&p.melds.length)ph.appendChild(meldBox());
-    el.appendChild(ph);
+    el.appendChild(ph);fitName(ph.querySelector('.nm'));
     const per=Math.max(6,Math.ceil((Math.max(G.players[(VIEW+2)%4].discards.length,G.players[VIEW].discards.length)+1)/3));
     el.appendChild(buildRiver(p,per,3));
   }
@@ -2638,6 +2648,7 @@ function renderCenter(){
   const rs=relSeat(L.pid);const pl=G.players[L.pid];const last=pl.discards[pl.discards.length-1];
   const claimed=typeof last==='object';
   ld.innerHTML=`<div class="who" style="--acc:${SEAT_COLOR[L.pid]}" title="${esc(pname(L.pid))}が捨てた牌"><svg class="arr" style="--rot:${ARROW_ROT[rs]}" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6h7M6.5 3l3 3-3 3"/></svg><b>${esc(pname(L.pid))}</b></div>`;
+  {const wb=ld.querySelector('.who b');if(wb)fitName(wb,parseFloat(getComputedStyle(wb).maxWidth)||0);}
   const t=tileEl(L.tile,'big'+(claimed?' claimed':''));ld.appendChild(t);
   if(claimed){const c=document.createElement('span');c.className='ldtag';c.textContent='鳴かれた';ld.appendChild(c);}
 }
@@ -3130,19 +3141,21 @@ const TOUR_STEPS=[
  {sel:'#myHand .tile.drawn, #myHand .tile:last-child',t:'山から<b>引いた牌</b>は、右端に少し離れて出る。いらなければ、その牌をそのまま捨ててもいい。'},
  {sel:'#seat0',t:'捨てた牌は自分の枠の<b>河（ホー）</b>に、左から順に並ぶ。相手の河も同じ。<b>相手が何を捨てたか</b>を見るのが、守りの基本だ。枠の色がその人の色。'},
  {sel:'#seat2 .info',t:'向かいの相手。名前・席の風・<b>点数</b>。「親」と付いている人がその局の親で、あがると点が1.5倍になる。'},
- {sel:'#center',t:'真ん中には<b>直前に捨てられた牌</b>が大きく出る。矢印と色で、誰が捨てたかが分かる。その下に、今やることも出る。'},
+ {sel:'#center',t:'真ん中には<b>直前に捨てられた牌</b>が大きく出る。矢印と色で、誰が捨てたかが分かる。その横に、今やることも出る。テンパイすると、<b>待ち牌と残り枚数</b>、あがった時の<b>点数の見込み</b>も出る。'},
  {sel:'.rinfo',t:'左上が<b>局の情報</b>。「残り」は山から引ける牌の枚数で、0になると流局（誰もあがれず終わり）。'},
  {sel:'.rinfo .wdora',t:'<b>ドラ表示牌</b>。この牌の<b>次の牌</b>がドラ。持っているだけで点が上がるボーナスだ。'},
- {sel:'#guide',t:'ここに<b>今やること</b>が出る。「おすすめ」と光る牌を捨てていけば、まずは間違いない。「いまの手を見る」で詳しい解説も読める。'},
+ {sel:'#rankLine',opt:true,t:'右上は<b>いまの順位</b>と、すぐ上の人との点差。タップすると、この局のあがりで順位が入れ替わる<b>条件</b>（ツモ・直撃・ほかから）が見られる。'},
+ {sel:'#guide',t:'ここに<b>今やること</b>が出る。「おすすめ」と光る牌を捨てていけば、まずは間違いない。「いまの手を見る」で詳しい解説も読める。慣れたら右上の「初心者」を切ると、案内が消えて卓がすっきりする。'},
  {sel:'#actions',t:'ツモ・ロン・立直・ポンなどのボタンは、<b>できる時だけ</b>ここに出る。意味が分からなければ「スルー」でいい。'},
  {sel:'#skillbar',t:'<b>スキルゲージ</b>。打つと溜まり、透視・千里眼・神引きが使える。この店だけの特別なルールだ。'},
  {sel:'#helpBtn',t:'メニュー。物語・道場・ルールブック・音の設定はここから。対局の途中でも開ける。'}
 ];
 function screenTour(onDone){
   let i=0;const clear=()=>document.querySelectorAll('.tour-hl').forEach(e=>e.classList.remove('tour-hl'));
-  const step=()=>{clear();const st=TOUR_STEPS[i];const el=document.querySelector(st.sel);if(el)el.classList.add('tour-hl');
+  const STEPS=TOUR_STEPS.filter(st=>{if(!st.opt)return true;const e=document.querySelector(st.sel);return !!(e&&!e.hidden&&e.offsetParent!==null);});   // opt の項目は、画面に出ている時だけ（練習中は順位行が出ない）
+  const step=()=>{clear();const st=STEPS[i];const el=document.querySelector(st.sel);if(el)el.classList.add('tour-hl');
     setSpeaker(tut.story!=null?'master':null);
-    coachShow(`<span class="qtag">画面の見方 ${i+1}/${TOUR_STEPS.length}</span> `+st.t,[{label:i<TOUR_STEPS.length-1?'次へ':'わかった',fn:()=>{i++;if(i<TOUR_STEPS.length)step();else{clear();lsSet('mjTour','1');onDone&&onDone();}}}],false);};
+    coachShow(`<span class="qtag">画面の見方 ${i+1}/${STEPS.length}</span> `+st.t,[{label:i<STEPS.length-1?'次へ':'わかった',fn:()=>{i++;if(i<STEPS.length)step();else{clear();lsSet('mjTour','1');onDone&&onDone();}}}],false);};
   step();
 }
 function tourFromMenu(){
@@ -3823,7 +3836,7 @@ function guestOnData(m,giveUp){
     case 'handover':if(migCanStart())guestMigrate(true);else guestOnClose(true);break;
     case 'away':NET.hostAway=true;toast('部屋主が画面を離れています',2200);break;
     case 'back':NET.hostAway=false;break;
-    case 'newhand':NET.ask=null;stopAskBar();renderActions([],false);document.getElementById('overlay').style.display='none';break;
+    case 'newhand':NET.ask=null;NET.noCall=null;stopAskBar();renderActions([],false);document.getElementById('overlay').style.display='none';break;
     case 'toast':toast(String(m.v||''),3000);break;
     case 'chat':if(MP.active&&G&&Number.isInteger(m.pid)&&m.pid>=0&&m.pid<4&&m.pid!==NET.seat&&chatOk(m.k))chatShow(m.pid,m.k);break;
     case 'bye':clearRejoin(NET.code);guestOnClose(true);break;
@@ -3848,8 +3861,11 @@ function guestApply(g){
   if(NET.ask&&NET.ask.req.kind==='turn'&&(G.turn!==VIEW||G.phase!=='discard')){NET.ask=null;stopAskBar();renderActions([],false);}
   render();
 }
+/* オンラインの参加者：鳴きの確認は部屋主の端末が出すので、「この局は鳴かない」は参加者の端末で覚えておき、その局のポン・チーには自動でスルーを返す */
+const guestHandKey=()=>G?G.roundWind+'|'+G.dealer+'|'+(G.honba||0):'';
 function guestOnAsk(m){
   if(!G)return;NET.ask=m;
+  if((m.req.kind==='pon'||m.req.kind==='chi')&&NET.noCall&&NET.noCall===guestHandKey()){netAct({a:'pass'});return;}
   if(m.req.kind==='turn'){G.turn=VIEW;G.phase='discard';render();humanTurn();sfx.draw();}
   else reactionUI(VIEW,m.req,ch=>netAct(ch));
   startAskBar(m.ms);
@@ -6255,12 +6271,8 @@ function showHome(){
 const WHATS_NEW=[
  '初心者モードのON/OFFを覚えるようになりました（前は開くたびにONに戻っていた）。タッチ操作で、捨てた位置の牌が浮いて見える問題などを修正',
  '待ちの表示に「残り枚数」と「あがった時の点数の見込み」（タップで待ちごとの詳細）。右上の順位をタップすると、この局で順位が入れ替わる条件（ツモ・直撃・ほかから）',
- '遊びやすさ：速度の初期値を標準に。鳴きの確認は役の見込みがある時だけ（設定で「毎回」「出さない」も）＋確認に「この局は鳴かない」。テンパイしたら待ち牌とフリテンを表示。左上に順位と点差（オーラスの印つき）',
+ '遊びやすさ：速度の初期値を標準に。鳴きの確認は役の見込みがある時だけ（設定で「毎回」「出さない」も）＋確認に「この局は鳴かない」。テンパイしたら待ち牌とフリテンを表示。右上に順位と点差（オーラスの印つき）',
  '物語 第二部『翠、継ぐ者』：第七章〜第十章＋終章。弟子ナオ、街の雀荘対抗戦、翡翠の八雲、翠杯。結末は3つ（第六章のあとに続きます）',
- '新しい遊び方：状況スタート（点数状況から始める局）、団体戦（二人の合計点）、読み筋（リーチ者に対する危険度の印）',
- '相手の手帳：同じ相手との記録（リーチ率・鳴き率・和了率）が相手えらびに出ます',
- '翠ノートの結末ページから「結末をもう一度見る」',
- '9月25〜27日の更新：今日の一局、局のふりかえり、戦績・役図鑑・実績、引き継ぎコード、卓の色と音量、ルールの設定',
 ];
 function maybeWhatsNew(){
   if(lsGet('mjSeenVer')===APP_VER)return;
@@ -6271,7 +6283,7 @@ function maybeWhatsNew(){
   const ov=document.getElementById('overlay');ov.style.display='flex';const m=document.getElementById('modal');
   m.innerHTML=`<h2>新しくなりました</h2><div class="sub">版 ${APP_VER}</div>
     <div class="rb" style="max-width:480px"><ul style="margin:6px 0 0;padding-left:1.2em;font-size:13px;line-height:1.75">${WHATS_NEW.map(t=>`<li>${esc(t)}</li>`).join('')}</ul></div>
-    <button class="btn" id="wnClose" style="margin-top:14px;min-width:150px">とじる</button>`;
+    <div class="wn-foot"><button class="btn" id="wnClose" style="min-width:150px">とじる</button></div>`;   // 項目が多くて枠がスクロールする時も、とじるボタンは常に見える（下の帯に文字が隠れる）
   document.getElementById('wnClose').onclick=()=>{ov.style.display='none';};
 }
 function hideHome(){const h=document.getElementById('home');if(!h||!h.classList.contains('on'))return;h.classList.remove('on','in');const sy=document.getElementById('hmSay');if(sy)sy.hidden=true;checkRotate();}
