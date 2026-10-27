@@ -328,6 +328,58 @@
   .pg-tbl summary{cursor:pointer;text-align:center}
   .pg-tbl table{width:100%;border-collapse:collapse;margin-top:6px;font-variant-numeric:tabular-nums}
   .pg-tbl th,.pg-tbl td{padding:3px 6px;border-bottom:1px solid var(--line);text-align:right}.pg-tbl th:first-child,.pg-tbl td:first-child{text-align:left}
+  /* 終局 */
+  #modal .fin-list{display:flex;flex-direction:column;gap:5px;max-width:440px;margin:4px auto 8px;width:100%}
+  @media (min-width:600px){
+    #modal.fin{max-width:min(96vw,780px)}
+    #modal .fin-wrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"list side" "foot side";grid-template-rows:auto 1fr;column-gap:14px;align-items:start}
+    #modal .fin-wrap .fin-list{grid-area:list}#modal .fin-wrap .fin-side{grid-area:side}#modal .fin-wrap .fin-foot{grid-area:foot;margin-top:10px}
+    #modal .fh-c{min-width:0;flex:1;padding:3px 6px}
+    #modal .fin-wrap .fin-list{margin:0}
+    #modal .fin-side>*:first-child{margin-top:0}}
+  @media (max-height:500px){
+    #modal.fin h2{margin-bottom:6px}
+    #modal .fin-row{padding-top:3px;padding-bottom:3px}#modal .fin-row.r0{padding-top:5px;padding-bottom:5px}
+    #modal .fin-say{margin-bottom:6px}#modal .fin-dan{margin-top:6px;padding:7px 11px}#modal .fin-foot{margin-top:8px}}
+  #modal .fin-row{display:grid;grid-template-columns:44px 36px 1fr auto;align-items:center;gap:8px;padding:5px 12px 5px 8px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.035);text-align:left;
+    opacity:0;animation:finIn .42s cubic-bezier(.2,1.2,.4,1) forwards}
+  @keyframes finIn{from{opacity:0;transform:translateX(-16px) scale(.97)}to{opacity:1;transform:none}}
+  #modal .fin-row.r0{border-color:var(--gold);background:linear-gradient(90deg,rgba(201,169,97,.16),rgba(201,169,97,.04));padding-top:8px;padding-bottom:8px}
+  #modal .fin-row.me{box-shadow:inset 3px 0 0 var(--gold-hi)}
+  #modal .fin-row.r0.me{animation:finIn .42s cubic-bezier(.2,1.2,.4,1) forwards,finGlow 2.4s ease-in-out .6s 2}
+  @keyframes finGlow{0%,100%{box-shadow:inset 3px 0 0 var(--gold-hi),0 0 0 rgba(227,205,151,0)}50%{box-shadow:inset 3px 0 0 var(--gold-hi),0 0 18px rgba(227,205,151,.35)}}
+  #modal .fr-rk{font-family:var(--f-mincho);font-size:22px;font-weight:700;color:var(--muted);line-height:1}
+  #modal .fr-rk small{font-size:11px;margin-left:1px}
+  #modal .fin-row.r0 .fr-rk{color:var(--gold-hi);font-size:27px}
+  #modal .fr-pt{width:34px;height:34px;border-radius:50%;overflow:hidden;background:rgba(0,0,0,.25);display:block}
+  #modal .fr-pt svg{width:100%;height:100%;display:block}
+  #modal .fr-nm{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #modal .fr-nm em{font-style:normal;font-size:10.5px;font-weight:700;color:#2a2015;background:var(--gold);border-radius:4px;padding:0 5px;margin-left:6px;vertical-align:1px}
+  #modal .fr-sc{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+  #modal .fr-sc small{display:block;font-size:11px;font-weight:700}
+  #modal .fin-say{display:flex;align-items:center;gap:10px;max-width:440px;margin:4px auto 8px;text-align:left;transition:opacity .35s ease}
+  #modal .fin-say .fs-pt{width:46px;height:46px;flex:0 0 46px;border-radius:50%;overflow:hidden;background:rgba(0,0,0,.25)}
+  #modal .fin-say .fs-pt svg{width:100%;height:100%;display:block}
+  #modal .fin-say .fs-b{position:relative;flex:1;background:#f3eee2;color:#2a2620;border-radius:12px;padding:7px 12px;font-size:13px;line-height:1.55}
+  #modal .fin-say .fs-b::before{content:"";position:absolute;left:-6px;top:50%;margin-top:-6px;border:6px solid transparent;border-left:0;border-right-color:#f3eee2}
+  #modal .fin-say .fs-b b{display:block;font-size:10.5px;color:#7a6a4a;margin-bottom:1px}
+  #modal .fin-hl{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;max-width:440px;margin:2px auto 2px;transition:opacity .35s ease}
+  #modal .fh-c{display:flex;flex-direction:column;align-items:center;min-width:64px;padding:4px 10px;border:1px solid var(--line);border-radius:8px;background:rgba(255,255,255,.04)}
+  #modal .fh-c small{font-size:10px;color:var(--muted)}#modal .fh-c b{font-size:14px;font-variant-numeric:tabular-nums}
+  #modal .fin-best{margin:2px 0 4px;transition:opacity .35s ease}
+  #modal .fin-dan{max-width:440px;margin:8px auto 4px;padding:9px 12px;border:1px solid rgba(201,169,97,.4);border-radius:10px;background:rgba(201,169,97,.06);text-align:left;transition:opacity .35s ease}
+  #modal .fd-top{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+  #modal .fd-l{font-size:11px;color:var(--muted)}#modal .fd-n{font-family:var(--f-mincho);font-size:20px;color:var(--gold-hi)}
+  #modal .fd-top .dlt{font-size:13px}#modal .fd-why{font-size:10.5px;color:var(--muted);margin-left:auto}
+  #modal .fd-bar{height:8px;border-radius:4px;background:rgba(201,169,97,.16);overflow:hidden;margin:6px 0 4px}
+  #modal .fd-bar i{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,var(--gold),var(--gold-hi));transition:width .7s cubic-bezier(.3,.9,.3,1)}
+  #modal .fd-sub{font-size:11px;color:var(--muted)}
+  #modal .fd-ev{display:none;margin-top:6px;font-size:14px;font-weight:700;text-align:center}
+  #modal .fd-ev.on{display:block;animation:rankpop .5s cubic-bezier(.2,1.5,.4,1)}
+  #modal .fd-ev.up{color:var(--gold-hi)}#modal .fd-ev.down{color:#f0a89e}
+  #modal .fin-foot{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px;transition:opacity .3s ease}
+  #modal.done .fin-row{animation:none;opacity:1}
+  .hm-dan{display:inline-block;margin-left:6px;font-size:10.5px;font-weight:700;color:#2a2015;background:var(--gold);border-radius:4px;padding:0 6px;vertical-align:2px;letter-spacing:.02em}
   #modal .fin-acc{margin:2px 0 10px}
   #modal .fin-acc b{color:var(--gold-hi)}
   .tile.tcut{outline:2px solid #e06a5e;outline-offset:1px;transform:translateY(-3px)}
@@ -1037,6 +1089,7 @@ function statWin(ev,tsumo,gained,pay){
   if(!statOK())return;const S=STATS;
   S.win++;if(tsumo)S.tsumo++;else S.ron++;S.winPts+=gained;
   if(gained>S.maxPts){S.maxPts=gained;S.maxYaku=ev.yaku.filter(v=>!v.dora).map(v=>v.n).join(' ')+'（'+ev.han+'翻）';}
+  if(G.hl){G.hl.w++;if(gained>G.hl.best){G.hl.best=gained;G.hl.bestY=ev.yaku.filter(v=>!v.dora).map(v=>yakuLabel(v.n)).join('・')+'　'+ev.han+'翻';}}
   if(ev.han>S.maxHan)S.maxHan=ev.han;
   if(ev.han>=13)S.yakuman++;else if(rankName(ev.fu,ev.han))S.mangan++;
   if(pay&&pay.pao!=null)S.pao++;
@@ -1057,6 +1110,7 @@ function statHandEnd(kind,o){
   else if(kind==='abort'){S.abort++;if(o.reason==='九種九牌'&&o.by===0)S.kyushu++;}
   else if(kind==='win'){if(o.fromPid===0&&!(o.winners||[]).includes(0))S.dealIn++;}
   {const d=accDay();d.h++;if(kind==='win'&&o.fromPid===0&&!(o.winners||[]).includes(0))d.di++;}
+  if(G.hl){if(p.riichi)G.hl.ri++;if(kind==='win'&&o.fromPid===0&&!(o.winners||[]).includes(0))G.hl.di++;}
   S.vs=S.vs||{};G.players.forEach((p,i)=>{if(i===0||!p.charId)return;const v=S.vs[p.charId]||(S.vs[p.charId]={hands:0,riichi:0,call:0,win:0,dealIn:0});v.hands++;if(p.riichi)v.riichi++;if(p.melds.some(m=>!m.concealed))v.call++;if(kind==='win'&&(o.winners||[]).includes(i))v.win++;if(kind==='win'&&o.fromPid===i&&!(o.winners||[]).includes(i))v.dealIn++;});
   saveStats();checkAch();
 }
@@ -1067,6 +1121,30 @@ function statGameEnd(){
   const sc=G.players.map(p=>p.score),me=sc[0],rank=sc.filter(x=>x>me).length;   // 同点は上位扱い
   S.games++;S.rank[rank]++;if(me<0)S.tobi++;if(me>S.best)S.best=me;
   saveStats();checkAch();
+}
+
+/* ===== 段位：自由対局（半荘・東風戦）の順位で上がる。ひとり用のみ。戦績（STATS.dan）に保存 =====
+   1つ上がるのに必要な点を DANS に。級のうちは下がらない。初段から上は、点が0を割ると1つ下がる（下がった段の半分の点から） */
+const DANS=[['入門',20],['9級',30],['8級',40],['7級',50],['6級',60],['5級',70],['4級',80],['3級',90],['2級',100],['1級',100],
+  ['初段',200],['二段',200],['三段',300],['四段',300],['五段',400],['六段',400],['七段',500],['八段',500],['九段',600],['十段',0]];
+const DAN_FIRST=10,DAN_BASE=[60,30,0,-30],DAN_MUL={easy:.5,normal:1,hard:1.3,oni:1.6},LV_ORDER=['easy','normal','hard','oni'];
+const danData=()=>STATS.dan||(STATS.dan={lv:0,pts:0,max:0,games:0});
+const danName=lv=>DANS[Math.max(0,Math.min(DANS.length-1,lv))][0];
+const danNeed=lv=>DANS[lv]?DANS[lv][1]:0;
+const danOK=()=>statOK()&&G.stage==null&&!G.storyFinal&&G.practice==null&&!G.daily&&!G.dark;
+function danDelta(rank,lv,len){   // rank: 0=1位
+  let v=DAN_BASE[rank]*(DAN_MUL[lv]||1)*(len==='ton'?.6:1);
+  if(rank===3&&danData().lv>DAN_FIRST)v-=5*(danData().lv-DAN_FIRST);   // 段が上がるほど4位が重い
+  return Math.round(v);
+}
+function danLine(){const d=danData();return danName(d.lv)+(danNeed(d.lv)?'（昇段まで あと'+(danNeed(d.lv)-d.pts)+'）':'');}
+function danApply(rank){
+  const d=danData(),before={lv:d.lv,pts:d.pts},delta=danDelta(rank,G.cpuLv||CPU_LV,G.len);let ev='';
+  d.games++;d.pts+=delta;
+  if(danNeed(d.lv)&&d.pts>=danNeed(d.lv)){d.pts-=danNeed(d.lv);d.lv++;ev='up';if(d.lv>=DAN_FIRST)d.pts=Math.max(d.pts,Math.round(danNeed(d.lv)/2));if(!danNeed(d.lv))d.pts=0;}
+  else if(d.pts<0){if(d.lv>DAN_FIRST){d.lv--;d.pts=Math.round(danNeed(d.lv)/2);ev='down';}else d.pts=0;}
+  d.max=Math.max(d.max||0,d.lv);saveStats();
+  return {before,after:{lv:d.lv,pts:d.pts},delta,ev};
 }
 
 /* ===== 実績（戦績・道場・物語の進みから判定。解除した日時を mjAch に保存） ===== */
@@ -1601,7 +1679,7 @@ function newHand(keep,restart){
      phase:'draw',over:false,riichiSticks:sticks,ippatsu:[false,false,false,false],callHappened:false,
      rinshanFlag:false,lastDiscard:null,advance:false,keepHonba:false,pendingRiichiDeclarer:-1,offering:false,log:[],
      tutorial:false,tutGate:null,gen:++GEN,skill:{foresight:false,peekTiles:null,god:false},storyFinal,stage,wager,stats,practice:null,dark,len,
-     startScores:scores.slice(),startHonba:honba,startSticks:sticks,accG:keep&&prev&&prev.accG?prev.accG:{s:0,n:0},
+     startScores:scores.slice(),startHonba:honba,startSticks:sticks,accG:keep&&prev&&prev.accG?prev.accG:{s:0,n:0},hl:keep&&prev&&prev.hl?prev.hl:{w:0,di:0,ri:0,best:0,bestY:''},cpuLv:keep&&prev&&prev.cpuLv?prev.cpuLv:CPU_LV,
      ctl:MP.active?MP.seats.map((st,i)=>st.kind==='cpu'?'cpu':(MODE==='hot'?'local':(i===MP.me?'local':'remote'))):['local','cpu','cpu','cpu']};
   if(dailyNow)G.daily=dailyNow;
   players.forEach(p=>{if(p.cheat)rigHand(p,wall,p.cheat);});
@@ -3131,16 +3209,50 @@ function showFinal(){
   if(G.stage!=null){return showStageResult();}
   if(MP.active)return mpFinal();
   const ov=document.getElementById('overlay');ov.style.display='flex';const m=document.getElementById('modal');
-  const rank=G.players.map((p,i)=>({name:p.name||POS[i],score:p.score})).sort((a,b)=>b.score-a.score);
+  const rank=G.players.map((p,i)=>({i,p,name:p.name||POS[i],score:p.score})).sort((a,b)=>b.score-a.score||a.i-b.i);
+  const myRank=rank.findIndex(r=>r.i===0);
+  const dan=danOK()&&!G._danDone?(G._danDone=true,danApply(myRank)):null;
+  const pt=r=>r.i===0?portraitSVG('hero_'+(HERO.origin||'student'),'calm',myRank===0?'smile':'calm'):(r.p.charId&&CHARS[r.p.charId]?portraitSVG(r.p.charId,'calm'):'');
+  // 順位は4位から1人ずつ。1位が出たら、ひとこと → ハイライト → 打ち方 → 段位 → ボタン
+  const STEP=420,T1=3*STEP+300;
+  const rows=rank.map((r,k)=>{const d=r.score-25000;
+    return `<div class="fin-row r${k} ${r.i===0?'me':''}" style="animation-delay:${(3-k)*STEP}ms"><span class="fr-rk">${k+1}<small>位</small></span><span class="fr-pt">${pt(r)}</span>
+      <span class="fr-nm">${esc(r.name)}${r.i===0&&r.name!=='あなた'?'<em>あなた</em>':''}</span><span class="fr-sc">${r.score.toLocaleString()}<small class="dlt ${d>=0?'p':'m'}">${d?fmtD(d):'±0'}</small></span></div>`;}).join('');
+  // ひとこと：あなたが1位なら2位の人が、それ以外は1位の人が
+  const spk=myRank===0?rank.find(r=>r.i!==0&&r.p.charId):rank[0];let say='';
+  if(spk&&spk.p.charId){const id=spk.p.charId,F=FINAL_LINES[id]||{},B=BANTER[id]||{};
+    const L=myRank===0?(F.heroTop||B.lose||[]):(F.top||B.win||[]);
+    if(L.length)say=`<div class="fin-say hidden"><span class="fs-pt">${portraitSVG(id,'calm',myRank===0?'smile':'laugh')}</span><span class="fs-b"><b>${esc(CHARS[id]?CHARS[id].n:spk.name)}</b>${esc(fmt(L[(Math.random()*L.length)|0]))}</span></div>`;}
+  const h=G.hl;let hl='';
+  if(h){const chip=(k,v)=>`<span class="fh-c"><small>${k}</small><b>${v}</b></span>`;
+    hl=`<div class="fin-hl hidden">${chip('あがり',h.w+'回')}${chip('放銃',h.di+'回')}${chip('リーチ',h.ri+'回')}${h.best?chip('最高打点',h.best.toLocaleString()):''}</div>${h.best&&h.bestY?`<div class="sub fin-best hidden">${esc(h.bestY)}</div>`:''}`;}
   const a=G.accG,A=STATS.acc;let accLine='';
   if(a&&a.n>=6){const pc=Math.round(a.s/a.n*100),bs=A?A.s-a.s:0,bn=A?A.n-a.n:0,base=bn>=20?Math.round(bs/bn*100):null;
-    accLine=`<div class="sub fin-acc">この半荘の打ち方：おすすめと同じ選び方 <b>${pc}%</b>（${a.n}打中 ${a.s}打）${base!=null&&base!==pc?`　いつもより <span class="dlt ${pc>base?'p':'m'}">${pc>base?'+':'−'}${Math.abs(pc-base)}pt</span>`:''}</div>`;}
+    accLine=`<div class="sub fin-acc hidden">打ち方の正確さ <b>${pc}%</b>（おすすめと同じ ${a.s}/${a.n}打）${base!=null&&base!==pc?`　いつもより <span class="dlt ${pc>base?'p':'m'}">${pc>base?'+':'−'}${Math.abs(pc-base)}pt</span>`:''}</div>`;}
+  let danHtml='';
+  if(dan){const b=dan.before,pct=(lv,p)=>danNeed(lv)?Math.max(0,Math.min(100,p/danNeed(lv)*100)):100;
+    const why=`${myRank+1}位${(G.cpuLv||CPU_LV)!=='normal'?'・'+((CPU_LEVELS.find(L=>L.id===(G.cpuLv||CPU_LV))||{}).t||'')+' ×'+DAN_MUL[G.cpuLv||CPU_LV]:''}${G.len==='ton'?'・東風戦 ×0.6':''}`;
+    danHtml=`<div class="fin-dan hidden" data-p0="${pct(b.lv,b.pts)}" data-p1="${pct(dan.after.lv,dan.after.pts)}">
+      <div class="fd-top"><span class="fd-l">段位</span><b class="fd-n">${danName(b.lv)}</b><span class="dlt ${dan.delta>=0?'p':'m'}">${dan.delta>=0?'+':'−'}${Math.abs(dan.delta)}</span><small class="fd-why">${esc(why)}</small></div>
+      <div class="fd-bar"><i style="width:${pct(b.lv,b.pts)}%"></i></div>
+      <div class="fd-sub">${danNeed(dan.after.lv)?`昇段まで あと ${danNeed(dan.after.lv)-dan.after.pts}`:'最高の段位'}${dan.after.lv<DAN_FIRST?'（級のうちは下がりません）':''}</div>
+      ${dan.ev?`<div class="fd-ev ${dan.ev}">${dan.ev==='up'?'昇段！':'降段'}　${danName(b.lv)} → <b>${danName(dan.after.lv)}</b></div>`:''}</div>`;}
+  m.classList.add('fin');   // 横に広い画面では2列（左に順位、右にひとこと・ハイライト・段位）。ボタンで閉じる時に外す
   m.innerHTML=`<h2>終局</h2>
-    <div class="yaku">${rank.map((r,i)=>`${i+1}位 ${r.name}<span class="h">${r.score}</span>`).join('<br>')}</div>
-    ${accLine}
-    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap"><button class="btn" id="nextBtn">もう一度</button><button class="btn gray" id="finHome">ホームへ</button></div>`;
-  document.getElementById('nextBtn').onclick=()=>{ov.style.display='none';G=null;newHand(false);};
-  document.getElementById('finHome').onclick=()=>{ov.style.display='none';G=null;showHome();};
+    <div class="fin-wrap"><div class="fin-list">${rows}</div><div class="fin-side">${say}${hl}${accLine}${danHtml}</div>
+    <div class="fin-foot hidden"><button class="btn" id="nextBtn">もう一度</button><button class="btn gray" id="finHome">ホームへ</button></div></div>`;
+  const later=[...m.querySelectorAll('.fin-say,.fin-hl,.fin-best,.fin-acc,.fin-dan,.fin-foot')],timers=[];let done=false;
+  const toBottom=()=>{if(m.scrollHeight>m.clientHeight+4)m.scrollTo({top:m.scrollHeight,behavior:'smooth'});};
+  const danRun=(instant)=>{const el=m.querySelector('.fin-dan');if(!el)return;const bar=el.querySelector('.fd-bar i'),ev=el.querySelector('.fd-ev');
+    const fin=()=>{if(dan.ev==='up'&&!instant){bar.style.transition='none';bar.style.width='0%';void bar.offsetWidth;bar.style.transition='';}bar.style.width=el.dataset.p1+'%';if(ev){ev.classList.add('on');el.querySelector('.fd-n').textContent=danName(dan.after.lv);if(dan.ev==='up'&&!instant){confetti();try{sfx.sting();}catch(e){}haptic('win');}}};
+    if(instant||!dan.ev){if(instant)bar.style.transition='none';requestAnimationFrame(()=>{bar.style.width=el.dataset.p1+'%';if(ev)fin();});return;}
+    bar.style.width=(dan.ev==='up'?100:0)+'%';timers.push(setTimeout(fin,750));};   // 昇段はいったん満タン、降段は空にしてから
+  const finish=()=>{if(done)return;done=true;timers.forEach(clearTimeout);m.classList.add('done');later.forEach(e=>e.classList.remove('hidden'));danRun(true);setTimeout(toBottom,30);};
+  if(myRank===0)timers.push(setTimeout(()=>{if(!done){confetti();try{sfx.tsumo();}catch(e){}haptic('win');}},T1-150));
+  later.forEach((e,k)=>timers.push(setTimeout(()=>{e.classList.remove('hidden');if(e.classList.contains('fin-dan'))danRun(false);toBottom();if(k===later.length-1)done=true,m.classList.add('done');},T1+300+k*380)));
+  m.onclick=(e)=>{if(e.target.closest('button'))return;finish();};
+  document.getElementById('nextBtn').onclick=()=>{m.onclick=null;m.classList.remove('fin');ov.style.display='none';G=null;newHand(false);};
+  document.getElementById('finHome').onclick=()=>{m.onclick=null;m.classList.remove('fin');ov.style.display='none';G=null;showHome();};
 }
 
 document.getElementById('newGame').onclick=(e)=>{if(chatOn()){e.stopPropagation();chatPanelToggle();return;}if(MP.active){mpMenu();return;}if(!G||G.tutorial){showChooser();return;}if(confirm('この局を配り直しますか？（点数・本場は局の開始時に戻ります）'))newHand(true,true);};
@@ -4713,6 +4825,14 @@ const BANTER={
   lose:['……計算外です。','数字にない打ち方だ。','……なるほど。データを更新します。'],heroTsumo:['確率の内側、ですね。','……いいツモだ。'],
   call:['鳴きます。効率です。'],draw:['流局。期待値は取りました。','想定内です。'],
   south:['南場。点差から逆算します。','後半。数字で詰めます。']}
+};
+const FINAL_LINES={
+ master:{top:['今日は私の番だったね。また打とう。','年の功、というやつかな。……楽しかったよ。'],heroTop:['見事だ、{n}。いい半荘だった。','強くなったね。……店主として嬉しいよ。']},
+ hayato:{top:['っしゃあ！ トップは俺だ！','速さの勝利！ 次も俺がもらう！'],heroTop:['くっそー、{n}にトップ取られた！ もう一回だ！','やるじゃん{n}……次は負けねえ！']},
+ shizuka:{top:['……振り込まなければ、負けない。','静かに、トップ。'],heroTop:['……おめでとう、{n}。守りも見ていたわ。','いい半荘。……次は、私が取る。']},
+ gen:{top:['勝負は勝ってこそだ。','ふん、トップは譲らねえ。'],heroTop:['……やるじゃねえか、{n}。認めてやる。','負けは負けだ。次は取り返す。']},
+ ren:{top:['基本通りに打てば、こうなります。','トップ。……教科書通りです。'],heroTop:['{n}、おめでとうございます。数字以上に強かったです。','完敗です。次は、計算し直してきます。']},
+ kuroda:{top:['期待値どおりの結果です。','数字は嘘をつきません。'],heroTop:['……想定外の数字です。おめでとうございます。','{n}、あなたの期待値を見直します。']}
 };
 let BANT_T=[0,0,0,0];
 /* 掛け合いの種類ごとの表情 */
@@ -6390,7 +6510,7 @@ function showChooser(){if(MP.active)return mpMenu();showHome();}
 
 
 /* ===== タイトル画面・ホーム画面・対局中メニュー・設定 ===== */
-const APP_VER='2026.10.27.3';
+const APP_VER='2026.10.27.4';
 const BATTLE_FACE={nao:'smile',yakumo:'calm',shino:'calm',fukuju:'smile',tome:'smile',domoto:'angry',kuroda:'angry',karasu:'smile',washio:'calm',minato:'calm',shizuka:'calm',master:'smile',hayato:'smile',gen:'smile',ren:'smile'};   // 「○○ 戦」のカットインの表情
 const HM_IC={
  daily:'<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/><circle cx="12" cy="15.5" r="2"/>',
@@ -6450,10 +6570,10 @@ function showHome(){
 }
 /* ===== 更新のお知らせ：版が変わって最初にホームを開いた時に1回。まっさらな端末には出さない ===== */
 const WHATS_NEW=[
+ '自由対局に「段位」：打ち終えた順位で入門→9級…→初段…→十段と上がります（強い相手ほど多くもらえる。級のうちは下がらない）。半荘の終わりは順位を1人ずつ発表し、キャラのひとこと・この半荘のハイライト・段位の増減を表示',
  '道場に「今日の1問」：毎日1問の「何を切る？」。ワンポイントでまちがえた場面は復習問題になります。戦績に「上達」タブ（日ごとの打ち方の正確さと放銃率）。半荘の終わりに「この半荘の打ち方」',
  'ワンポイント：局が終わると、自分の打牌から「ここはこう切ると良かった」をひとつ教えます（結果画面は初心者モードの時。ふりかえり画面ではいつでも）。初心者モードでは、相手のリーチ中に手牌へ当たりやすさの印（緑・黄・赤）',
- '初心者向けの見直し：表記を「リーチ」に統一。流局・あがりの画面に全員の点数の増減。「翻・符」「満貫」もタップで説明。リーチした時の1,000点の案内。長い案内文も全部読めるように。対局開始の吹き出しが案内に重ならないように',
- '初心者モードのON/OFFを覚えるようになりました（前は開くたびにONに戻っていた）。タッチ操作で、捨てた位置の牌が浮いて見える問題などを修正'
+ '初心者向けの見直し：表記を「リーチ」に統一。流局・あがりの画面に全員の点数の増減。「翻・符」「満貫」もタップで説明。リーチした時の1,000点の案内。長い案内文も全部読めるように。対局開始の吹き出しが案内に重ならないように'
 ];
 function maybeWhatsNew(){
   if(lsGet('mjSeenVer')===APP_VER)return;
@@ -6504,7 +6624,7 @@ function renderHome(){
        <span class="who">${portraitSVG(o?'hero_'+HERO.origin:nx.who,'calm',o?'smile':'calm')}</span>
      </button>
      <div class="hm-grid">
-       <button class="hm-card free" id="hmFree"><span class="ic">${hmIc('free')}</span><span class="tx"><b>自由対局</b><small>${FREE_CAST?'相手：'+FREE_CAST.map(id=>CHARS[id]?CHARS[id].n:'?').join('・'):'相手はおまかせ'}／${GAME_LEN==='ton'?'東風戦':'半荘'}／CPU：${lvl}</small></span></button>
+       <button class="hm-card free" id="hmFree"><span class="ic">${hmIc('free')}</span><span class="tx"><b>自由対局${(STATS.dan&&STATS.dan.games)?`<span class="hm-dan">${danName(STATS.dan.lv)}</span>`:''}</b><small>${FREE_CAST?'相手：'+FREE_CAST.map(id=>CHARS[id]?CHARS[id].n:'?').join('・'):'相手はおまかせ'}／${GAME_LEN==='ton'?'東風戦':'半荘'}／CPU：${lvl}</small></span></button>
        <button class="hm-card vs" id="hmVs"><span class="ic">${hmIc('vs')}</span><span class="tx"><b>みんなで対戦</b><small>この端末で交代／オンライン（部屋コード）</small></span></button>
        <button class="hm-card dojo" id="hmDojo"><span class="ic">${hmIc('dojo')}</span><span class="tx"><b>道場</b><small>8レッスン ${done}/${LESSONS.length}・${nkLabel()}</small></span></button>
        <button class="hm-card notes" id="hmNotes"><span class="ic">${hmIc('notes')}</span><span class="tx"><b>翠ノート</b><small>集めた秘密と結末 ${HERO.notes.length}/${NOTES.length}</small></span></button>
@@ -6706,6 +6826,8 @@ function showFreeSetup(){
       <div style="font-size:11px;color:var(--muted);margin-bottom:4px">${cur.d}</div>
       <div class="dojo-sec">対局の長さ</div>
       <div class="seg" id="fsLen"><button data-v="han" class="${GAME_LEN==='han'?'on':''}">半荘（東・南）</button><button data-v="ton" class="${GAME_LEN==='ton'?'on':''}">東風戦（東のみ）</button></div>
+      <div class="dojo-sec">段位　<b style="color:var(--gold-hi);letter-spacing:0">${esc(danLine())}</b></div>
+      <div style="font-size:11px;color:var(--muted);line-height:1.6;max-width:460px;margin:0 auto 2px">打ち終えた順位で段位の点が増えます：1位 +${Math.round(60*(DAN_MUL[CPU_LV]||1)*(GAME_LEN==='ton'?.6:1))}・2位 +${Math.round(30*(DAN_MUL[CPU_LV]||1)*(GAME_LEN==='ton'?.6:1))}・3位 ±0・4位 −${Math.round(30*(DAN_MUL[CPU_LV]||1)*(GAME_LEN==='ton'?.6:1))}（いまの強さ・長さで）。強い相手ほど多くもらえます。級のうちは下がりません</div>
       <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px"><button class="btn" id="fsStart" style="min-width:150px">はじめる</button><button class="btn gray" id="fsClose">もどる</button></div>`;
     m.querySelectorAll('.fs-port').forEach(b=>b.onclick=()=>{const k=+b.dataset.k;
       if(!cast)cast=freeCastPick();else{const used=cast.filter((x,i)=>i!==k),cands=pool.filter(id=>!used.includes(id));const i=cands.indexOf(cast[k]);cast[k]=cands[(i+1)%cands.length];}
@@ -6796,7 +6918,8 @@ function showSettings(back){
     <button class="btn" id="setClose" style="margin-top:14px;min-width:160px">とじる</button>`;
   const again=()=>showSettings(back);
   m.querySelectorAll('#setLv button').forEach(b=>b.onclick=()=>{CPU_LV=b.dataset.lv;lsSet('mjCpuLv',CPU_LV);
-    if(G&&!G.tutorial&&G.stage==null&&!G.storyFinal&&G.practice==null)G.players.forEach((q,i)=>{if(i&&q.ai!==undefined&&q.ai!==null){q.ai=CPU_LV;q.level=CPU_LV_LEVEL[CPU_LV];}});
+    if(G&&!G.tutorial&&G.stage==null&&!G.storyFinal&&G.practice==null){G.players.forEach((q,i)=>{if(i&&q.ai!==undefined&&q.ai!==null){q.ai=CPU_LV;q.level=CPU_LV_LEVEL[CPU_LV];}});
+      if(G.cpuLv&&LV_ORDER.indexOf(CPU_LV)<LV_ORDER.indexOf(G.cpuLv))G.cpuLv=CPU_LV;}   // 段位は、対局中に使ったうちで一番やさしい強さで数える
     again();});
   document.getElementById('setAutoWin').onclick=()=>{AUTO_WIN=!AUTO_WIN;lsSet('mjAutoWin',AUTO_WIN?'1':'0');again();};
   m.querySelectorAll('#setCallAsk button').forEach(b=>b.onclick=()=>{CALL_ASK=b.dataset.v;lsSet('mjCallAsk',CALL_ASK);again();});
@@ -6875,7 +6998,7 @@ function showRecords(back){
     const got=YAKU_BOOK.reduce((a,g)=>a+g[1].filter(n=>S.yaku[n]).length,0),all=YAKU_BOOK.reduce((a,g)=>a+g[1].length,0);
     const stat=(S.games||S.hands)?`
       <div class="dojo-sec">対局（半荘・東風戦）</div>
-      <div class="rc-grid">${cell('対局数',S.games)}${cell('平均順位',avgRank)}${cell('1位率',pct(S.rank[0],S.games))}${cell('トビ',S.tobi+'回')}${cell('最高持ち点',S.best?S.best.toLocaleString():'—')}</div>
+      <div class="rc-grid">${S.dan&&S.dan.games?cell('段位',danName(S.dan.lv),danNeed(S.dan.lv)?'昇段まで あと'+(danNeed(S.dan.lv)-S.dan.pts):'最高の段位')+cell('最高段位',danName(S.dan.max||0),'自由対局 '+S.dan.games+'回'):''}${cell('対局数',S.games)}${cell('平均順位',avgRank)}${cell('1位率',pct(S.rank[0],S.games))}${cell('トビ',S.tobi+'回')}${cell('最高持ち点',S.best?S.best.toLocaleString():'—')}</div>
       <div class="rc-bars">${S.rank.map((n,i)=>`<div class="rc-bar"><span>${i+1}位</span><div><i style="width:${S.games?n/S.games*100:0}%"></i></div><b>${n}</b></div>`).join('')}</div>
       <div class="dojo-sec">局</div>
       <div class="rc-grid">${cell('局数',S.hands)}${cell('和了率',pct(S.win,S.hands),'ツモ'+S.tsumo+'／ロン'+S.ron)}${cell('放銃率',pct(S.dealIn,S.hands))}${cell('リーチ率',pct(S.riichi,S.hands))}${cell('副露率',pct(S.call,S.hands))}${cell('流局時聴牌率',pct(S.drawTen,S.draw))}${cell('平均和了点',S.win?Math.round(S.winPts/S.win).toLocaleString():'—')}${cell('最高打点',S.maxPts?S.maxPts.toLocaleString():'—',S.maxYaku)}${cell('満貫以上',S.mangan+'回')}${cell('役満',S.yakuman+'回')}${cell('流し満貫',S.nagashi+'回')}${cell('途中流局',S.abort+'回')}</div>`
@@ -6893,7 +7016,7 @@ function showRecords(back){
     m.querySelectorAll('.rc-y').forEach(b=>b.onclick=()=>{const d=yakuDesc(b.dataset.y);toast(b.dataset.y+(d?'：'+d:''),3800);});
     progWire(m);
     document.getElementById('rcClose').onclick=()=>{ov.style.display='none';if(back)back();};
-    document.getElementById('rcReset').onclick=()=>{if(!confirm('戦績・役図鑑・実績の記録をすべて消しますか？'))return;STATS=blankStats();saveStats();ACHV={};lsSet('mjAch','{}');draw();};
+    document.getElementById('rcReset').onclick=()=>{if(!confirm('戦績・段位・役図鑑・実績の記録をすべて消しますか？'))return;STATS=blankStats();saveStats();ACHV={};lsSet('mjAch','{}');draw();};
   };
   draw();
 }
