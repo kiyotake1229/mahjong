@@ -300,6 +300,36 @@
   .rv-tip-k{font-size:11px;color:var(--muted);margin-top:5px;display:flex;align-items:center;gap:4px;flex-wrap:wrap}
   .rv-tip-k .kc,.rv-tip-k .kg{display:inline-block;width:11px;height:11px;border-radius:3px;border:2px solid #e06a5e;box-sizing:border-box}
   .rv-tip-k .kg{border-color:var(--gold-hi)}
+  /* 今日の1問 */
+  #modal .nk-ask{font-size:13.5px;line-height:1.7;margin:4px auto 0;max-width:520px}
+  #modal .nk-ask .linkbtn{margin-left:8px;font-size:12px}
+  #modal .nk-hand{gap:3px;margin:12px 0 8px;flex-wrap:nowrap}
+  #modal .nk-hand .tile{width:min(42px,calc((100% - 39px) / 14));height:auto;aspect-ratio:33/45;cursor:pointer;opacity:0;animation:tilein .34s cubic-bezier(.2,1.2,.4,1) forwards;animation-delay:calc(var(--i,0) * 35ms);transition:transform .15s,opacity .2s,outline-color .2s}
+  @media (hover:hover){#modal .nk-hand .tile:hover{transform:translateY(-4px)}}
+  #modal .nk-hand.ans .tile{animation:none;opacity:1}#modal .nk-hand.ans .tile.dim{opacity:.4}
+  #modal .nk-res{min-height:20px;max-width:520px;margin:0 auto;text-align:left;font-size:13px;line-height:1.7}
+  #modal .nk-why{animation:rvIn .3s ease}
+  #modal .nk-why b.ok{color:#8fe0cd;font-size:15px;margin-right:4px}#modal .nk-why b.ng{color:#f0a89e;font-size:15px;margin-right:4px}
+  #modal .nk-goods{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px;font-size:11.5px;color:var(--muted);animation:rvIn .4s ease}
+  #modal .nk-hint{font-size:12.5px;color:var(--muted);background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:8px;padding:6px 10px;animation:rvIn .25s ease}
+  #modal .nk-hint b{color:var(--gold-hi)}
+  #modal .nk-foot{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px}
+  .opt.lesson.nk-new{border-color:var(--gold);box-shadow:0 0 0 1px rgba(201,169,97,.35),0 0 16px rgba(201,169,97,.18)}
+  /* 上達のグラフ */
+  .pg-wrap{position:relative;max-width:480px;margin:2px auto 4px}
+  .pg{display:block;width:100%;height:auto;overflow:visible}
+  .pg-grid{stroke:rgba(255,255,255,.09);stroke-width:1}
+  .pg-ax{fill:var(--muted);font-size:9.5px;font-variant-numeric:tabular-nums}
+  .pg-val{fill:var(--ink);font-size:10.5px;font-weight:700}
+  .pg-bar{fill:#3aa891;transition:opacity .15s}
+  .pg-hit{fill:transparent;cursor:pointer}.pg-hit.on{fill:rgba(255,255,255,.05)}
+  .pg-tip{position:absolute;top:-6px;transform:translateY(-100%);background:#0f1613;border:1px solid var(--line2);border-radius:7px;padding:4px 8px;font-size:11.5px;color:var(--ink);white-space:nowrap;pointer-events:none;box-shadow:0 6px 16px rgba(0,0,0,.45)}
+  .pg-tbl{max-width:480px;margin:6px auto 0;font-size:12px;color:var(--muted)}
+  .pg-tbl summary{cursor:pointer;text-align:center}
+  .pg-tbl table{width:100%;border-collapse:collapse;margin-top:6px;font-variant-numeric:tabular-nums}
+  .pg-tbl th,.pg-tbl td{padding:3px 6px;border-bottom:1px solid var(--line);text-align:right}.pg-tbl th:first-child,.pg-tbl td:first-child{text-align:left}
+  #modal .fin-acc{margin:2px 0 10px}
+  #modal .fin-acc b{color:var(--gold-hi)}
   .tile.tcut{outline:2px solid #e06a5e;outline-offset:1px;transform:translateY(-3px)}
   .tile.tgood{outline:2px solid var(--gold-hi);outline-offset:1px;transform:translateY(-3px)}
   #modal .score .hf{cursor:help;border-bottom:1px dotted rgba(227,205,151,.5)}
@@ -1013,6 +1043,12 @@ function statWin(ev,tsumo,gained,pay){
   const fresh=[];ev.yaku.forEach(v=>{if(v.dora)return;const k=yakuKey(v.n);if(!S.yaku[k])fresh.push(k);S.yaku[k]=(S.yaku[k]||0)+1;});
   G._newYaku=fresh;saveStats();
 }
+/* 上達の記録：日ごとに「おすすめと同じ選び方」の打数と、局数・放銃を数える（最近60日分） */
+function accDay(){
+  const A=STATS.acc||(STATS.acc={s:0,n:0,days:[]}),tk=todayKey();let d=A.days[A.days.length-1];
+  if(!d||d.d!==tk){d={d:tk,s:0,n:0,h:0,di:0};A.days.push(d);if(A.days.length>60)A.days.shift();}
+  return d;
+}
 /* 局の終わり（kind: win / draw / abort）。1局につき1回 */
 function statHandEnd(kind,o){
   if(!statOK()||G._statDone)return;G._statDone=true;const S=STATS,p=G.players[0];o=o||{};
@@ -1020,6 +1056,7 @@ function statHandEnd(kind,o){
   if(kind==='draw'){S.draw++;if(o.tenpai)S.drawTen++;if(o.nagashi)S.nagashi++;}
   else if(kind==='abort'){S.abort++;if(o.reason==='九種九牌'&&o.by===0)S.kyushu++;}
   else if(kind==='win'){if(o.fromPid===0&&!(o.winners||[]).includes(0))S.dealIn++;}
+  {const d=accDay();d.h++;if(kind==='win'&&o.fromPid===0&&!(o.winners||[]).includes(0))d.di++;}
   S.vs=S.vs||{};G.players.forEach((p,i)=>{if(i===0||!p.charId)return;const v=S.vs[p.charId]||(S.vs[p.charId]={hands:0,riichi:0,call:0,win:0,dealIn:0});v.hands++;if(p.riichi)v.riichi++;if(p.melds.some(m=>!m.concealed))v.call++;if(kind==='win'&&(o.winners||[]).includes(i))v.win++;if(kind==='win'&&o.fromPid===i&&!(o.winners||[]).includes(i))v.dealIn++;});
   saveStats();checkAch();
 }
@@ -1564,7 +1601,7 @@ function newHand(keep,restart){
      phase:'draw',over:false,riichiSticks:sticks,ippatsu:[false,false,false,false],callHappened:false,
      rinshanFlag:false,lastDiscard:null,advance:false,keepHonba:false,pendingRiichiDeclarer:-1,offering:false,log:[],
      tutorial:false,tutGate:null,gen:++GEN,skill:{foresight:false,peekTiles:null,god:false},storyFinal,stage,wager,stats,practice:null,dark,len,
-     startScores:scores.slice(),startHonba:honba,startSticks:sticks,
+     startScores:scores.slice(),startHonba:honba,startSticks:sticks,accG:keep&&prev&&prev.accG?prev.accG:{s:0,n:0},
      ctl:MP.active?MP.seats.map((st,i)=>st.kind==='cpu'?'cpu':(MODE==='hot'?'local':(i===MP.me?'local':'remote'))):['local','cpu','cpu','cpu']};
   if(dailyNow)G.daily=dailyNow;
   players.forEach(p=>{if(p.cheat)rigHand(p,wall,p.cheat);});
@@ -2058,13 +2095,14 @@ function recommendDiscard(p){
   return b.i;
 }
 /* 手の進み（向聴数・受け入れ）だけで選ぶ捨て牌。all は牌の種類ごとの評価（ワンポイントでも使う） */
-function effPick(hand,mc,seatWind){
+function effPick(hand,mc,seatWind,roundWind){
+  const rw=roundWind!=null?roundWind:(G?G.roundWind:0);
   const c=toCounts(hand),seen=new Set(),all=[];
   for(let i=0;i<hand.length;i++){const t=nt(hand[i]);if(seen.has(t))continue;seen.add(t);
     const r=hand.slice();r.splice(i,1);const sh=shanten(r,mc);
     const isolated=c[t]===1&&(t>=27||(!(t%9>0&&c[t-1])&&!(t%9>1&&c[t-2])&&!(t%9<8&&c[t+1])&&!(t%9<7&&c[t+2])));
     const cc=toCounts(r);let uke=0;for(let d=0;d<34;d++){if(cc[d]>=4)continue;if(shanten(r.concat([d]),mc)<sh)uke+=(4-cc[d]);}
-    const yk=t>=31||(t>=27&&(t-27===G.roundWind||t-27===seatWind));
+    const yk=t>=31||(t>=27&&(t-27===rw||t-27===seatWind));
     all.push({i,t,sh,uke,iso:isolated?1:0,hon:t>=27?1:0,term:isTermHon(t)?1:0,guest:(t>=27&&!yk)?1:0});
   }
   const minsh=Math.min(...all.map(x=>x.sh));const cands=all.filter(x=>x.sh===minsh);
@@ -2440,7 +2478,7 @@ function analyzeHand(p){
   if(sh===-1)state.push('あがりの形ができている。<b>ツモ</b>を押そう。');
   else if(sh===0){const idx=recommendDiscard(p);const r=hand.slice();if(hand.length%3===2)r.splice(idx,1);const w=waits(r,mc);const vcA=visibleCounts(p);
     state.push(`<b>テンパイ</b>（あと1枚であがり）。待ちは <b>${w.map(t=>tileName(t)+'(残り'+Math.max(0,4-vcA[t])+')').join('・')||'―'}</b>`+(isFuriten(p,w)?'<br><b>フリテン</b>：待ち牌を自分で捨てているのでロンはできない（ツモならOK）':''));}
-  else state.push(`あがりまで <b>あと${sh}歩</b>（${sh}シャンテン）。「3枚の組×4＋アタマ」に近づけよう。`);
+  else state.push(`テンパイまで <b>あと${sh}歩</b>（${sh}シャンテン）。「3枚の組×4＋アタマ」に近づけよう。`);
   const meldTxt=p.melds.map(m=>(m.t==='seq'?'順子':(m.kan?'カン':'刻子'))+'['+expandMeld(m).map(tileName).join('')+']');
   const parts=[];
   if(seqs.length)parts.push('順子 '+seqs.map(t=>tileName(t)+tileName(t+1)+tileName(t+2)).join(' / '));
@@ -2489,7 +2527,7 @@ function guideForTurn(){
   if(me.riichi)return setGuide(`リーチ中。引いた牌をそのまま切ります（あがり牌を引いたら<span class="tag">ツモ</span>ボタンが出ます）`+waitNote(me));
   const idx=recommendDiscard(me);
   if(REC.reason==='safe'){
-    return setGuide(`<b>相手がリーチ中！</b> あがりまで遠いので<b>降り</b>。相手が捨てた<b>現物 ${tileName(REC.tile)}</b>は絶対に当たらない。<span class="tag">おすすめ</span>を切ろう`);
+    return setGuide(`<b>相手がリーチ中！</b> テンパイしていないので<b>降り</b>。相手が捨てた<b>現物 ${tileName(REC.tile)}</b>は絶対に当たらない。<span class="tag">おすすめ</span>を切ろう`);
   }
   if(REC.reason==='nosafe'){
     return setGuide(`<b>相手がリーチ中。</b>現物がない…。字牌や1・9など、比較的当たりにくい牌から切ろう（<span class="tag">おすすめ</span>参照）`);
@@ -2502,7 +2540,7 @@ function guideForTurn(){
     if(REC.reason==='push')return setGuide(`<b>テンパイ！</b> 待ち: <b>${w||'―'}</b>。相手はリーチ中だけど、テンパイなら<b>押してOK</b>`+ri+fur);   // 枠に収まるよう短く
     setGuide(`<b>テンパイ！</b> あと1枚であがり（待ち: <b>${w||'―'}</b>）。<span class="tag">おすすめ</span>の牌を切ろう`+ri+fur);
   }else{
-    setGuide(`あがりまで あと <b>${best}</b> 歩。<span class="tag">おすすめ</span>の牌を切って手を進めよう`);
+    setGuide(`テンパイまで あと <b>${best}</b> 歩。<span class="tag">おすすめ</span>の牌を切って手を進めよう`);
   }
 }
 /* ===== 卓の配置（横画面が基本） =====
@@ -2898,6 +2936,10 @@ function buildReview(o){
   G.review={round:WINDS[G.roundWind]+(G.dealer+1),honba:G.honba,sticks:G.riichiSticks,dora:G.doraInd.slice(),ura:riWin?G.uraInd.slice():[],players,log:(G.log||[]).slice(),result,
     end:o.abort?{k:'abort',t:o.abort}:(o.draw?{k:'ryu'}:{k:'win',w:winners,from:o.fromPid,tsumo:!!o.tsumo}),tip:pickTip(o)};
   REVIEW_LAST=G.review;
+  const tip=G.review.tip;
+  if(tip&&tip.n&&statOK()&&!G._accDone){G._accDone=true;const d=accDay(),A=STATS.acc;d.s+=tip.same;d.n+=tip.n;A.s+=tip.same;A.n+=tip.n;
+    if(G.accG){G.accG.s+=tip.same;G.accG.n+=tip.n;}saveStats();}
+  if(tip&&(tip.k==='back'||tip.k==='uke')&&!tip.mc&&tip.good!=null&&statOK())nkKeep(tip);
 }
 function showReview(rv){
   rv=rv||(G&&G.review)||REVIEW_LAST;if(!rv)return;
@@ -2955,22 +2997,22 @@ function pickTip(o){
   const last=L[L.length-1];
   const dealIn=!o.draw&&!o.abort&&!o.tsumo&&!o.chankan&&o.fromPid===0&&last.jun===me.discards.length&&last.t===nt(o.tile)?last:null;
   if(dealIn){const s=dealIn,X=B(s.t);
-    if(s.opp&&s.minsh>=1&&s.safeBest!=null)out.push({sc:100,s,cut:s.t,good:s.safeBest,txt:`${s.jun}巡目の ${X} で振り込みました。リーチした人が捨てた ${B(s.safeBest)}（現物）なら、絶対に当たりませんでした。あがりまで遠い時は、現物を切って降りるのが基本です`});
+    if(s.opp&&s.minsh>=1&&s.safeBest!=null)out.push({sc:100,k:'dealin',s,cut:s.t,good:s.safeBest,txt:`${s.jun}巡目の ${X} で振り込みました。リーチした人が捨てた ${B(s.safeBest)}（現物）なら、絶対に当たりませんでした。テンパイしていない時は、現物を切って降りるのが基本です`});
     else if(s.opp&&s.minsh===0)out.push({sc:35,s,cut:s.t,txt:`${X} で振り込みましたが、テンパイからの勝負なので悪くない判断です`});
     else if(s.opp)out.push({sc:30,s,cut:s.t,txt:`${X} で振り込みました。現物がない時は、字牌や1・9、相手の捨て牌の「スジ」の牌が比較的当たりにくい牌です`});
     else out.push({sc:25,s,cut:s.t,txt:`${X} で振り込みました。リーチしていない人もテンパイのことがあります。鳴いている人や、終盤の捨て牌には気をつけよう`});}
   L.forEach(s=>{if(s===dealIn)return;const X=B(s.t);
     if(s.opp&&s.minsh>=1){   // 降りる場面
-      if(!s.safe.includes(s.t)&&s.safeBest!=null)out.push({sc:70,s,cut:s.t,good:s.safeBest,txt:`${s.jun}巡目、リーチの相手に危ない ${X} を切りました（今回は当たらずにすみました）。あがりまで遠い時は、現物の ${B(s.safeBest)} を切ると安全です`});
+      if(!s.safe.includes(s.t)&&s.safeBest!=null)out.push({sc:70,k:'risky',s,cut:s.t,good:s.safeBest,txt:`${s.jun}巡目、リーチの相手に危ない ${X} を切りました（今回は当たらずにすみました）。テンパイしていない時は、現物の ${B(s.safeBest)} を切ると安全です`});
       return;}
-    if(s.sh>s.minsh)out.push({sc:50+10*(s.sh-s.minsh),s,cut:s.t,good:s.best,txt:s.minsh===0?`${s.jun}巡目の ${X} でテンパイを崩しました。${B(s.best)} を切ればテンパイのままでした`:`${s.jun}巡目の ${X} で、あがりから${s.sh-s.minsh}歩遠のきました。${B(s.best)} を切れば、あと${s.minsh}歩のままでした`});
-    else if(s.bestUke-s.uke>=4&&s.uke<=s.bestUke*.75)out.push({sc:20+Math.min(20,s.bestUke-s.uke),s,cut:s.t,good:s.best,txt:`${s.jun}巡目は ${X} より ${B(s.best)} を切ると、${s.minsh===0?'待ちの牌':'手が進む牌'}が ${s.uke}枚 → ${s.bestUke}枚 に増えました`});
+    if(s.sh>s.minsh)out.push({sc:50+10*(s.sh-s.minsh),k:'back',s,cut:s.t,good:s.best,txt:s.minsh===0?`${s.jun}巡目の ${X} でテンパイを崩しました。${B(s.best)} を切ればテンパイのままでした`:`${s.jun}巡目の ${X} で、テンパイから${s.sh-s.minsh}歩遠のきました。${B(s.best)} を切れば、テンパイまであと${s.minsh}歩のままでした`});
+    else if(s.bestUke-s.uke>=4&&s.uke<=s.bestUke*.75)out.push({sc:20+Math.min(20,s.bestUke-s.uke),k:'uke',s,cut:s.t,good:s.best,txt:`${s.jun}巡目は ${X} より ${B(s.best)} を切ると、${s.minsh===0?'待ちの牌':'手が進む牌'}が ${s.uke}枚 → ${s.bestUke}枚 に増えました`});
   });
   const n=L.length,same=L.filter(s=>s.same).length;
   if(!out.length){const won=(o.winners||[]).includes(0);
     return {good:true,same,n,txt:won?'大きなミスのない打ち方でした。この調子！':n>=4&&same/n>=.8?'手の進め方は上手でした。この調子！':'目立つミスはありませんでした'};}
   out.sort((a,b)=>b.sc-a.sc||a.s.jun-b.s.jun);
-  const t=out[0];return {txt:t.txt,hand:t.s.hand.map(nt).sort((a,b)=>a-b),cut:t.cut,good:t.good,same,n};
+  const t=out[0];return {txt:t.txt,k:t.k||'',jun:t.s.jun,mc:t.s.mc,sw:t.s.sw,hand:t.s.hand.map(nt).sort((a,b)=>a-b),cut:t.cut,good:t.good,same,n};
 }
 function tipHtml(tip){   // ふりかえり画面のワンポイント
   if(!tip)return '';
@@ -3090,10 +3132,15 @@ function showFinal(){
   if(MP.active)return mpFinal();
   const ov=document.getElementById('overlay');ov.style.display='flex';const m=document.getElementById('modal');
   const rank=G.players.map((p,i)=>({name:p.name||POS[i],score:p.score})).sort((a,b)=>b.score-a.score);
+  const a=G.accG,A=STATS.acc;let accLine='';
+  if(a&&a.n>=6){const pc=Math.round(a.s/a.n*100),bs=A?A.s-a.s:0,bn=A?A.n-a.n:0,base=bn>=20?Math.round(bs/bn*100):null;
+    accLine=`<div class="sub fin-acc">この半荘の打ち方：おすすめと同じ選び方 <b>${pc}%</b>（${a.n}打中 ${a.s}打）${base!=null&&base!==pc?`　いつもより <span class="dlt ${pc>base?'p':'m'}">${pc>base?'+':'−'}${Math.abs(pc-base)}pt</span>`:''}</div>`;}
   m.innerHTML=`<h2>終局</h2>
     <div class="yaku">${rank.map((r,i)=>`${i+1}位 ${r.name}<span class="h">${r.score}</span>`).join('<br>')}</div>
-    <button class="btn" id="nextBtn">最初から</button>`;
+    ${accLine}
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap"><button class="btn" id="nextBtn">もう一度</button><button class="btn gray" id="finHome">ホームへ</button></div>`;
   document.getElementById('nextBtn').onclick=()=>{ov.style.display='none';G=null;newHand(false);};
+  document.getElementById('finHome').onclick=()=>{ov.style.display='none';G=null;showHome();};
 }
 
 document.getElementById('newGame').onclick=(e)=>{if(chatOn()){e.stopPropagation();chatPanelToggle();return;}if(MP.active){mpMenu();return;}if(!G||G.tutorial){showChooser();return;}if(confirm('この局を配り直しますか？（点数・本場は局の開始時に戻ります）'))newHand(true,true);};
@@ -3140,9 +3187,9 @@ function showHelp(back){
    call:{t:'鳴きと守り',h:`
     <h4>鳴き＝相手の捨て牌をもらう</h4>・<b>ポン</b>：同じ牌を2枚持っていて、誰かがその牌を捨てた → 刻子に<br>・<b>チー</b>：<b>左の人</b>の捨て牌で順子が作れる<br>・<b>カン</b>：同じ牌4枚（ドラが1枚増える）
     <h4>鳴くときの注意</h4>手は早くなるが、<b>リーチができなくなる</b>。タンヤオや役牌など、鳴いても消えない役が必要。慣れるまでは「スルー」でいい。
-    <h4>守り（相手がリーチしたら）</h4>・<b>現物</b>：リーチした人がすでに捨てた牌は<b>絶対に当たらない</b>。一番安全<br>・字牌や1・9は比較的当たりにくい<br>・自分があがりまで遠い（2歩以上）なら現物を切って降りる。テンパイなら押してOK
+    <h4>守り（相手がリーチしたら）</h4>・<b>現物</b>：リーチした人がすでに捨てた牌は<b>絶対に当たらない</b>。一番安全<br>・字牌や1・9は比較的当たりにくい<br>・自分がテンパイしていない（テンパイまであと1歩以上）なら、現物を切って降りる。テンパイなら押してOK
     <h4>フリテン</h4>自分の待ち牌を<b>自分で捨てたことがある</b>と、ロンはできない（ツモならOK）。待ちが分かったら、その牌を捨てていないか河を見る。
-    <h4>このアプリの助け</h4>初心者モードでは「おすすめ」の牌が光り、相手のリーチ中は現物に切り替わる。相手がリーチすると、手牌の左上に当たりやすさの印が出る（緑＝安全・黄＝注意・赤＝危ない）。自分の番に「いまの手を見る」で、形・待ち・狙える役を確認できる。局が終わると、自分の打牌から「ワンポイント」を1つ教えてくれる。`},
+    <h4>このアプリの助け</h4>初心者モードでは「おすすめ」の牌が光り、相手のリーチ中は現物に切り替わる。相手がリーチすると、手牌の左上に当たりやすさの印が出る（緑＝安全・黄＝注意・赤＝危ない）。自分の番に「いまの手を見る」で、形・待ち・狙える役を確認できる。局が終わると、自分の打牌から「ワンポイント」を1つ教えてくれる。道場の「今日の1問」では毎日1問の「何を切る？」、まちがえた場面は復習問題になる。戦績の「上達」で、打ち方の正確さの移り変わりが見られる。`},
    score:{t:'点数',h:`
     <h4>翻が上がるほど高い（子の目安）</h4>
     <dl><dt>1翻</dt><dd>1000〜1300点</dd><dt>2翻</dt><dd>2000〜2600点</dd><dt>3翻</dt><dd>3900〜5200点</dd><dt>4翻</dt><dd>7700〜8000点</dd><dt>5翻＝満貫</dt><dd>8000点</dd><dt>6〜7翻＝跳満</dt><dd>12000点</dd><dt>8〜10翻＝倍満</dt><dd>16000点</dd><dt>11〜12翻＝三倍満</dt><dd>24000点</dd><dt>13翻以上＝役満</dt><dd>32000点</dd></dl>
@@ -4519,9 +4566,9 @@ function startOshihiki(){
   tut={lesson:'oshihiki',mode:'info',i:0,steps:[
     {html:`判断の基準は3つだ。`},
     {html:`①<b>自分がテンパイなら押す</b>。相手のリーチが来ても、あと1枚なら勝負していい。`},
-    {html:`②<b>自分が遠い（あと2枚以上）なら降りる</b>。現物を切って、振り込まないことを最優先。`},
+    {html:`②<b>自分がテンパイしていない（テンパイまであと1歩以上）なら降りる</b>。現物を切って、振り込まないことを最優先。`},
     {html:`③<b>点差も見る</b>。大きくリードしていれば守り寄り、負けていれば少し無理をしてでも攻める。`},
-    {quiz:{q:`相手がリーチ。自分は<b>あと3枚</b>必要。どうする？`,opts:[{h:'現物を切って降りる',ok:true},{h:'そのまま攻める',ok:false},{h:'適当に切る',ok:false}]}},
+    {quiz:{q:`相手がリーチ。自分は<b>テンパイまであと2歩</b>。どうする？`,opts:[{h:'現物を切って降りる',ok:true},{h:'そのまま攻める',ok:false},{h:'適当に切る',ok:false}]}},
     {html:`合格。遠いときは降りる。近いときは押す。<br>この線引きができれば、負けにくくなる。`}
   ]};infoRun();
 }
@@ -6323,6 +6370,7 @@ function showDojo(){
   m.innerHTML=`<h2>麻雀道場</h2>
     <button class="opt lesson" id="dojoZero" style="margin:4px auto 6px;max-width:420px"><span class="lic">${avSVG('master')}</span><span class="ltx"><b>はじめの一歩（第0章）</b><small>麻雀って何をするゲーム？ 配牌・山・ツモ・あがりの形をいちから</small></span><span class="chk">▶</span></button>
     <button class="opt lesson" id="dojoStory" style="margin:4px auto 10px;max-width:420px"><span class="lic">${avSVG('master')}</span><span class="ltx"><b>ストーリーで学ぶ</b><small>雀荘「翠」で店主と常連に教わる（おすすめ）</small></span><span class="chk">▶</span></button>
+    <button class="opt lesson ${nkData().date===todayKey()?'':'nk-new'}" id="dojoNk" style="margin:4px auto 10px;max-width:420px"><span class="lic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="10" height="14" rx="2"/><path d="M8 8.5a2 2 0 1 1 2.6 1.9c-.5.2-.6.5-.6 1.1M10 14v.01"/><path d="M17 7l3 1-3 12-3-1"/></svg></span><span class="ltx"><b>今日の1問（何を切る？）</b><small>${nkLabel().replace('今日の1問 ','')}・毎日1問。まちがえた場面は復習問題に${nkData().pool.length?'（復習 '+nkData().pool.length+'問）':''}</small></span><span class="chk">▶</span></button>
     <div class="dojo-count">${done} / ${LESSONS.length} クリア</div>
     <div class="dojo-prog"><div class="dojo-bar" style="width:${pct}%"></div></div>
     <div id="dojo">${rows}</div>
@@ -6332,6 +6380,7 @@ function showDojo(){
       <button class="btn gray" id="dojoHome">ホームへ</button></div>`;
   m.querySelectorAll('.lesson[data-id]').forEach(b=>b.onclick=()=>{const L=LESSONS.find(x=>x.id===b.dataset.id);ov.style.display='none';L.run();});
   document.getElementById('dojoStory').onclick=()=>showStory();
+  document.getElementById('dojoNk').onclick=()=>showNk('daily',showDojo);
   document.getElementById('dojoZero').onclick=()=>{if(!HERO.origin){HERO=blankHero();HERO.origin='student';HERO.name='';saveHero();}zeroStart(0);};
   document.getElementById('dojoPlay').onclick=()=>{ov.style.display='none';startFreeGame();};
   document.getElementById('dojoRead').onclick=()=>showHelp(showDojo);
@@ -6341,7 +6390,7 @@ function showChooser(){if(MP.active)return mpMenu();showHome();}
 
 
 /* ===== タイトル画面・ホーム画面・対局中メニュー・設定 ===== */
-const APP_VER='2026.10.27.2';
+const APP_VER='2026.10.27.3';
 const BATTLE_FACE={nao:'smile',yakumo:'calm',shino:'calm',fukuju:'smile',tome:'smile',domoto:'angry',kuroda:'angry',karasu:'smile',washio:'calm',minato:'calm',shizuka:'calm',master:'smile',hayato:'smile',gen:'smile',ren:'smile'};   // 「○○ 戦」のカットインの表情
 const HM_IC={
  daily:'<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/><circle cx="12" cy="15.5" r="2"/>',
@@ -6401,10 +6450,10 @@ function showHome(){
 }
 /* ===== 更新のお知らせ：版が変わって最初にホームを開いた時に1回。まっさらな端末には出さない ===== */
 const WHATS_NEW=[
+ '道場に「今日の1問」：毎日1問の「何を切る？」。ワンポイントでまちがえた場面は復習問題になります。戦績に「上達」タブ（日ごとの打ち方の正確さと放銃率）。半荘の終わりに「この半荘の打ち方」',
  'ワンポイント：局が終わると、自分の打牌から「ここはこう切ると良かった」をひとつ教えます（結果画面は初心者モードの時。ふりかえり画面ではいつでも）。初心者モードでは、相手のリーチ中に手牌へ当たりやすさの印（緑・黄・赤）',
  '初心者向けの見直し：表記を「リーチ」に統一。流局・あがりの画面に全員の点数の増減。「翻・符」「満貫」もタップで説明。リーチした時の1,000点の案内。長い案内文も全部読めるように。対局開始の吹き出しが案内に重ならないように',
- '初心者モードのON/OFFを覚えるようになりました（前は開くたびにONに戻っていた）。タッチ操作で、捨てた位置の牌が浮いて見える問題などを修正',
- '待ちの表示に「残り枚数」と「あがった時の点数の見込み」（タップで待ちごとの詳細）。右上の順位をタップすると、この局で順位が入れ替わる条件（ツモ・直撃・ほかから）'
+ '初心者モードのON/OFFを覚えるようになりました（前は開くたびにONに戻っていた）。タッチ操作で、捨てた位置の牌が浮いて見える問題などを修正'
 ];
 function maybeWhatsNew(){
   if(lsGet('mjSeenVer')===APP_VER)return;
@@ -6457,7 +6506,7 @@ function renderHome(){
      <div class="hm-grid">
        <button class="hm-card free" id="hmFree"><span class="ic">${hmIc('free')}</span><span class="tx"><b>自由対局</b><small>${FREE_CAST?'相手：'+FREE_CAST.map(id=>CHARS[id]?CHARS[id].n:'?').join('・'):'相手はおまかせ'}／${GAME_LEN==='ton'?'東風戦':'半荘'}／CPU：${lvl}</small></span></button>
        <button class="hm-card vs" id="hmVs"><span class="ic">${hmIc('vs')}</span><span class="tx"><b>みんなで対戦</b><small>この端末で交代／オンライン（部屋コード）</small></span></button>
-       <button class="hm-card dojo" id="hmDojo"><span class="ic">${hmIc('dojo')}</span><span class="tx"><b>道場</b><small>8レッスンで基礎から。${done}/${LESSONS.length} クリア</small></span></button>
+       <button class="hm-card dojo" id="hmDojo"><span class="ic">${hmIc('dojo')}</span><span class="tx"><b>道場</b><small>8レッスン ${done}/${LESSONS.length}・${nkLabel()}</small></span></button>
        <button class="hm-card notes" id="hmNotes"><span class="ic">${hmIc('notes')}</span><span class="tx"><b>翠ノート</b><small>集めた秘密と結末 ${HERO.notes.length}/${NOTES.length}</small></span></button>
        <div class="hm-foot"><button class="linkbtn" id="hmRules">ルールブック</button><button class="linkbtn" id="hmTour">画面の見方</button><button class="linkbtn" id="hmRec">戦績・役図鑑・実績</button>
          <div class="hm-cast" id="hmCast">${cast.map(id=>`<button data-id="${id}" title="${CHARS[id].n}" aria-label="${CHARS[id].n}">${portraitSVG(id,'calm')}</button>`).join('')}</div></div>
@@ -6545,6 +6594,89 @@ function dailyEnd(){
     <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px"><button class="btn" id="dlAgain" style="min-width:150px">もう一度（同じ配牌）</button><button class="btn gray" id="dlHome">ホームへ</button></div>`;
   document.getElementById('dlAgain').onclick=()=>{ov.style.display='none';startDaily();};
   document.getElementById('dlHome').onclick=()=>{ov.style.display='none';G=null;showHome();};
+}
+
+/* ===== 今日の1問（何切る）：日付で決まる問題と、自分のワンポイントから作る復習問題 ===== */
+function nkData(){const b={date:'',ok:null,streak:0,last:'',solved:0,tries:0,qd:'',q:null,pool:[]};try{return Object.assign(b,JSON.parse(lsGet('mjNk')||'{}'));}catch(e){return b;}}
+function nkSave(d){lsSet('mjNk',JSON.stringify(d));}
+function nkKeep(tip){   // ワンポイントで「手が遠のいた・受け入れが狭い」を指摘した場面を、復習問題に（20問まで）
+  const d=nkData(),key=tip.hand.join(',');if(d.pool.some(q=>q.hand.join(',')===key))return;
+  d.pool.push({hand:tip.hand,mc:0,sw:tip.sw||0,rw:G.roundWind,cut:tip.cut,jun:tip.jun});if(d.pool.length>20)d.pool.shift();nkSave(d);
+}
+/* 正解：歩数が一番少なく、受け入れがおすすめの牌と同じかそれ以上の牌（おすすめの牌そのものも正解） */
+function nkSolve(q){
+  const E=effPick(q.hand,q.mc||0,q.sw||0,q.rw||0);
+  const ok=E.all.filter(x=>x.t===E.best.t||(x.sh===E.minsh&&x.uke>=E.best.uke)).map(x=>x.t);
+  return {E,ok};
+}
+function nkGood(hand,t){   // t を切った時に、引くと歩数が進む牌
+  const r=hand.slice();r.splice(r.indexOf(t),1);const sh=shanten(r,0),c=toCounts(r),out=[];
+  for(let d=0;d<34;d++){if(c[d]>=4)continue;if(shanten(r.concat([d]),0)<sh)out.push(d);}
+  return out;
+}
+/* 日付で決まる問題：あがりの形を作ってから3枚を入れ替え、テンパイまで1〜2歩で、答えがはっきりした手だけを選ぶ */
+function nkMake(tk){
+  const rnd=mulberry32(parseInt(tk.replace(/-/g,''),10)*7+13);
+  for(let k=0;k<400;k++){
+    const c=new Array(34).fill(0),hand=[];let g=0;
+    while(hand.length<12&&g++<60){
+      if(rnd()<.72){const b=((rnd()*3)|0)*9+((rnd()*7)|0);if(c[b]<4&&c[b+1]<4&&c[b+2]<4){[b,b+1,b+2].forEach(t=>{c[t]++;hand.push(t);});}}
+      else{const t=(rnd()*34)|0;if(c[t]<=1){c[t]+=3;hand.push(t,t,t);}}}
+    const pr=(rnd()*34)|0;if(hand.length<12||c[pr]>2)continue;c[pr]+=2;hand.push(pr,pr);
+    for(let j=0;j<3;j++){const i=(rnd()*hand.length)|0;let t=(rnd()*34)|0,h=0;while(c[t]>=4&&h++<30)t=(rnd()*34)|0;if(c[t]>=4)continue;c[hand[i]]--;c[t]++;hand[i]=t;}
+    hand.sort((a,b)=>a-b);
+    const q={hand,mc:0,sw:0,rw:0},S=nkSolve(q),b=S.E.best;
+    if(S.E.minsh<1||S.E.minsh>2||S.ok.length>2)continue;
+    if(b.iso&&b.hon)continue;   // ぽつんとした字牌を切るだけの問題は簡単すぎる
+    const rest=S.E.all.filter(x=>!S.ok.includes(x.t)&&x.sh===S.E.minsh);
+    if(rest.length&&b.uke-Math.max(...rest.map(x=>x.uke))<4)continue;   // 2番手との差がはっきりしたものだけ
+    return q;
+  }
+  return {hand:[0,1,2,4,5,6,6,10,11,19,20,24,27,30],mc:0,sw:0,rw:0};
+}
+function nkLabel(){const d=nkData();return d.date===todayKey()?(d.ok?'今日の1問 正解':'今日の1問 挑戦ずみ'):'今日の1問 未挑戦';}
+function showNk(mode,back){
+  {const _m=document.getElementById('modal');_m.classList.remove('done');_m.onclick=null;}
+  const ov=document.getElementById('overlay');ov.style.display='flex';const m=document.getElementById('modal');
+  const d=nkData(),tk=todayKey(),dt=new Date();
+  if(mode==='rev'&&!d.pool.length)mode='daily';
+  let q;if(mode==='rev')q=d.pool[0];else{if(d.qd!==tk||!d.q){d.q=nkMake(tk);d.qd=tk;nkSave(d);}q=d.q;}
+  const S=nkSolve(q),Bn=t=>`<b>${tileName(t)}</b>`;
+  const stat=mode==='rev'?`あなたの対局から（のこり ${d.pool.length}問）`:`${dt.getMonth()+1}月${dt.getDate()}日　連続 ${d.streak||0}日・正解 ${d.solved||0}問`;
+  const ask=mode==='rev'?`${q.jun?q.jun+'巡目、':''}あなたは ${Bn(q.cut)} を切りました。もっと良い1枚は？`:'手を一番早く進めるには、どれを切る？';
+  m.innerHTML=`<h2>${mode==='rev'?'復習の1問':'今日の1問'}</h2><div class="sub">${stat}</div>
+    <div class="nk-ask">${ask}<button class="linkbtn" id="nkHint">ヒント</button></div>
+    <div class="handshow nk-hand">${q.hand.map((t,i)=>{const e=tileEl(t);e.dataset.i=i;e.style.setProperty('--i',i);return e.outerHTML;}).join('')}</div>
+    <div class="nk-res" id="nkRes" aria-live="polite"></div>
+    <div class="nk-foot" id="nkFoot"><button class="btn gray" id="nkBack">もどる</button></div>`;
+  const res=document.getElementById('nkRes'),foot=document.getElementById('nkFoot');
+  const close=()=>{ov.style.display='none';if(back)back();};
+  document.getElementById('nkBack').onclick=close;
+  document.getElementById('nkHint').onclick=(e)=>{e.target.remove();res.innerHTML=`<div class="nk-hint">テンパイまで あと <b>${S.E.minsh}</b> 歩。切っても歩数が変わらない牌の中で、<b>引くと手が進む牌</b>が一番多く残るものを選ぼう。ぽつんと離れた牌から考えるとよい</div>`;};
+  let answered=false;
+  m.querySelectorAll('.nk-hand .tile').forEach(el=>el.onclick=()=>{
+    if(answered)return;answered=true;
+    const t=q.hand[+el.dataset.i],ok=S.ok.includes(t),me=S.E.all.find(x=>x.t===t),bt=S.ok.includes(S.E.best.t)?S.E.best.t:S.ok[0],bx=S.E.all.find(x=>x.t===bt);
+    m.querySelector('.nk-hand').classList.add('ans');
+    m.querySelectorAll('.nk-hand .tile').forEach((e,i)=>{const u=q.hand[i];if(e===el)e.classList.add(ok?'tgood':'tcut');else if(S.ok.includes(u))e.classList.add('tgood');else e.classList.add('dim');});
+    const goods=nkGood(q.hand,ok?t:bt);
+    const why=ok?`<b class="ok">正解！</b> ${Bn(t)} を切ると、引いて手が進む牌が <b>${me.uke}枚</b> 残ります`+(S.ok.length>1?`（${S.ok.filter(x=>x!==t).map(tileName).join('・')} でも正解）`:'')
+      :me.sh>S.E.minsh?`<b class="ng">おしい</b> ${Bn(t)} を切ると、テンパイから${me.sh-S.E.minsh}歩遠のきます。正解は ${Bn(bt)}（手が進む牌 ${bx.uke}枚）`
+      :`<b class="ng">おしい</b> ${Bn(t)} でも歩数は同じですが、手が進む牌は ${me.uke}枚。${Bn(bt)} なら <b>${bx.uke}枚</b> に増えます`;
+    res.innerHTML=`<div class="nk-why">${why}</div><div class="nk-goods"><span>${ok?'引くと進む牌':tileName(bt)+'を切った時に、引くと進む牌'}</span><span class="rv-tiles">${goods.map(x=>tileEl(x,'sm').outerHTML).join('')}</span></div>`;
+    try{ok?sfx.sting():sfx.tick();}catch(e){}haptic(ok?'medium':'light');
+    if(mode==='daily'&&d.date!==tk){   // 記録はその日の最初の答えだけ
+      if(d.last!==tk){const y=new Date();y.setDate(y.getDate()-1);d.streak=(d.last===dateKey(y))?(d.streak||0)+1:1;d.last=tk;}
+      d.date=tk;d.ok=ok;d.tries=(d.tries||0)+1;if(ok)d.solved=(d.solved||0)+1;nkSave(d);
+    }
+    if(mode==='rev'){const x=d.pool.shift();if(!ok)d.pool.push(x);nkSave(d);}   // 正解した問題は卒業、まちがえた問題は後ろへ
+    const more=nkData().pool.length;
+    foot.innerHTML=(more?`<button class="btn" id="nkRev">復習の1問へ（${more}問）</button>`:'')+(mode==='daily'?'<button class="btn gray" id="nkAgain">もう一度</button>':'')+'<button class="btn gray" id="nkBack2">もどる</button>';
+    const rv=document.getElementById('nkRev');if(rv)rv.onclick=()=>showNk('rev',back);
+    const ag=document.getElementById('nkAgain');if(ag)ag.onclick=()=>showNk('daily',back);
+    document.getElementById('nkBack2').onclick=close;
+    setTimeout(()=>{if(m.scrollHeight>m.clientHeight+4)m.scrollTo({top:m.scrollHeight,behavior:'smooth'});},40);
+  });
 }
 
 /* ===== 自由対局の相手えらび ===== */
@@ -6749,19 +6881,56 @@ function showRecords(back){
       <div class="rc-grid">${cell('局数',S.hands)}${cell('和了率',pct(S.win,S.hands),'ツモ'+S.tsumo+'／ロン'+S.ron)}${cell('放銃率',pct(S.dealIn,S.hands))}${cell('リーチ率',pct(S.riichi,S.hands))}${cell('副露率',pct(S.call,S.hands))}${cell('流局時聴牌率',pct(S.drawTen,S.draw))}${cell('平均和了点',S.win?Math.round(S.winPts/S.win).toLocaleString():'—')}${cell('最高打点',S.maxPts?S.maxPts.toLocaleString():'—',S.maxYaku)}${cell('満貫以上',S.mangan+'回')}${cell('役満',S.yakuman+'回')}${cell('流し満貫',S.nagashi+'回')}${cell('途中流局',S.abort+'回')}</div>`
       :'<div class="st-intro">まだ記録がありません。自由対局や物語の戦を打つと、ここに戦績が残ります（レッスンと「みんなで対戦」は数えません）。</div>';
     const yaku='<div class="st-intro">あがった役と回数。名前をタップすると説明。</div>'+YAKU_BOOK.map(([h,list])=>`<div class="dojo-sec">${h}</div><div class="rc-yaku">${list.map(n=>{const c=S.yaku[n]||0;return `<button class="rc-y ${c?'on':''}" data-y="${n}">${n}${c?`<b>${c}</b>`:''}</button>`;}).join('')}</div>`).join('');
+    const prog=progHtml();
     const achN=ACH.filter(a=>ACHV[a.id]).length;
     const ach=`<div class="st-intro">解除した実績 ${achN} / ${ACH.length}</div><div class="rc-ach">${ACH.map(a=>{const at=ACHV[a.id];return `<div class="note ${at?'on':''}"><b>${esc(a.t)}</b><small>${esc(a.d)}${at?'　—　'+new Date(at).toLocaleDateString('ja-JP'):''}</small></div>`;}).join('')}</div>`;
-    const TABS={stat:{t:'戦績',h:stat},yaku:{t:`役図鑑 ${got}/${all}`,h:yaku},ach:{t:`実績 ${achN}/${ACH.length}`,h:ach}};
+    const TABS={stat:{t:'戦績',h:stat},prog:{t:'上達',h:prog},yaku:{t:`役図鑑 ${got}/${all}`,h:yaku},ach:{t:`実績 ${achN}/${ACH.length}`,h:ach}};
     m.innerHTML=`<h2>戦績</h2>
       <div class="rb-tabs">${Object.keys(TABS).map(k=>`<button data-k="${k}" class="${k===cur?'on':''}">${TABS[k].t}</button>`).join('')}</div>
       <div class="rb rc">${TABS[cur].h}</div>
       <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px"><button class="btn" id="rcClose" style="min-width:140px">とじる</button><button class="btn gray sm" id="rcReset">記録を消す</button></div>`;
     m.querySelectorAll('.rb-tabs button').forEach(b=>b.onclick=()=>{cur=b.dataset.k;draw();});
     m.querySelectorAll('.rc-y').forEach(b=>b.onclick=()=>{const d=yakuDesc(b.dataset.y);toast(b.dataset.y+(d?'：'+d:''),3800);});
+    progWire(m);
     document.getElementById('rcClose').onclick=()=>{ov.style.display='none';if(back)back();};
     document.getElementById('rcReset').onclick=()=>{if(!confirm('戦績・役図鑑・実績の記録をすべて消しますか？'))return;STATS=blankStats();saveStats();ACHV={};lsSet('mjAch','{}');draw();};
   };
   draw();
+}
+/* 上達：日ごとの「おすすめと同じ選び方」の割合（棒グラフ）と、最近7日の比べ */
+const PG_W=460,PG_H=170,PG_L=36,PG_R=8,PG_T=18,PG_B=24;   // 表示幅（約480px）とほぼ同じ大きさで描き、棒の太さ・文字の大きさが拡大されすぎないように
+function progHtml(){
+  const A=STATS.acc,days=A?A.days.filter(d=>d.n>0):[];
+  if(!days.length)return '<div class="st-intro">まだ記録がありません。自由対局や物語の戦を打つと、日ごとの「打ち方の正確さ」がここに残ります（レッスンと「みんなで対戦」は数えません）。</div>';
+  const pc=(a,b)=>b?Math.round(a/b*100):null,sum=(L,f)=>L.reduce((a,d)=>a+(d[f]||0),0);
+  const ago=n=>{const x=new Date();x.setDate(x.getDate()-n);return dateKey(x);};
+  const r7=A.days.filter(d=>d.d>ago(7)),p7=A.days.filter(d=>d.d>ago(14)&&d.d<=ago(7));
+  const cur=pc(sum(r7,'s'),sum(r7,'n')),prev=pc(sum(p7,'s'),sum(p7,'n')),all=pc(A.s,A.n);
+  const di=L=>sum(L,'h')?Math.round(sum(L,'di')/sum(L,'h')*1000)/10:null,dc=di(r7),dp=di(p7);
+  const dl=(a,b,upGood,unit)=>a==null||b==null||a===b?'':`<span class="dlt ${(a>b)===upGood?'p':'m'}">${a>b?'+':'−'}${Math.round(Math.abs(a-b)*10)/10}${unit}</span> 前の7日より`;
+  const cell=(k,v,sub)=>`<div class="rc-cell"><small>${k}</small><b>${v}</b><i>${sub}</i></div>`;
+  const L=days.slice(-14),n=L.length,slot=(PG_W-PG_L-PG_R)/n,bw=Math.min(24,slot*.62),y=v=>PG_T+(PG_H-PG_T-PG_B)*(1-v/100);
+  const md=k=>{const [,mo,da]=k.split('-');return (+mo)+'/'+(+da);};
+  const grid=[0,50,100].map(v=>`<line x1="${PG_L}" x2="${PG_W-PG_R}" y1="${y(v)}" y2="${y(v)}" class="pg-grid"/><text x="${PG_L-6}" y="${y(v)+3.5}" text-anchor="end" class="pg-ax">${v}%</text>`).join('');
+  const bars=L.map((d,i)=>{const v=pc(d.s,d.n),x=PG_L+slot*i+(slot-bw)/2,top=y(v),h=Math.max(0,y(0)-top),r=Math.min(4,h);
+    const path=h>0?`M${x},${y(0)}V${top+r}Q${x},${top} ${x+r},${top}H${x+bw-r}Q${x+bw},${top} ${x+bw},${top+r}V${y(0)}Z`:'';
+    const lab=n<=7||i===0||i===n-1||i===Math.floor((n-1)/2)?`<text x="${x+bw/2}" y="${PG_H-8}" text-anchor="middle" class="pg-ax">${md(d.d)}</text>`:'';
+    const end=i===n-1?`<text x="${x+bw/2}" y="${top-5}" text-anchor="middle" class="pg-val">${v}%</text>`:'';
+    return `<path d="${path}" class="pg-bar"/>${lab}${end}<rect x="${PG_L+slot*i}" y="${PG_T}" width="${slot}" height="${PG_H-PG_T-PG_B}" class="pg-hit" data-t="${md(d.d)}　${v}%（${d.n}打中 ${d.s}打）${d.h?'・'+d.h+'局 放銃'+d.di+'回':''}"/>`;}).join('');
+  const rows=days.slice().reverse().map(d=>`<tr><td>${md(d.d)}</td><td>${pc(d.s,d.n)}%</td><td>${d.s}/${d.n}</td><td>${d.h||0}</td><td>${d.di||0}</td></tr>`).join('');
+  return `<div class="st-intro">「おすすめと同じ選び方」の割合。おすすめ＝手を一番早く進める捨て牌（相手のリーチ中に降りる場面では現物）。数字が上がるほど、打ち方が上手になっています。</div>
+    <div class="rc-grid">${cell('最近7日',cur!=null?cur+'%':'—',dl(cur,prev,true,'pt')||'自由対局・物語の戦')}${cell('これまで全部',all!=null?all+'%':'—',A.n+'打')}${cell('放銃率（最近7日）',dc!=null?dc+'%':'—',dl(dc,dp,false,'pt')||sum(r7,'h')+'局')}</div>
+    <div class="dojo-sec">日ごとの割合（打った日・最近${n}日）</div>
+    <div class="pg-wrap"><svg class="pg" viewBox="0 0 ${PG_W} ${PG_H}" role="img" aria-label="日ごとのおすすめ一致率">${grid}${bars}</svg><div class="pg-tip" hidden></div></div>
+    <details class="pg-tbl"><summary>数字で見る</summary><table><tr><th>日</th><th>割合</th><th>打数</th><th>局</th><th>放銃</th></tr>${rows}</table></details>`;
+}
+function progWire(m){
+  const w=m.querySelector('.pg-wrap');if(!w)return;const tip=w.querySelector('.pg-tip');
+  const show=(r)=>{tip.textContent=r.dataset.t;tip.hidden=false;const b=r.getBoundingClientRect(),W=w.getBoundingClientRect();
+    tip.style.left=Math.max(0,Math.min(W.width-tip.offsetWidth,b.left-W.left+b.width/2-tip.offsetWidth/2))+'px';
+    w.querySelectorAll('.pg-hit').forEach(x=>x.classList.toggle('on',x===r));};
+  w.querySelectorAll('.pg-hit').forEach(r=>{r.onpointerenter=()=>show(r);r.onclick=()=>show(r);});
+  w.onpointerleave=()=>{tip.hidden=true;w.querySelectorAll('.pg-hit').forEach(x=>x.classList.remove('on'));};
 }
 function showPause(){
   if(MP.active)return mpMenu();

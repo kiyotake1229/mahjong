@@ -1,8 +1,18 @@
 {
-  "next_no": 44,
-  "total": 42,
-  "generated_at": "2026-10-27T15:25:37.944622",
+  "next_no": 45,
+  "total": 43,
+  "generated_at": "2026-10-27T17:14:05.417723",
   "documents": [
+    {
+      "no": 44,
+      "date": "2026-10-27",
+      "type": "NEW",
+      "category": "APP",
+      "title": "今日の1問と上達の記録",
+      "filename": "20261027_NEW_0044_APP_今日の1問と上達の記録.md",
+      "extension": "md",
+      "summary": "#0043 のあとに提案した3つを実装した。"
+    },
     {
       "no": 43,
       "date": "2026-10-27",
