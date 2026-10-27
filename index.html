@@ -204,6 +204,9 @@
   /* 読み筋：リーチ者に対する危険度（緑=安全、黄=スジ・壁、赤=危険） */
   .tile.dg0::after,.tile.dg1::after,.tile.dg2::after{content:"";position:absolute;left:3px;top:3px;width:7px;height:7px;border-radius:50%;z-index:2;box-shadow:0 0 0 1.5px rgba(0,0,0,.35)}
   .tile.dg0::after{background:#4fbfa8}.tile.dg1::after{background:#e3cd97}.tile.dg2::after{background:#e06a5e}
+  .dgk{white-space:nowrap;font-size:.92em;opacity:.92}
+  .dgk i{display:inline-block;width:8px;height:8px;border-radius:50%;margin:0 3px 0 7px;box-shadow:0 0 0 1.5px rgba(0,0,0,.35);vertical-align:0}
+  .dgk i.g{background:#4fbfa8}.dgk i.y{background:#e3cd97}.dgk i.r{background:#e06a5e}
   @keyframes breathe{0%,100%{outline-color:rgba(201,169,97,.45)}50%{outline-color:rgba(227,205,151,1)}}
   /* ===== 下部 ===== */
   .skill{display:inline-flex;align-items:center;gap:5px;font-family:var(--f-ui);background:rgba(255,255,255,.07);
@@ -284,6 +287,21 @@
   #modal .mv .mvi{margin:0 6px;white-space:nowrap}
   #modal .mv b.p,#modal .dlt.p{color:#8fe0cd}#modal .mv b.m,#modal .dlt.m{color:#f0a89e}
   #modal .dlt{font-weight:700;font-size:.86em;margin-left:2px}
+  /* ワンポイント（局の終わりに1つだけ） */
+  #modal .tip1{display:block;box-sizing:border-box;max-width:min(470px,100%);margin:6px auto 8px;padding:7px 11px;text-align:left;font-size:12.5px;line-height:1.65;color:var(--ink);
+    background:rgba(201,169,97,.08);border:1px solid rgba(201,169,97,.38);border-radius:9px;cursor:pointer;transition:opacity .35s ease,border-color .15s,background .15s}
+  #modal .tip1:hover{border-color:var(--gold);background:rgba(201,169,97,.13)}
+  #modal .tip1 .tl,.rv-tip-h{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.08em;color:#2a2015;background:var(--gold);border-radius:4px;padding:0 6px;margin-right:6px;vertical-align:1px}
+  #modal .tip1 b,.rv-tip-b b{color:var(--gold-hi)}
+  #modal .tip1 .more{color:var(--muted);font-size:11px;white-space:nowrap}
+  .rv-tip{border:1px solid rgba(201,169,97,.45);border-radius:10px;padding:9px 11px;margin:6px 0 8px;background:rgba(201,169,97,.07);animation:rvIn .3s ease}
+  .rv-tip-b{display:inline;font-size:13px;line-height:1.7}
+  .rv-tip .rv-tiles{margin-top:7px}
+  .rv-tip-k{font-size:11px;color:var(--muted);margin-top:5px;display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+  .rv-tip-k .kc,.rv-tip-k .kg{display:inline-block;width:11px;height:11px;border-radius:3px;border:2px solid #e06a5e;box-sizing:border-box}
+  .rv-tip-k .kg{border-color:var(--gold-hi)}
+  .tile.tcut{outline:2px solid #e06a5e;outline-offset:1px;transform:translateY(-3px)}
+  .tile.tgood{outline:2px solid var(--gold-hi);outline-offset:1px;transform:translateY(-3px)}
   #modal .score .hf{cursor:help;border-bottom:1px dotted rgba(227,205,151,.5)}
   #modal .rank{cursor:help}
   #modal .rank.pop{visibility:visible;opacity:1;animation:rankpop .5s cubic-bezier(.2,1.5,.4,1)}
@@ -1765,7 +1783,8 @@ function humanDiscard(idx,auto){
     if(isFuriten(p,waits(r2,p.melds.length))){if(MODE==='hot')toast('フリテンリーチ：ロンはできません。ツモを待とう',1200);else setTimeout(()=>{if(!HIDE&&VIEW===pid)toast('フリテンリーチ：ロンはできません。ツモを待とう');},700);}
   }
   if(MODE==='guest'){netAct({a:'discard',idx,riichi,tile});G.phase='react';renderActions([],false);render();return;}
-  seatDiscard(pid,idx,riichi);
+  const nd=!auto&&noteDiscard(p,idx);
+  if(!seatDiscard(pid,idx,riichi)&&nd)G.tips.pop();
 }
 /* 打牌の実行（画面の人・通信相手の共通）。受け付けたら true */
 function seatDiscard(pid,idx,riichi){
@@ -2024,7 +2043,7 @@ function cpuDiscardOnly(pid){
 }
 let REC={reason:''};
 function recommendDiscard(p){
-  const hand=p.hand,c=toCounts(hand),seen=new Set();let cands=[];
+  const hand=p.hand;
   REC.reason='';
   const opps=riichiOpponents(p);
   if(opps.length&&shanten(hand,p.melds.length)>=1){
@@ -2034,18 +2053,25 @@ function recommendDiscard(p){
     if(best>=0){REC.reason='safe';REC.tile=hand[best];return best;}
     REC.reason='nosafe';
   }else if(opps.length)REC.reason='push';
+  const b=effPick(hand,p.melds.length,p.seatWind).best;
+  REC.why=b.why;
+  return b.i;
+}
+/* 手の進み（向聴数・受け入れ）だけで選ぶ捨て牌。all は牌の種類ごとの評価（ワンポイントでも使う） */
+function effPick(hand,mc,seatWind){
+  const c=toCounts(hand),seen=new Set(),all=[];
   for(let i=0;i<hand.length;i++){const t=nt(hand[i]);if(seen.has(t))continue;seen.add(t);
-    const r=hand.slice();r.splice(i,1);const sh=shanten(r,p.melds.length);
+    const r=hand.slice();r.splice(i,1);const sh=shanten(r,mc);
     const isolated=c[t]===1&&(t>=27||(!(t%9>0&&c[t-1])&&!(t%9>1&&c[t-2])&&!(t%9<8&&c[t+1])&&!(t%9<7&&c[t+2])));
-    const cc=toCounts(r);let uke=0;for(let d=0;d<34;d++){if(cc[d]>=4)continue;if(shanten(r.concat([d]),p.melds.length)<sh)uke+=(4-cc[d]);}
-    const yk=t>=31||(t>=27&&(t-27===G.roundWind||t-27===p.seatWind));
-    cands.push({i,sh,uke,iso:isolated?1:0,hon:t>=27?1:0,term:isTermHon(t)?1:0,guest:(t>=27&&!yk)?1:0});
+    const cc=toCounts(r);let uke=0;for(let d=0;d<34;d++){if(cc[d]>=4)continue;if(shanten(r.concat([d]),mc)<sh)uke+=(4-cc[d]);}
+    const yk=t>=31||(t>=27&&(t-27===G.roundWind||t-27===seatWind));
+    all.push({i,t,sh,uke,iso:isolated?1:0,hon:t>=27?1:0,term:isTermHon(t)?1:0,guest:(t>=27&&!yk)?1:0});
   }
-  const minsh=Math.min(...cands.map(x=>x.sh));cands=cands.filter(x=>x.sh===minsh);
+  const minsh=Math.min(...all.map(x=>x.sh));const cands=all.filter(x=>x.sh===minsh);
   cands.sort((a,b)=>(b.iso*b.term)-(a.iso*a.term)||(b.iso*b.guest)-(a.iso*a.guest)||(b.iso*b.hon)-(a.iso*a.hon)||b.uke-a.uke||b.term-a.term);
   const b=cands[0];
-  REC.why=b.iso&&b.hon?(b.guest?'どれとも繋がらない字牌で、役牌でもない':'孤立した字牌'):b.iso&&b.term?'孤立した1・9で、繋がりにくい':b.iso?'どれとも繋がっていない牌':'切っても手が遠のかず、有効牌の種類が一番多い';
-  return b.i;
+  b.why=b.iso&&b.hon?(b.guest?'どれとも繋がらない字牌で、役牌でもない':'孤立した字牌'):b.iso&&b.term?'孤立した1・9で、繋がりにくい':b.iso?'どれとも繋がっていない牌':'切っても手が遠のかず、有効牌の種類が一番多い';
+  return {best:b,all,minsh};
 }
 function chooseTenpaiDiscard(p){const seen=new Set();let fallback=-1;
   for(let i=0;i<p.hand.length;i++){const t=p.hand[i];if(seen.has(t))continue;seen.add(t);const r=p.hand.slice();r.splice(i,1);
@@ -2061,6 +2087,11 @@ function hasYakuhaiSource(p){
   return p.melds.some(m=>m.t==='trip'&&(m.tile>=31||m.tile-27===p.seatWind||m.tile-27===G.roundWind));
 }
 function riichiOpponents(p){return G.players.filter(o=>o.id!==p.id&&o.riichi);}
+/* 手牌に危険度の印を出すか：物語で「読み筋」を覚えた後、または初心者モード（物語の戦では読み筋を覚えるまで出さない） */
+function dgMarks(me){
+  const begDg=document.getElementById('begChk').checked&&G.stage==null&&!G.storyFinal&&!G.dark;
+  return (begDg||typeof HERO!=='undefined'&&HERO.skills.includes('yomi'))&&!G.tutorial&&!me.riichi&&riichiOpponents(me).length>0;
+}
 function safeDiscardIdx(p){
   const opps=riichiOpponents(p);if(!opps.length)return -1;
   const safe=new Set();opps.forEach(o=>discTiles(o).forEach(d=>safe.add(d)));
@@ -2299,14 +2330,14 @@ function winMulti(winners,fromPid,tile,chankan){
   const heroWon=list.some(w=>isHuman(w.pid));haptic(heroWon?'win':(isHuman(fromPid)?'lose':'light'));
   if(heroWon)banterOne('lose',600,fromPid,true);
   else{const w=list.find(w=>w.pid!==0);banterOne(fromPid===0?'winHero':'win',400,w.pid,true);}
+  // 最後の結果画面のボタンで afterWinners が呼ばれる（showResult 側）。ふりかえりは結果画面より先に作る（ワンポイントを結果画面に出す）
+  G._winners=list.map(w=>w.pid);G.advance=!G._winners.includes(G.dealer);G.keepHonba=!G.advance;
+  {const hands={},evs={};list.forEach(w=>{hands[w.pid]=w.hand;evs[w.pid]=w.ev;});buildReview({winners:G._winners,fromPid,tsumo:false,tile,hands,evs,chankan});}
   const n=list.length;
   const showK=(k)=>{const w=list[k];const after=k<n-1?()=>showK(k+1):null;
     showResult(w.pid,fromPid,false,w.hand,tile,w.ev,w.pay,w.gained,w.sticks,after,n>1?`${k+1}/${n}`:'');};
   const start=()=>showK(0);
   if(heroWon){flash(n>1?'ダブロン':(MP.active?pname(list[0].pid)+'のロン':'ロン'));setTimeout(start,520);}else start();
-  // 最後の結果画面のボタンで afterWinners が呼ばれる（showResult 側）
-  G._winners=list.map(w=>w.pid);G.advance=!G._winners.includes(G.dealer);G.keepHonba=!G.advance;
-  {const hands={},evs={};list.forEach(w=>{hands[w.pid]=w.hand;evs[w.pid]=w.ev;});buildReview({winners:G._winners,fromPid,tsumo:false,tile,hands,evs});}
 }
 function ryuukyoku(){
   G.over=true;const before=G.players.map(p=>p.score);
@@ -2363,7 +2394,9 @@ function render(){
   const myTurn=G.turn===VIEW&&G.phase==='discard'&&!G.over;
   let recIdx=-1;
   if(beg&&myTurn&&!G.tutorial&&!me.riichi&&!(me.drawn>=0&&isAgari(me.hand,me.melds.length)))recIdx=recommendDiscard(me);
-  const yomi=typeof HERO!=='undefined'&&HERO.skills.includes('yomi')&&!G.tutorial&&!me.riichi&&riichiOpponents(me).length>0;
+  const begDg=beg&&G.stage==null&&!G.storyFinal&&!G.dark;
+  const yomi=dgMarks(me);
+  if(yomi&&begDg&&G.dgHint!==G.gen&&ctlOf(VIEW)==='local'){G.dgHint=G.gen;const n=+(lsGet('mjDgHint')||0);if(n<3){lsSet('mjDgHint',String(n+1));setTimeout(()=>toast('相手がリーチ。手牌の左上の印は当たりやすさ（緑＝安全・黄＝注意・赤＝危ない）',3600),900);}}
   const yv=yomi?visibleCounts(me):null,yo=yomi?riichiOpponents(me):null;
   me.hand.forEach((t,i)=>{const el=tileEl(t);
     if(yomi){const dg=Math.max(...yo.map(o=>dangerOf(nt(t),o,yv,'hard')));el.classList.add(dg<=0.5?'dg0':dg<=3?'dg1':'dg2');}
@@ -2465,8 +2498,9 @@ function guideForTurn(){
     const r=me.hand.slice();r.splice(idx,1);
     const ws=waits(r,me.melds.length),vc=visibleCounts(me),w=ws.map(t=>tileName(t)+'(残り'+Math.max(0,4-vc[t])+')').join(' ');
     const fur=isFuriten(me,ws)?'<br><b>フリテン注意：</b>待ち牌を自分で捨てているのでロンはできません（ツモならOK）':'';
-    const push=REC.reason==='push'?'<br>相手はリーチ中だけど、こちらもテンパイなら<b>押してOK</b>':'';
-    setGuide(`<b>テンパイ！</b> あと1枚であがり（待ち: <b>${w||'―'}</b>）。<span class="tag">おすすめ</span>の牌を切ろう`+(me.melds.length===0?'。<b>リーチ</b>もできます':'')+push+fur);
+    const ri=me.melds.length===0?'。<b>リーチ</b>もできます':'';
+    if(REC.reason==='push')return setGuide(`<b>テンパイ！</b> 待ち: <b>${w||'―'}</b>。相手はリーチ中だけど、テンパイなら<b>押してOK</b>`+ri+fur);   // 枠に収まるよう短く
+    setGuide(`<b>テンパイ！</b> あと1枚であがり（待ち: <b>${w||'―'}</b>）。<span class="tag">おすすめ</span>の牌を切ろう`+ri+fur);
   }else{
     setGuide(`あがりまで あと <b>${best}</b> 歩。<span class="tag">おすすめ</span>の牌を切って手を進めよう`);
   }
@@ -2835,6 +2869,7 @@ function renderActions(acts,showTurn){
   const el=document.getElementById('actions');el.innerHTML='';
   acts.forEach(a=>{const b=document.createElement('button');b.className='btn '+(a.cls||'');b.innerHTML=btnIcon(a.label)+'<span>'+a.label+'</span>';b.onclick=a.fn;el.appendChild(b);});
   if(showTurn&&!acts.some(a=>a.label==='ツモ')){const s=document.createElement('span');s.textContent=acts.length?'':'牌を選んで捨てる';s.style.opacity=.6;el.appendChild(s);}
+  if(showTurn&&G&&!HIDE&&dgMarks(G.players[VIEW])){const k=document.createElement('span');k.className='dgk';k.innerHTML='<i class="g"></i>安全<i class="y"></i>注意<i class="r"></i>危ない';el.prepend(k);}   // 手牌の印の見方
 }
 let toastT;function toast(m,ms){const e=document.getElementById('toast');e.textContent=m;e.style.display='block';clearTimeout(toastT);toastT=setTimeout(()=>e.style.display='none',ms||1500);}
 let flashT;function flash(m,localOnly){if(!localOnly&&typeof netFx==='function')netFx('flash',m);const e=document.getElementById('callflash');e.textContent=m;e.style.display='block';e.style.animation='none';e.offsetHeight;e.style.animation='flash .6s';clearTimeout(flashT);flashT=setTimeout(()=>e.style.display='none',900);}
@@ -2861,7 +2896,7 @@ function buildReview(o){
   else result=winners.map(i=>players[i].name+(o.tsumo?' ツモ':' ロン（'+players[o.fromPid].name+'から）')+(players[i].ev?'　'+players[i].ev.han+'翻'+(rankName(players[i].ev.fu,players[i].ev.han)?' '+rankName(players[i].ev.fu,players[i].ev.han):''):'')).join('／');
   const riWin=winners.some(i=>G.players[i].riichi);
   G.review={round:WINDS[G.roundWind]+(G.dealer+1),honba:G.honba,sticks:G.riichiSticks,dora:G.doraInd.slice(),ura:riWin?G.uraInd.slice():[],players,log:(G.log||[]).slice(),result,
-    end:o.abort?{k:'abort',t:o.abort}:(o.draw?{k:'ryu'}:{k:'win',w:winners,from:o.fromPid,tsumo:!!o.tsumo})};
+    end:o.abort?{k:'abort',t:o.abort}:(o.draw?{k:'ryu'}:{k:'win',w:winners,from:o.fromPid,tsumo:!!o.tsumo}),tip:pickTip(o)};
   REVIEW_LAST=G.review;
 }
 function showReview(rv){
@@ -2872,7 +2907,7 @@ function showReview(rv){
   const ini=i=>`<i style="background:${SEAT_COLOR[i]}">${esc((rv.players[i].name||'?').slice(0,1))}</i>`;
   const ph=rv.players.map((p,i)=>{
     let wi=-1;if(p.win&&p.winTile!=null){wi=p.hand.lastIndexOf(p.winTile);if(wi<0)wi=p.hand.findIndex(t=>nt(t)===nt(p.winTile));}
-    const tags=[p.win?'<span class="rv-tag ok">和了</span>':(p.tenpai?'<span class="rv-tag ok">聴牌</span>':'<span class="rv-tag ng">不聴</span>'),p.riichi?'<span class="rv-tag ri">リーチ</span>':'',p.furiten?'<span class="rv-tag ng">フリテン</span>':''].join('');
+    const tags=[p.win?'<span class="rv-tag ok">あがり</span>':(p.tenpai?'<span class="rv-tag ok">テンパイ</span>':'<span class="rv-tag ng">ノーテン</span>'),p.riichi?'<span class="rv-tag ri">リーチ</span>':'',p.furiten?'<span class="rv-tag ng">フリテン</span>':''].join('');
     const yaku=p.ev?`<div class="rv-yaku">${p.ev.yaku.map(v=>esc(v.n)+(v.dora?' '+(v.h|0):'')).join('　')}　<b>${p.ev.han}翻 ${p.ev.fu}符</b></div>`:'';
     const waitsHtml=p.waits.length&&!p.win?`<div class="rv-w">待ち <span class="rv-tiles">${tl(p.waits,'sm')}</span></div>`:'';
     return `<div class="rv-p ${p.win?'win':''}"><div class="rv-h"><b>${esc(p.name)}</b><span class="rv-tag">${p.wind}${p.dealer?'・親':''}</span>${tags}<span class="sc">${p.score.toLocaleString()}</span></div>
@@ -2887,6 +2922,7 @@ function showReview(rv){
   box.innerHTML=`<div class="rv">
     <h2>${esc(rv.round)}局 ${rv.honba}本場　ふりかえり</h2>
     <div class="rv-sub"><span>${esc(rv.result)}</span><span>ドラ表示 <span class="rv-tiles" style="display:inline-flex;vertical-align:middle">${tl(rv.dora,'sm')}</span></span>${rv.ura.length?`<span>裏ドラ表示 <span class="rv-tiles" style="display:inline-flex;vertical-align:middle">${tl(rv.ura,'sm')}</span></span>`:''}</div>
+    ${tipHtml(rv.tip)}
     ${ph}
     <div class="rv-sec">打牌の流れ（${rv.log.filter(e=>e.k==='d').length}打）</div>
     <div class="rv-log">${ev}${endHtml}</div>
@@ -2895,6 +2931,54 @@ function showReview(rv){
   document.getElementById('rvClose').onclick=hideReview;
 }
 function hideReview(){const b=document.getElementById('review');if(b)b.classList.remove('on');}
+/* ===== ワンポイント：自分の打牌を局の間だけ控え、局の終わりに「ここはこう切ると良かった」を1つ選ぶ（ひとり用のみ） ===== */
+const safeVsAll=(t,opps)=>opps.length>0&&opps.every(o=>discTiles(o).includes(t)||(o.riichiAt&&(G.discLog||[]).some(e=>e.n>o.riichiAt&&e.t===t)));
+function noteDiscard(p,idx){
+  if(MP.active||G.tutorial||p.riichi)return;
+  const opps=riichiOpponents(p),hand=p.hand.slice();
+  const s={jun:p.discards.length+1,hand,mc:p.melds.length,sw:p.seatWind,t:nt(hand[idx]),opp:opps.length,
+    safe:opps.length?[...new Set(hand.map(nt).filter(t=>safeVsAll(t,opps)))]:[]};
+  (G.tips||(G.tips=[])).push(s);
+  const g=G.gen;setTimeout(()=>{if(G&&G.gen===g&&!s.done)judgeDiscard(s);},450);   // 計算は牌が飛んだ後に
+  return s;
+}
+function judgeDiscard(s){
+  const E=effPick(s.hand,s.mc,s.sw),me=E.all.find(x=>x.t===s.t)||E.best;
+  Object.assign(s,{done:true,minsh:E.minsh,sh:me.sh,uke:me.uke,best:E.best.t,bestUke:E.best.uke,same:me.t===E.best.t||(me.sh===E.minsh&&me.uke>=E.best.uke)});
+  const sv=E.all.filter(x=>s.safe.includes(x.t)).sort((a,b)=>a.sh-b.sh||b.uke-a.uke)[0];s.safeBest=sv?sv.t:null;   // 現物の中で一番手が崩れないもの
+  if(s.opp&&s.minsh>=1&&s.safeBest!=null)s.same=s.safe.includes(s.t);   // 降りる場面は現物を切れたか
+}
+function pickTip(o){
+  const L=G.tips||[];if(!L.length||MP.active||G.tutorial)return null;
+  L.forEach(s=>{if(!s.done)judgeDiscard(s);});
+  const B=t=>`<b>${tileName(t)}</b>`,me=G.players[0],out=[];
+  const last=L[L.length-1];
+  const dealIn=!o.draw&&!o.abort&&!o.tsumo&&!o.chankan&&o.fromPid===0&&last.jun===me.discards.length&&last.t===nt(o.tile)?last:null;
+  if(dealIn){const s=dealIn,X=B(s.t);
+    if(s.opp&&s.minsh>=1&&s.safeBest!=null)out.push({sc:100,s,cut:s.t,good:s.safeBest,txt:`${s.jun}巡目の ${X} で振り込みました。リーチした人が捨てた ${B(s.safeBest)}（現物）なら、絶対に当たりませんでした。あがりまで遠い時は、現物を切って降りるのが基本です`});
+    else if(s.opp&&s.minsh===0)out.push({sc:35,s,cut:s.t,txt:`${X} で振り込みましたが、テンパイからの勝負なので悪くない判断です`});
+    else if(s.opp)out.push({sc:30,s,cut:s.t,txt:`${X} で振り込みました。現物がない時は、字牌や1・9、相手の捨て牌の「スジ」の牌が比較的当たりにくい牌です`});
+    else out.push({sc:25,s,cut:s.t,txt:`${X} で振り込みました。リーチしていない人もテンパイのことがあります。鳴いている人や、終盤の捨て牌には気をつけよう`});}
+  L.forEach(s=>{if(s===dealIn)return;const X=B(s.t);
+    if(s.opp&&s.minsh>=1){   // 降りる場面
+      if(!s.safe.includes(s.t)&&s.safeBest!=null)out.push({sc:70,s,cut:s.t,good:s.safeBest,txt:`${s.jun}巡目、リーチの相手に危ない ${X} を切りました（今回は当たらずにすみました）。あがりまで遠い時は、現物の ${B(s.safeBest)} を切ると安全です`});
+      return;}
+    if(s.sh>s.minsh)out.push({sc:50+10*(s.sh-s.minsh),s,cut:s.t,good:s.best,txt:s.minsh===0?`${s.jun}巡目の ${X} でテンパイを崩しました。${B(s.best)} を切ればテンパイのままでした`:`${s.jun}巡目の ${X} で、あがりから${s.sh-s.minsh}歩遠のきました。${B(s.best)} を切れば、あと${s.minsh}歩のままでした`});
+    else if(s.bestUke-s.uke>=4&&s.uke<=s.bestUke*.75)out.push({sc:20+Math.min(20,s.bestUke-s.uke),s,cut:s.t,good:s.best,txt:`${s.jun}巡目は ${X} より ${B(s.best)} を切ると、${s.minsh===0?'待ちの牌':'手が進む牌'}が ${s.uke}枚 → ${s.bestUke}枚 に増えました`});
+  });
+  const n=L.length,same=L.filter(s=>s.same).length;
+  if(!out.length){const won=(o.winners||[]).includes(0);
+    return {good:true,same,n,txt:won?'大きなミスのない打ち方でした。この調子！':n>=4&&same/n>=.8?'手の進め方は上手でした。この調子！':'目立つミスはありませんでした'};}
+  out.sort((a,b)=>b.sc-a.sc||a.s.jun-b.s.jun);
+  const t=out[0];return {txt:t.txt,hand:t.s.hand.map(nt).sort((a,b)=>a-b),cut:t.cut,good:t.good,same,n};
+}
+function tipHtml(tip){   // ふりかえり画面のワンポイント
+  if(!tip)return '';
+  let hs='';if(tip.hand){let c=false,g=false;hs=tip.hand.map(t=>{const e=tileEl(t,'sm');if(!c&&t===tip.cut){c=true;e.classList.add('tcut');}else if(!g&&tip.good!=null&&t===tip.good){g=true;e.classList.add('tgood');}return e.outerHTML;}).join('');}
+  return `<div class="rv-tip"><div class="rv-tip-h">ワンポイント</div><div class="rv-tip-b">${tip.txt}</div>
+    ${hs?`<div class="rv-tiles">${hs}</div><div class="rv-tip-k"><span class="kc"></span>切った牌${tip.good!=null?'　<span class="kg"></span>こちらが良かった牌':''}（そのときの手）</div>`:''}
+    ${tip.n?`<div class="rv-tip-k">おすすめと同じ選び方：${tip.n}打中 ${tip.same}打</div>`:''}</div>`;
+}
 function showResult(pid,fromPid,tsumo,hand,winTile,ev,pay,gained,sticks,after,multi,dlIn){
   const dl=Array.isArray(dlIn)?dlIn:(MODE!=='guest'?curDeltas():null);
   if(MODE==='host')netSendAll({t:'result',a:[pid,fromPid,tsumo,hand,winTile,ev,pay,gained,sticks,null,multi,dl],ura:G.uraInd},true);
@@ -2915,9 +2999,11 @@ function showResult(pid,fromPid,tsumo,hand,winTile,ev,pay,gained,sticks,after,mu
   const total=gained+sticks,handPts=pay.total,extra=total-handPts;
   const exParts=[];if(G.honba)exParts.push(`本場 +${(G.honba*300).toLocaleString()}`);if(sticks)exParts.push(`供託 +${sticks.toLocaleString()}`);
   const mvStr=Array.isArray(dl)&&dl.some(Boolean)?`<div class="sub mv hidden">${multi?'この局の':''}点数の動き　${dl.map((d,i)=>d?`<span class="mvi">${nm(i)} <b class="${d>0?'p':'m'}">${fmtD(d)}</b></span>`:'').join('')}</div>`:'';
+  const tip=!MP.active&&document.getElementById('begChk').checked&&G.review&&G.review.tip;
+  const tipStr=tip?`<div class="sub tip1 hidden"><span class="tl">ワンポイント</span>${tip.txt}${reviewOK()?' <span class="more">くわしく ›</span>':''}</div>`:'';
   const exStr=extra>0?`<div class="sub ex hidden">${exParts.join('　')}　＝ 計 <b>${total.toLocaleString()}</b>点</div>`:'';
   m.innerHTML=`${multi?`<div class="chap-num">ダブロン　${multi}</div>`:''}<h2>${nm(pid)} ${tsumo?'ツモ':'ロン'}</h2>
-    <div class="sub">和了牌 ${tileName(winTile)}　${payStr}</div>
+    <div class="sub">あがり牌 ${tileName(winTile)}　${payStr}</div>
     <div class="handshow reveal">${hs}</div>
     ${reviewOK()?'<div><button class="linkbtn" id="rvLink" style="margin-top:4px">この局のふりかえり（全員の手牌と流れ）</button></div>':''}
     <div class="yaku">${yl}</div>
@@ -2927,6 +3013,7 @@ function showResult(pid,fromPid,tsumo,hand,winTile,ev,pay,gained,sticks,after,mu
     ${exStr}
     ${rank?`<div class="rank hidden">${rank}</div>`:''}
     ${mvStr}
+    ${tipStr}
     ${G.tutorial?'<div class="sub" style="color:var(--gold);font-size:14px;margin:8px 0">レッスンクリア。この調子で進めよう。</div>':''}
     ${chatRowHtml()}
     <button class="btn hidden" id="nextBtn">${G.tutorial?'つづける':(G.storyFinal||G.practice!=null?'つづける':(G.daily?'結果を見る':'次の局へ'))}</button>`;
@@ -2937,17 +3024,17 @@ function showResult(pid,fromPid,tsumo,hand,winTile,ev,pay,gained,sticks,after,mu
   const timers=[];
   ev.yaku.forEach((v,i)=>timers.push(setTimeout(()=>sfx.draw(),T0+i*150)));
   // 点数カウントアップ → 満貫などがポン → ボタン
-  const sc=m.querySelector('.score'),pts=m.querySelector('.pts'),rk=m.querySelector('.rank'),ex=m.querySelector('.ex'),mv=m.querySelector('.mv'),nb=document.getElementById('nextBtn');
+  const sc=m.querySelector('.score'),pts=m.querySelector('.pts'),rk=m.querySelector('.rank'),ex=m.querySelector('.ex'),mv=m.querySelector('.mv'),tp=m.querySelector('.tip1'),nb=document.getElementById('nextBtn');
   let finished=false;
   const toBottom=()=>{if(m.scrollHeight>m.clientHeight+4)m.scrollTo({top:m.scrollHeight,behavior:'smooth'});};   // 小さい画面では点数と「次の局へ」が枠の下に隠れるので、見える所まで送る
   const finish=()=>{if(finished||!m.contains(sc))return;finished=true;timers.forEach(clearTimeout);m.classList.add('done');setTimeout(toBottom,30);
-    sc.classList.remove('hidden');pts.textContent=handPts.toLocaleString();if(ex)ex.classList.remove('hidden');if(mv)mv.classList.remove('hidden');if(rk){rk.classList.remove('hidden');rk.classList.add('pop');}nb.classList.remove('hidden');};
+    sc.classList.remove('hidden');pts.textContent=handPts.toLocaleString();if(ex)ex.classList.remove('hidden');if(mv)mv.classList.remove('hidden');if(tp)tp.classList.remove('hidden');if(rk){rk.classList.remove('hidden');rk.classList.add('pop');}nb.classList.remove('hidden');};
   timers.push(setTimeout(()=>{if(finished)return;sc.classList.remove('hidden');sc.classList.add('pop');toBottom();
     const t0=performance.now(),dur=650;
     const step=(now)=>{if(finished)return;const k=Math.min(1,(now-t0)/dur);const e=1-Math.pow(1-k,3);pts.textContent=Math.round(handPts*e).toLocaleString();
-      if(k<1)requestAnimationFrame(step);else{if(ex)ex.classList.remove('hidden');if(mv)mv.classList.remove('hidden');if(rk){rk.classList.remove('hidden');rk.classList.add('pop');if((MP.active?pid===VIEW:pid===0)&&ev.han>=6)confetti();}setTimeout(()=>{if(!finished){nb.classList.remove('hidden');finished=true;m.classList.add('done');toBottom();}},260);}};
+      if(k<1)requestAnimationFrame(step);else{if(ex)ex.classList.remove('hidden');if(mv)mv.classList.remove('hidden');if(tp)tp.classList.remove('hidden');if(rk){rk.classList.remove('hidden');rk.classList.add('pop');if((MP.active?pid===VIEW:pid===0)&&ev.han>=6)confetti();}setTimeout(()=>{if(!finished){nb.classList.remove('hidden');finished=true;m.classList.add('done');toBottom();}},260);}};
     requestAnimationFrame(step);},T1));
-  m.onclick=(e)=>{if(e.target===nb)return;const hf=e.target.closest('.hf,.rank');if(hf&&finished){toast(hfDesc(hf),4600);return;}const y=e.target.closest('.yl');if(y&&finished){const d=yakuDesc(y.dataset.y);if(d)toast(y.dataset.y+'：'+d,3800);return;}finish();};
+  m.onclick=(e)=>{if(e.target===nb)return;if(e.target.closest('.tip1')&&finished&&reviewOK()){showReview(G.review);return;}const hf=e.target.closest('.hf,.rank');if(hf&&finished){toast(hfDesc(hf),4600);return;}const y=e.target.closest('.yl');if(y&&finished){const d=yakuDesc(y.dataset.y);if(d)toast(y.dataset.y+'：'+d,3800);return;}finish();};
   if(document.getElementById('begChk').checked)m.querySelector('.yaku').insertAdjacentHTML('afterend','<div class="sub" style="font-size:11px;opacity:.6">役の名前や「翻・符」をタップすると説明が出ます</div>');
   const wasTut=G.tutorial,lesId=tut.lesson,wasFinal=G.storyFinal,wasPrac=G.practice;
   nb.onclick=()=>{m.onclick=null;ov.style.display='none';
@@ -2965,15 +3052,18 @@ function showDraw(tenpai,nag,abort,dlIn){
   const st=(i)=>abort?'':(nag&&nag[i]?'<b style="color:var(--gold)">流し満貫</b> ':'')+(tenpai&&tenpai[i]?'テンパイ':'ノーテン')+' ';
   const dTag=i=>dl&&dl[i]?` <small class="dlt ${dl[i]>0?'p':'m'}">${fmtD(dl[i])}</small>`:'';
   const tn=tenpai?tenpai.filter(Boolean).length:0;
+  const tipD=!MP.active&&document.getElementById('begChk').checked&&G.review&&G.review.tip;
   const tenNote=abort||(nag&&nag.some(Boolean))?'':`<div class="sub">テンパイ＝あと1枚であがれる形。${tn>0&&tn<4?'テンパイの人が、ノーテンの人から合計3,000点を受け取る':'全員'+(tn===4?'テンパイ':'ノーテン')+'なので、点数の動きはなし'}${G.daily?'':'。親がテンパイなら親が続く'}</div>`;
   m.innerHTML=`<h2>${abort?'途中流局':'流局'}</h2>
     ${abort?`<div class="sub">${esc(abort)}　親はそのまま続けて1本場</div>`:(nag&&nag.some(Boolean)?'<div class="sub">流し満貫：捨て牌が全部1・9・字牌で、一度も鳴かれなかった</div>':tenNote)}
     <div class="yaku">${G.players.map((p,i)=>`${esc(p.name||POS[(i-VIEW+4)%4])} ${WINDS[p.seatWind]}${p.isDealer?'親':''}<span class="h">${st(i)}${p.score.toLocaleString()}${dTag(i)}</span>`).join('<br>')}</div>
+    ${tipD?`<div class="sub tip1"><span class="tl">ワンポイント</span>${tipD.txt}${reviewOK()?' <span class="more">くわしく ›</span>':''}</div>`:''}
     ${reviewOK()?'<div><button class="linkbtn" id="rvLink">この局のふりかえり（全員の手牌と待ち）</button></div>':''}
     ${chatRowHtml()}
     <button class="btn" id="nextBtn">${G.storyFinal||G.practice!=null?'つづける':(G.daily?'結果を見る':'次の局へ')}</button>`;
   wireChatRow(m);
   {const rl=document.getElementById('rvLink');if(rl)rl.onclick=()=>showReview(G.review);}
+  {const tq=m.querySelector('.tip1');if(tq&&reviewOK())tq.onclick=()=>showReview(G.review);}
   const wasFinal=G.storyFinal,meTen=!!(tenpai&&tenpai[0]),wasPrac=G.practice;
   document.getElementById('nextBtn').onclick=()=>{ov.style.display='none';if(wasFinal){storyFinalEnd(meTen);return;}if(wasPrac!=null){practiceEnd(wasPrac,meTen);return;}endCheck();};
 }
@@ -3052,7 +3142,7 @@ function showHelp(back){
     <h4>鳴くときの注意</h4>手は早くなるが、<b>リーチができなくなる</b>。タンヤオや役牌など、鳴いても消えない役が必要。慣れるまでは「スルー」でいい。
     <h4>守り（相手がリーチしたら）</h4>・<b>現物</b>：リーチした人がすでに捨てた牌は<b>絶対に当たらない</b>。一番安全<br>・字牌や1・9は比較的当たりにくい<br>・自分があがりまで遠い（2歩以上）なら現物を切って降りる。テンパイなら押してOK
     <h4>フリテン</h4>自分の待ち牌を<b>自分で捨てたことがある</b>と、ロンはできない（ツモならOK）。待ちが分かったら、その牌を捨てていないか河を見る。
-    <h4>このアプリの助け</h4>初心者モードでは「おすすめ」の牌が光り、相手のリーチ中は現物に切り替わる。自分の番に「いまの手を見る」で、形・待ち・狙える役を確認できる。`},
+    <h4>このアプリの助け</h4>初心者モードでは「おすすめ」の牌が光り、相手のリーチ中は現物に切り替わる。相手がリーチすると、手牌の左上に当たりやすさの印が出る（緑＝安全・黄＝注意・赤＝危ない）。自分の番に「いまの手を見る」で、形・待ち・狙える役を確認できる。局が終わると、自分の打牌から「ワンポイント」を1つ教えてくれる。`},
    score:{t:'点数',h:`
     <h4>翻が上がるほど高い（子の目安）</h4>
     <dl><dt>1翻</dt><dd>1000〜1300点</dd><dt>2翻</dt><dd>2000〜2600点</dd><dt>3翻</dt><dd>3900〜5200点</dd><dt>4翻</dt><dd>7700〜8000点</dd><dt>5翻＝満貫</dt><dd>8000点</dd><dt>6〜7翻＝跳満</dt><dd>12000点</dd><dt>8〜10翻＝倍満</dt><dd>16000点</dd><dt>11〜12翻＝三倍満</dt><dd>24000点</dd><dt>13翻以上＝役満</dt><dd>32000点</dd></dl>
@@ -6251,7 +6341,7 @@ function showChooser(){if(MP.active)return mpMenu();showHome();}
 
 
 /* ===== タイトル画面・ホーム画面・対局中メニュー・設定 ===== */
-const APP_VER='2026.10.27';
+const APP_VER='2026.10.27.2';
 const BATTLE_FACE={nao:'smile',yakumo:'calm',shino:'calm',fukuju:'smile',tome:'smile',domoto:'angry',kuroda:'angry',karasu:'smile',washio:'calm',minato:'calm',shizuka:'calm',master:'smile',hayato:'smile',gen:'smile',ren:'smile'};   // 「○○ 戦」のカットインの表情
 const HM_IC={
  daily:'<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/><circle cx="12" cy="15.5" r="2"/>',
@@ -6311,10 +6401,10 @@ function showHome(){
 }
 /* ===== 更新のお知らせ：版が変わって最初にホームを開いた時に1回。まっさらな端末には出さない ===== */
 const WHATS_NEW=[
+ 'ワンポイント：局が終わると、自分の打牌から「ここはこう切ると良かった」をひとつ教えます（結果画面は初心者モードの時。ふりかえり画面ではいつでも）。初心者モードでは、相手のリーチ中に手牌へ当たりやすさの印（緑・黄・赤）',
  '初心者向けの見直し：表記を「リーチ」に統一。流局・あがりの画面に全員の点数の増減。「翻・符」「満貫」もタップで説明。リーチした時の1,000点の案内。長い案内文も全部読めるように。対局開始の吹き出しが案内に重ならないように',
  '初心者モードのON/OFFを覚えるようになりました（前は開くたびにONに戻っていた）。タッチ操作で、捨てた位置の牌が浮いて見える問題などを修正',
- '待ちの表示に「残り枚数」と「あがった時の点数の見込み」（タップで待ちごとの詳細）。右上の順位をタップすると、この局で順位が入れ替わる条件（ツモ・直撃・ほかから）',
- '遊びやすさ：速度の初期値を標準に。鳴きの確認は役の見込みがある時だけ（設定で「毎回」「出さない」も）＋確認に「この局は鳴かない」。テンパイしたら待ち牌とフリテンを表示。右上に順位と点差（オーラスの印つき）',
+ '待ちの表示に「残り枚数」と「あがった時の点数の見込み」（タップで待ちごとの詳細）。右上の順位をタップすると、この局で順位が入れ替わる条件（ツモ・直撃・ほかから）'
 ];
 function maybeWhatsNew(){
   if(lsGet('mjSeenVer')===APP_VER)return;
