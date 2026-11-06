@@ -25,7 +25,7 @@
 - 起動すると **タイトル画面 → ホーム画面**。ホームから 物語／自由対局／みんなで対戦／道場／翠ノート／設定 に進む。対局中は右上の「メニュー」から「対局にもどる／画面の見方／ルールブック／設定／ホームにもどる」
 - スマホは**横画面で遊ぶ作り**。縦持ちでは「横向きにしてください」と出る（「このまま縦で遊ぶ」を押すと縦向きの配置で遊べる）。ホーム画面から開くアプリは横向き指定（Android は固定、iPhone は画面の回転に従う）
 - 公開URL: https://kiyotake1229.github.io/mahjong/ ／ サポート・プライバシーポリシー: https://kiyotake1229.github.io/mahjong/support.html ／ 紹介ページ: https://kiyotake1229.github.io/mahjong/about/
-- iOSアプリ（Capacitor）は `ios-app/` に構築済み。Xcode のある環境でのビルド・申請は `ios-app/岩崎さんへの引き渡し手順.md`（実機確認は未実施）
+- iOSアプリ（Capacitor）は `ios-app/` に構築済み。Xcode のある環境でのビルド・申請は `ios-app/岩崎さんへの引き渡し手順.md`（実機確認は未実施）。GitHub Actions（`.github/workflows/ios-build.yml`、Xcode 26 に固定）で署名なしのビルドが通ることを確認済み。プライバシーマニフェストと暗号化の申告あり（docs #0049）
 - リポジトリ: https://github.com/kiyotake1229/mahjong （`index.html` を push すると数十秒で反映）
 
 ## 構成
