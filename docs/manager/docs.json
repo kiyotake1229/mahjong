@@ -1,8 +1,18 @@
 {
-  "next_no": 46,
-  "total": 44,
-  "generated_at": "2026-10-27T20:15:09.460032",
+  "next_no": 47,
+  "total": 45,
+  "generated_at": "2026-11-06T09:15:17.807798",
   "documents": [
+    {
+      "no": 46,
+      "date": "2026-11-06",
+      "type": "NEW",
+      "category": "APP",
+      "title": "着せ替えとライバル",
+      "filename": "20261106_NEW_0046_APP_着せ替えとライバル.md",
+      "extension": "md",
+      "summary": "#0045 のあとに提案した3つを実装した。"
+    },
     {
       "no": 45,
       "date": "2026-10-27",

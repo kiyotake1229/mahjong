@@ -36,10 +36,14 @@ showHome();startFreeGame();
 const STATE = `({hands:__soak.hands,games:__soak.games,errors:__soak.errors,inv:__soak.invariant,riichi:__soak.riichi,calls:__soak.calls,aborts:__soak.aborts,nagashi:__soak.nagashi,round:document.getElementById('roundName').textContent,turn:G&&G.turn,phase:G&&G.phase,wall:G&&G.wall.length,over:G&&G.over,overlay:document.getElementById('overlay').style.display})`;
 
 (async () => {
-  const browser = await puppeteer.launch({ executablePath: CHROME, headless: 'shell',
+  const launch = () => puppeteer.launch({ executablePath: CHROME, headless: 'shell',
     args: ['--mute-audio', '--no-first-run', '--disable-gpu', '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows'] });
+  let browser = await launch();
   const pages = [];
-  for (let i = 0; i < N; i++) {   // 卓ごとに別の保存領域（記録が混ざらない）
+  const tot = { hands: 0, games: 0, riichi: 0, calls: 0, aborts: 0, nagashi: 0, errors: 0, inv: 0 };
+  const add = f => { tot.hands += f.hands; tot.games += f.games; tot.riichi += f.riichi; tot.calls += f.calls; tot.aborts += f.aborts; tot.nagashi += f.nagashi; tot.errors += f.errors.length; tot.inv += f.inv.length; };
+  let restarts = 0;
+  async function open(i) {   // 卓ごとに別の保存領域（記録が混ざらない）
     const ctx = await browser.createBrowserContext();
     const page = await ctx.newPage();
     await page.setViewport({ width: 932, height: 430, deviceScaleFactor: 1 });
@@ -47,15 +51,33 @@ const STATE = `({hands:__soak.hands,games:__soak.games,errors:__soak.errors,inv:
     page.on('dialog', async d => { console.log(`卓${i + 1} dialog（キャンセル扱い）:`, d.message().slice(0, 60)); try { await d.dismiss(); } catch (e) {} });
     await page.goto(URL + i, { waitUntil: 'load', timeout: 30000 });
     await page.evaluate(SETUP);
-    pages.push({ page, sig: '', sigAt: Date.now(), lastHands: -1 });
+    return { page, ctx, sig: '', sigAt: Date.now(), lastHands: -1, last: null };
   }
+  for (let i = 0; i < N; i++) pages.push(await open(i));
   const t0 = Date.now();
   let bad = false;
   outer: while (Date.now() - t0 < MIN * 60000) {
     await new Promise(r => setTimeout(r, 5000));
     for (let i = 0; i < pages.length; i++) {
       const P = pages[i];
-      const s = await P.page.evaluate(STATE);
+      let s;
+      try { s = await P.page.evaluate(STATE); P.last = s; }
+      catch (e) {   // Chrome 側でページが外れた（画面が消えている時などに起きる）。そこまでの数を足して、卓を開き直す
+        if (!/detached|Target closed|Session closed|Connection closed/i.test(e.message)) throw e;
+        restarts++;
+        if (!browser.isConnected()) {   // Chrome ごと落ちた：全部の卓の数を足して、立ち上げ直す
+          console.log('再起動（ブラウザが落ちた）');
+          pages.forEach(Q => { if (Q.last) add(Q.last); });
+          try { await browser.close(); } catch (e2) {}
+          browser = await launch();
+          for (let k = 0; k < pages.length; k++) pages[k] = await open(k);
+          break;
+        }
+        console.log(`卓${i + 1} 再起動（ブラウザ側でページが外れた）`);
+        if (P.last) add(P.last);
+        try { await P.ctx.close(); } catch (e2) {}
+        pages[i] = await open(i); continue;
+      }
       const now = `${s.round}|${s.turn}|${s.phase}|${s.wall}|${s.hands}|${s.overlay}`;
       if (now !== P.sig) { P.sig = now; P.sigAt = Date.now(); }
       if (s.hands !== P.lastHands) { P.lastHands = s.hands;
@@ -64,9 +86,8 @@ const STATE = `({hands:__soak.hands,games:__soak.games,errors:__soak.errors,inv:
       if (Date.now() - P.sigAt > 60000) { console.log(`卓${i + 1} 停滞（60秒以上進まない）:`, now); bad = true; break outer; }
     }
   }
-  const tot = { hands: 0, games: 0, riichi: 0, calls: 0, aborts: 0, nagashi: 0, errors: 0, inv: 0 };
-  for (const P of pages) { const f = await P.page.evaluate(STATE); tot.hands += f.hands; tot.games += f.games; tot.riichi += f.riichi; tot.calls += f.calls; tot.aborts += f.aborts; tot.nagashi += f.nagashi; tot.errors += f.errors.length; tot.inv += f.inv.length; }
-  console.log('結果（合計）:', JSON.stringify(tot));
+  for (const P of pages) { let f; try { f = await P.page.evaluate(STATE); } catch (e) { f = P.last; } if (!f) continue; tot.hands += f.hands; tot.games += f.games; tot.riichi += f.riichi; tot.calls += f.calls; tot.aborts += f.aborts; tot.nagashi += f.nagashi; tot.errors += f.errors.length; tot.inv += f.inv.length; }
+  console.log('結果（合計）:', JSON.stringify(tot) + (restarts ? `（途中でページが外れて ${restarts} 回開き直した）` : ''));
   await browser.close();
   process.exit(bad || tot.errors || tot.inv ? 1 : 0);
 })().catch(e => { console.error(e); process.exit(2); });
