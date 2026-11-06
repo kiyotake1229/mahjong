@@ -1,15 +1,25 @@
 {
-  "next_no": 50,
-  "total": 48,
-  "generated_at": "2026-11-06T13:59:06.813680",
+  "next_no": 51,
+  "total": 49,
+  "generated_at": "2026-11-06T15:08:11.042637",
   "documents": [
+    {
+      "no": 50,
+      "date": "2026-11-06",
+      "type": "DOC",
+      "category": "IOS",
+      "title": "引き渡し手順の必要な環境をXcode26に",
+      "filename": "20261106_DOC_0050_IOS_引き渡し手順の必要な環境をXcode26に.md",
+      "extension": "md",
+      "summary": "岩崎さんへの引き渡し手順の「必要な環境」が古いままだった。このアプリは Capacitor 7 のため、Xcode 27 でビルドすると起動しないおそれがある。Xcode 26 を使うこと、macOS ごとに使う Xcode の版、入手先、Node.js 20 以降を書いた。"
+    },
     {
       "no": 49,
       "date": "2026-11-06",
       "type": "ENH",
       "category": "IOS",
-      "title": "プライバシーマニフェストと暗号化の申告",
-      "filename": "20261106_ENH_0049_IOS_プライバシーマニフェストと暗号化の申告.md",
+      "title": "プライバシーマニフェストと暗号化の申告",
+      "filename": "20261106_ENH_0049_IOS_プライバシーマニフェストと暗号化の申告.md",
       "extension": "md",
       "summary": "App Store へのアップロードで求められる申告を iOS アプリにそろえた。プライバシーマニフェスト（`PrivacyInfo.xcprivacy`。トラッキングなし・収集データなし・「理由の申告が要る API」の利用理由）をアプリに入れ、暗号化を使っていない申告（`ITSAppUsesNonExemptEncryption = NO`）を足した。GitHub Actions のビルド確認（"
     },
