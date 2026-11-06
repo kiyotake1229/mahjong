@@ -407,6 +407,42 @@
   .cutin.riichi .ci-pt{border-color:#d0574b}
   .cutin.me .ci-band{border-color:var(--teal)}.cutin.me .ci-pt{border-color:var(--teal)}
   .cutin.riichi.me .ci-band,.cutin.riichi.me .ci-pt{border-color:#d0574b}
+  .ci-ini{display:flex;align-items:center;justify-content:center;font-size:clamp(30px,10vh,48px);font-weight:700;color:#141a17}
+  /* 跳満以上：金の帯・光・役の名前の判子。役満は暗転と回る光の筋 */
+  .cutin.big .ci-band,.cutin.yakuman .ci-band{height:clamp(96px,36vh,160px);border-top:3px solid #fff1c4;border-bottom:3px solid #fff1c4;
+    background:linear-gradient(90deg,rgba(40,28,8,0) 0%,#3a2a0c 12%,#7a5c1e 38%,#9a7a2c 50%,#7a5c1e 62%,#3a2a0c 88%,rgba(40,28,8,0) 100%);
+    box-shadow:0 0 60px rgba(227,205,151,.55),0 0 0 1px rgba(0,0,0,.4)}
+  .cutin.big .ci-band::before,.cutin.yakuman .ci-band::before{background:linear-gradient(100deg,transparent 28%,rgba(255,250,225,.55) 47%,transparent 64%);background-size:220% 100%}
+  .cutin.big .ci-w,.cutin.yakuman .ci-w{color:#fffbea;text-shadow:0 2px 0 #6b4f17,0 4px 18px rgba(0,0,0,.6),0 0 28px rgba(255,236,170,.8)}
+  .cutin.big .ci-pt,.cutin.yakuman .ci-pt{border-color:#fff1c4;box-shadow:0 0 0 3px rgba(122,92,30,.8),0 0 26px rgba(255,236,170,.7)}
+  .ci-rank{font-family:var(--f-mincho);font-size:clamp(46px,19vh,104px);font-weight:800;line-height:1;margin-left:clamp(6px,2vw,18px);
+    background:linear-gradient(180deg,#fffbe6 0%,#f3d784 45%,#c9973a 100%);-webkit-background-clip:text;background-clip:text;color:transparent;
+    filter:drop-shadow(0 3px 0 #5a3f10) drop-shadow(0 0 18px rgba(255,230,160,.65));
+    opacity:0;animation:ciRank calc(var(--ms) * .62) cubic-bezier(.2,1.5,.35,1) calc(var(--ms) * .26) forwards}
+  @keyframes ciRank{0%{opacity:0;transform:scale(2.6) rotate(-14deg)}35%{opacity:1;transform:scale(.92) rotate(-6deg)}55%{transform:scale(1.04) rotate(-6deg)}100%{opacity:1;transform:scale(1) rotate(-6deg)}}
+  .ci-flash{position:absolute;inset:0;background:radial-gradient(circle at 50% 50%,rgba(255,248,220,.95),rgba(255,236,170,.4) 40%,rgba(255,236,170,0) 75%);opacity:0;animation:ciFlash calc(var(--ms) * .5) ease-out calc(var(--ms) * .22) forwards}
+  @keyframes ciFlash{0%{opacity:0}18%{opacity:.85}100%{opacity:0}}
+  .cutin.yakuman{background:rgba(0,0,0,.55);animation:ciDim var(--ms) ease forwards}
+  @keyframes ciDim{0%{background:rgba(0,0,0,0)}12%,85%{background:rgba(0,0,0,.6)}100%{background:rgba(0,0,0,0)}}
+  .ci-rays{position:absolute;left:50%;top:50%;width:220vmax;height:220vmax;margin:-110vmax 0 0 -110vmax;opacity:0;
+    background:repeating-conic-gradient(from 0deg,rgba(255,226,150,.22) 0deg 6deg,rgba(255,226,150,0) 6deg 18deg);
+    -webkit-mask:radial-gradient(circle,#000 0%,rgba(0,0,0,.7) 25%,transparent 60%);mask:radial-gradient(circle,#000 0%,rgba(0,0,0,.7) 25%,transparent 60%);
+    animation:ciRays var(--ms) linear forwards}
+  @keyframes ciRays{0%{opacity:0;transform:rotate(0)}15%{opacity:1}85%{opacity:1}100%{opacity:0;transform:rotate(40deg)}}
+  body.ci-shake #app,body.ci-shake main{animation:ciShake .6s cubic-bezier(.36,.07,.19,.97)}
+  @keyframes ciShake{10%,90%{transform:translate(-1px,0)}20%,80%{transform:translate(3px,1px)}30%,50%,70%{transform:translate(-5px,-1px)}40%,60%{transform:translate(5px,1px)}}
+  .cutin.event .ci-band{border-color:var(--gold-hi)}.cutin.event .ci-w{letter-spacing:.2em}
+  /* 跳満以上の結果画面：金の枠が光る */
+  #modal.bigwin{border-color:var(--gold-hi);animation:modalin .34s cubic-bezier(.25,1.1,.4,1),bwGlow 1.8s ease-in-out .3s infinite}
+  @keyframes bwGlow{0%,100%{box-shadow:var(--sh3),0 0 0 1px rgba(227,205,151,.4),0 0 18px rgba(227,205,151,.25)}50%{box-shadow:var(--sh3),0 0 0 2px rgba(255,241,196,.9),0 0 40px rgba(255,226,150,.55)}}
+  #modal.yakuwin{background:radial-gradient(120% 80% at 50% 0%,#3a2e14 0%,#1b2520 60%)}
+  #modal.bigwin .rank{font-size:38px;background:linear-gradient(180deg,#fffbe6,#f3d784 45%,#c9973a);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 2px 0 #5a3f10) drop-shadow(0 0 14px rgba(255,230,160,.5))}
+  /* 昇段戦 */
+  .dm-box{border:1px solid var(--gold);border-radius:12px;padding:10px 14px;margin:4px auto 10px;max-width:460px;background:linear-gradient(135deg,rgba(201,169,97,.16),rgba(201,169,97,.04));box-shadow:0 0 18px rgba(201,169,97,.18);text-align:left}
+  .dm-box b{display:block;font-family:var(--f-mincho);font-size:16px;color:var(--gold-hi);margin-bottom:2px}
+  .dm-box small{display:block;font-size:11.5px;color:var(--muted);line-height:1.6;margin-bottom:8px}
+  .hm-dm{display:inline-block;margin-left:5px;font-size:10px;font-weight:700;color:#2a2015;background:linear-gradient(90deg,#f3d784,#c9973a);border-radius:4px;padding:0 5px;vertical-align:2px;animation:dmPulse 1.6s ease-in-out infinite}
+  @keyframes dmPulse{0%,100%{box-shadow:0 0 0 rgba(255,226,150,0)}50%{box-shadow:0 0 10px rgba(255,226,150,.7)}}
   /* 着せ替え */
   .sk-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;margin:2px 0 6px}
   .sk-it{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 6px 7px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.035);color:var(--ink);cursor:pointer;font-family:var(--f-ui);transition:border-color .15s,background .15s,transform .15s}
@@ -1190,9 +1226,28 @@ function danDelta(rank,lv,len){   // rank: 0=1位
   if(rank===3&&danData().lv>DAN_FIRST)v-=5*(danData().lv-DAN_FIRST);   // 段が上がるほど4位が重い
   return Math.round(v);
 }
+/* 昇段戦：昇段まで必要な点の4割以内になったら挑戦できる。常連3人（つよい以上）と東風戦。1位で即昇段、2位はそのまま、3位・4位は少し減る（段位は下がらない） */
+let DANMATCH_NEXT=null;
+const danMatchReady=()=>{const d=danData();return d.games>0&&danNeed(d.lv)>0&&danNeed(d.lv)-d.pts<=Math.ceil(danNeed(d.lv)*.4);};
+const danMatchLv=()=>LV_ORDER.indexOf(CPU_LV)>=LV_ORDER.indexOf('hard')?CPU_LV:'hard';
+function startDanMatch(){
+  const inGame=!!(G&&!G.over&&!G.tutorial&&G.wall&&(G.wall.length<70||G.players.some(p=>p.discards&&p.discards.length)));
+  if(inGame&&!confirm('いまの対局を終えて、昇段戦を始めますか？'))return;
+  const sv=loadSave();if(!inGame&&sv&&!confirm('途中の対局（'+sv.lbl+'）を消して、昇段戦を始めますか？'))return;
+  clearSave();lsSet('mjHelpSeen','1');DANMATCH_NEXT={lv:danMatchLv(),to:danData().lv+1};G=null;newHand(false);
+  setTimeout(()=>{if(G&&G.danMatch){cutIn(0,'昇段戦','event',null);setTimeout(()=>toast('昇段戦：1位なら '+danName(G.danMatch.to)+' に昇段！',3000),cutLen('event'));}},500);
+}
 function danLine(){const d=danData();return danName(d.lv)+(danNeed(d.lv)?'（昇段まで あと'+(danNeed(d.lv)-d.pts)+'）':'');}
 function danApply(rank){
-  const d=danData(),before={lv:d.lv,pts:d.pts},delta=danDelta(rank,G.cpuLv||CPU_LV,G.len);let ev='';
+  const d=danData(),before={lv:d.lv,pts:d.pts};
+  if(G.danMatch){   // 昇段戦
+    let ev='',delta=0;d.games++;d.matches=(d.matches||0)+1;
+    if(rank===0&&danNeed(d.lv)){delta=danNeed(d.lv)-d.pts;d.lv++;d.pts=d.lv>=DAN_FIRST&&danNeed(d.lv)?Math.round(danNeed(d.lv)/2):0;ev='up';d.matchWins=(d.matchWins||0)+1;}
+    else if(rank>=2){delta=-Math.min(d.pts,Math.round(danNeed(d.lv)*.15));d.pts+=delta;}
+    d.max=Math.max(d.max||0,d.lv);saveStats();
+    return {before,after:{lv:d.lv,pts:d.pts},delta,ev,match:true};
+  }
+  const delta=danDelta(rank,G.cpuLv||CPU_LV,G.len);let ev='';
   d.games++;d.pts+=delta;
   if(danNeed(d.lv)&&d.pts>=danNeed(d.lv)){d.pts-=danNeed(d.lv);d.lv++;ev='up';if(d.lv>=DAN_FIRST)d.pts=Math.max(d.pts,Math.round(danNeed(d.lv)/2));if(!danNeed(d.lv))d.pts=0;}
   else if(d.pts<0){if(d.lv>DAN_FIRST){d.lv--;d.pts=Math.round(danNeed(d.lv)/2);ev='down';}else d.pts=0;}
@@ -1643,6 +1698,9 @@ const sfx={
   blip:()=>beep(1500,.025,'sine',.018),
   chat:()=>beep(1175,.05,'sine',.05),
   select:()=>{beep(660,.07,'sine',.09);setTimeout(()=>beep(990,.12,'sine',.09),70);},
+  fanfare:(y)=>{[523.25,659.25,783.99,1046.5].forEach((f,i)=>setTimeout(()=>beep(f,.24,'triangle',.15),i*105));   // 跳満以上：上がっていく和音。役満は鐘の音も
+    setTimeout(()=>{beep(1046.5,.7,'sine',.12);beep(1318.5,.7,'sine',.08);},440);
+    if(y)[0,260,520].forEach((t,i)=>setTimeout(()=>{beep(784*(i+1)/1.5,1.1,'sine',.09);beep(1568,.9,'triangle',.05);},700+t));},
   door:()=>{if(!SOUND_ON)return;try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();   // 扉が開いてドアベルが鳴る
     const knock=(at,vol)=>{const n=AC.sampleRate*0.09|0;const b=AC.createBuffer(1,n,AC.sampleRate);const d=b.getChannelData(0);for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/n,4);const s=AC.createBufferSource();s.buffer=b;const f=AC.createBiquadFilter();f.type='lowpass';f.frequency.value=380;const g=AC.createGain();g.gain.value=vol;s.connect(f);f.connect(g);g.connect(sfxOut());s.start(AC.currentTime+at);};
     knock(0,.7);knock(.17,.55);
@@ -1723,7 +1781,7 @@ function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
 /* ===== 対局の自動保存と再開（ひとり用。レッスンと「みんなで対戦」は対象外） ===== */
 const SAVE_SV=1;
 let TOUR_ON=false;
-function saveLabel(){let kind='自由対局';try{if(G.stage!=null){const st=storyPath()[G.stage];kind=st?(st.t+' 戦'):'物語の対局';}else if(G.storyFinal)kind='終節の一局';else if(G.practice!=null)kind='練習の一局';else if(G.daily)kind='今日の一局';}catch(e){}
+function saveLabel(){let kind='自由対局';try{if(G.stage!=null){const st=storyPath()[G.stage];kind=st?(st.t+' 戦'):'物語の対局';}else if(G.storyFinal)kind='終節の一局';else if(G.practice!=null)kind='練習の一局';else if(G.daily)kind='今日の一局';else if(G.danMatch)kind='昇段戦';}catch(e){}
   return kind+'　'+document.getElementById('roundName').textContent+'局';}
 function saveGame(){
   if(!G||G.tutorial||TOUR_ON||(typeof MP!=='undefined'&&MP.active)||typeof APP_VER==='undefined')return;
@@ -1782,7 +1840,8 @@ function newHand(keep,restart){
   let sticks=keep&&prev?(prev.riichiSticks||0):0;
   if(restart&&prev){scores=(prev.startScores||scores).slice();honba=prev.startHonba!=null?prev.startHonba:honba;sticks=prev.startSticks!=null?prev.startSticks:sticks;}
   else if(keep&&prev){if(prev.advance){dealer=(dealer+1)%4;if(dealer===0)round++;honba=prev.keepHonba?honba+1:0;}else honba=honba+1;}
-  const dailyNow=DAILY_NEXT;DAILY_NEXT=null;   // 今日の一局：日付の種で同じ配牌（赤ドラあり固定）
+  const dailyNow=DAILY_NEXT;DAILY_NEXT=null;
+  const dmNow=keep?null:DANMATCH_NEXT;DANMATCH_NEXT=null;   // 昇段戦：常連3人・つよい以上・東風戦   // 今日の一局：日付の種で同じ配牌（赤ドラあり固定）
   const rnd=dailyNow?mulberry32(dailyNow.seed):Math.random,redOn=dailyNow?true:RED_ON;
   let wall=[];for(let t=0;t<34;t++)for(let k=0;k<4;k++)wall.push(redOn&&REDABLE[t]&&k===0?t+0.5:t);
   for(let i=wall.length-1;i>0;i--){const j=(rnd()*(i+1))|0;[wall[i],wall[j]]=[wall[j],wall[i]];}
@@ -1796,17 +1855,18 @@ function newHand(keep,restart){
   if(cast){players.forEach((p,i)=>{p.style=cast[i].style;p.name=cast[i].name;p.level=cast[i].level;p.charId=cast[i].charId;p.cheat=cast[i].cheat;p.readHand=cast[i].readHand;p.ai=cast[i].ai;});}
   else if(MP.active){const pool=['hayato','shizuka','gen','master','ren','kuroda'].sort(()=>Math.random()-.5);let k=0;
     players.forEach((p,i)=>{const st=MP.seats[i];if(st.kind==='cpu'){const id=pool[k++];p.charId=id;p.name='CPU '+CHARS[id].n;p.style=CHAR_STYLE[id];p.level=CPU_LV_LEVEL[MP.lv]||1;p.ai=MP.lv;}else{p.name=st.name;p.style='normal';p.level=1;p.ai=null;}});}
+  else if(dmNow){['master','shizuka','gen'].forEach((id,k)=>{const q=players[k+1];q.charId=id;q.name=CHARS[id].n;q.style=CHAR_STYLE[id];q.level=CPU_LV_LEVEL[dmNow.lv]||2;q.ai=dmNow.lv;});}
   else{const pick=dailyNow?['hayato','shizuka','gen']:freeCastPick();   // 指名があればその3人、なければ出会った相手からランダム。今日の一局は常連3人・ふつう固定
     for(let i=1;i<4;i++){const id=pick[i-1];players[i].charId=id;players[i].name=CHARS[id].n;players[i].style=CHAR_STYLE[id];players[i].level=dailyNow?CPU_LV_LEVEL.normal:(CPU_LV_LEVEL[CPU_LV]||1);players[i].ai=dailyNow?'normal':CPU_LV;}}
   const storyFinal=keep&&prev?prev.storyFinal:false;const dark=keep&&prev?!!prev.dark:false;
-  const len=keep&&prev?(prev.len||'han'):GAME_LEN;   // 半荘か東風戦か（対局の間は変えない）
+  const len=keep&&prev?(prev.len||'han'):(dmNow?'ton':GAME_LEN);   // 半荘か東風戦か（対局の間は変えない）
   const stage=keep&&prev?prev.stage:null;const wager=keep&&prev?!!prev.wager:false;
   const stats=keep&&prev&&prev.stats?prev.stats:{dealIns:0,maxHan:0,ronBoss:false};
   G={wall,dead,doraInd:[dead[4]],uraInd:[dead[5]],players,dealer,round,honba,turn:dealer,roundWind:round,
      phase:'draw',over:false,riichiSticks:sticks,ippatsu:[false,false,false,false],callHappened:false,
      rinshanFlag:false,lastDiscard:null,advance:false,keepHonba:false,pendingRiichiDeclarer:-1,offering:false,log:[],
      tutorial:false,tutGate:null,gen:++GEN,skill:{foresight:false,peekTiles:null,god:false},storyFinal,stage,wager,stats,practice:null,dark,len,
-     startScores:scores.slice(),startHonba:honba,startSticks:sticks,accG:keep&&prev&&prev.accG?prev.accG:{s:0,n:0},hl:keep&&prev&&prev.hl?prev.hl:{w:0,di:0,ri:0,best:0,bestY:''},cpuLv:keep&&prev&&prev.cpuLv?prev.cpuLv:CPU_LV,
+     startScores:scores.slice(),startHonba:honba,startSticks:sticks,accG:keep&&prev&&prev.accG?prev.accG:{s:0,n:0},hl:keep&&prev&&prev.hl?prev.hl:{w:0,di:0,ri:0,best:0,bestY:''},cpuLv:keep&&prev&&prev.cpuLv?prev.cpuLv:(dmNow?dmNow.lv:CPU_LV),danMatch:keep&&prev?(prev.danMatch||null):dmNow,
      ctl:MP.active?MP.seats.map((st,i)=>st.kind==='cpu'?'cpu':(MODE==='hot'?'local':(i===MP.me?'local':'remote'))):['local','cpu','cpu','cpu']};
   if(dailyNow)G.daily=dailyNow;
   players.forEach(p=>{if(p.cheat)rigHand(p,wall,p.cheat);});
@@ -2111,7 +2171,8 @@ function ronPhase(fromPid,tile,onNone,chankan){
   const autoRonAll=MODE==='hot'&&!MP.calls;
   const humans=claim.filter(pid=>isHuman(pid)&&!autoRonAll&&!(AUTO_WIN&&ctlOf(pid)==='local'&&!G.tutorial));   // 自動ロンの人は聞かずにあがる
   if(!humans.length){
-    if(claim.length){const ci=cutIn(claim[0],claim.length>1?'ダブロン':'ロン','win');if(ci)G._ciWin=true;else flash(claim.map(pname).join('と')+'のロン');return later(()=>winMulti(claim,fromPid,tile,chankan),ci?cutMs():sp().call);}
+    if(claim.length){const bg=claim.map(i=>{const q=G.players[i];return bigOf(evaluate(q.hand.concat([tile]),q.melds,buildCtx(i,false,tile,chankan)));}).sort((a,b)=>(b?b.kind==='yakuman'?2:1:0)-(a?a.kind==='yakuman'?2:1:0))[0];
+      const ci=cutIn(claim[0],claim.length>1?'ダブロン':'ロン',bg?bg.kind:'win',bg&&bg.rank);if(ci)G._ciWin=true;else flash(claim.map(pname).join('と')+'のロン');return later(()=>winMulti(claim,fromPid,tile,chankan),ci||sp().call);}
     return onNone();
   }
   // 人間には順番に聞く（ダブロンもあり）
@@ -2246,7 +2307,7 @@ function cpuTurn(){
   // ツモ評価に使う一発は今のフラグ。引いた後に消す。
   if(isAgari(p.hand,p.melds.length)){
     const ev=evaluate(p.hand,p.melds,buildCtx(pid,true,p.drawn));
-    if(ev){const ci=cutIn(pid,'ツモ','win');if(ci)G._ciWin=true;else flash(pname(pid)+'のツモ');return later(()=>win(pid,pid,true,p.drawn),ci?cutMs():sp().call);}
+    if(ev){const bg=bigOf(ev),ci=cutIn(pid,'ツモ',bg?bg.kind:'win',bg&&bg.rank);if(ci)G._ciWin=true;else flash(pname(pid)+'のツモ');return later(()=>win(pid,pid,true,p.drawn),ci||sp().call);}
   }
   G.ippatsu[pid]=false; // 自分のツモ番を過ぎたので一発消滅
   if(abortRules()&&firstTurn(p)&&kyushuOk(p.hand)){const k=new Set(p.hand.map(nt).filter(isTermHon)).size;   // 九種九牌。国士が近い（11種以上）なら半々で続ける
@@ -2271,7 +2332,7 @@ function cpuTurn(){
     const rr=idx>=0?p.hand.slice():null;if(rr)rr.splice(idx,1);
     if(idx>=0&&!isFuriten(p,waits(rr,p.melds.length))){p.riichi=true;p.riichiIdx=p.discards.length;p.riichiAt=(G.discN||0)+1;p.score-=1000;G.riichiSticks++;
       if(p.discards.length===0&&!G.callHappened)p.doubleRiichi=true;
-      G.pendingRiichiDeclarer=pid;sfx.riichi();haptic('heavy');{const ci=cutIn(pid,'リーチ','riichi');if(!ci)flash(pname(pid)+'のリーチ');banterOne('riichi',ci?Math.round(cutMs()*.8):300,pid,true);}
+      G.pendingRiichiDeclarer=pid;sfx.riichi();haptic('heavy');{const ci=cutIn(pid,'リーチ','riichi');if(!ci)flash(pname(pid)+'のリーチ');banterOne('riichi',ci||300,pid,true);}
       return later(()=>doDiscard(pid,idx),sp().call);}
   }
   if(p.riichi){const i=p.hand.indexOf(p.drawn);return doDiscard(pid,i>=0?i:0);}
@@ -2554,8 +2615,8 @@ function win(pid,fromPid,tsumo,winTile){
   if(pid===0){banterOne('heroTsumo',600);}else banterOne('win',400,pid,true);
   const show=()=>showResult(pid,pid,true,hand,winTile,ev,r.pay,r.gained,r.sticks);
   if(G._ciWin)return show();   // カットインはもう出した
-  const ci=cutIn(pid,'ツモ','win');if(!ci&&isHuman(pid))flash(MP.active?pname(pid)+'のツモ':'ツモ');
-  if(ci||isHuman(pid))setTimeout(show,ci?cutMs():520);else show();
+  const bg=bigOf(ev),ci=cutIn(pid,'ツモ',bg?bg.kind:'win',bg&&bg.rank);if(!ci&&isHuman(pid))flash(MP.active?pname(pid)+'のツモ':'ツモ');
+  if(ci||isHuman(pid))setTimeout(show,ci||520);else show();
 }
 /* ロン（複数ならダブロン/トリプルロン。供託は上家取り、本場は全員に付く） */
 function winMulti(winners,fromPid,tile,chankan){
@@ -2583,9 +2644,11 @@ function winMulti(winners,fromPid,tile,chankan){
     showResult(w.pid,fromPid,false,w.hand,tile,w.ev,w.pay,w.gained,w.sticks,after,n>1?`${k+1}/${n}`:'');};
   const start=()=>showK(0);
   if(G._ciWin)return start();   // カットインはもう出した
-  const lead=heroWon?(list.find(w=>isHuman(w.pid))||list[0]).pid:list[0].pid,ci=cutIn(lead,n>1?'ダブロン':'ロン','win');
+  const lead=heroWon?(list.find(w=>isHuman(w.pid))||list[0]).pid:list[0].pid;
+  const bg=list.map(w=>bigOf(w.ev)).sort((a,b)=>(b?b.kind==='yakuman'?2:1:0)-(a?a.kind==='yakuman'?2:1:0))[0];
+  const ci=cutIn(lead,n>1?'ダブロン':'ロン',bg?bg.kind:'win',bg&&bg.rank);
   if(!ci&&heroWon)flash(n>1?'ダブロン':(MP.active?pname(list[0].pid)+'のロン':'ロン'));
-  if(ci||heroWon)setTimeout(start,ci?cutMs():520);else start();
+  if(ci||heroWon)setTimeout(start,ci||520);else start();
 }
 function ryuukyoku(){
   G.over=true;const before=G.players.map(p=>p.score);
@@ -3124,18 +3187,41 @@ let toastT;function toast(m,ms){const e=document.getElementById('toast');e.textC
    ひとり用と交代モードだけ（オンラインは今まで通りの文字）。設定で切れる。出したら true ===== */
 let CUTIN_ON=lsGet('mjCutin')!=='0';
 const cutMs=()=>SPEED==='fast'?640:SPEED==='slow'?1150:880;
-function cutIn(pid,word,kind){
-  if(!CUTIN_ON||!G||G.tutorial||(MP.active&&MODE!=='hot'))return false;
+/* 跳満以上なら豪華版：{kind:'big'|'yakuman', rank:'跳満'…} */
+function bigOf(ev){if(!ev)return null;const r=rankName(ev.fu,ev.han);return r==='役満'?{kind:'yakuman',rank:'役満'}:(r==='跳満'||r==='倍満'||r==='三倍満')?{kind:'big',rank:r}:null;}
+function cutLen(kind){const b=cutMs();return kind==='riichi'?Math.round(b*.8):kind==='yakuman'?Math.round(b*2.5):kind==='big'?Math.round(b*1.7):kind==='event'?Math.round(b*1.4):b;}
+/* この端末で帯を出す。出さない設定・動きを減らす設定なら false */
+function cutShow(pid,word,kind,ms,rank){
+  if(!CUTIN_ON||!G)return false;
   try{if(matchMedia('(prefers-reduced-motion: reduce)').matches)return false;}catch(e){}   // 動きを減らす設定の端末では、今まで通りの文字だけ
   const p=G.players[pid];if(!p)return false;
-  const id=pid===0&&!MP.active?'hero_'+(HERO.origin||'student'):(p.charId||''),hero=id.startsWith('hero_');
-  const face=kind==='riichi'?(hero?'calm':'angry'):(hero?'smile':'laugh'),ms=kind==='riichi'?Math.round(cutMs()*.8):cutMs();
+  const id=pid===VIEW&&!MP.active?'hero_'+(HERO.origin||'student'):(p.charId||''),hero=id.startsWith('hero_');
+  const face=kind==='riichi'?(hero?'calm':'angry'):(hero?'smile':'laugh');
+  const pt=PORTRAITS[id]?`<span class="ci-pt">${portraitSVG(id,'calm',face)}</span>`:`<span class="ci-pt ci-ini" style="background:${SEAT_COLOR[pid]||'#c9a961'}">${esc((pname(pid)||'?').replace(/^CPU /,'').slice(0,1))}</span>`;
   document.querySelectorAll('.cutin').forEach(e=>e.remove());
-  const el=document.createElement('div');el.className='cutin '+(kind||'')+(isHuman(pid)?' me':'');el.style.setProperty('--ms',ms+'ms');el.setAttribute('aria-hidden','true');
-  el.innerHTML=`<div class="ci-band"><div class="ci-in">${PORTRAITS[id]?`<span class="ci-pt">${portraitSVG(id,'calm',face)}</span>`:''}<span class="ci-tx"><b class="ci-w">${esc(word)}</b><small class="ci-n">${esc(pname(pid))}</small></span></div></div>`;
+  const big=kind==='big'||kind==='yakuman';
+  const el=document.createElement('div');el.className='cutin '+(kind||'')+(pid===VIEW?' me':'');el.style.setProperty('--ms',ms+'ms');el.setAttribute('aria-hidden','true');
+  el.innerHTML=(big?'<div class="ci-flash"></div>':'')+(kind==='yakuman'?'<div class="ci-rays"></div>':'')
+    +`<div class="ci-band"><div class="ci-in">${pt}<span class="ci-tx"><b class="ci-w">${esc(word)}</b><small class="ci-n">${esc(pname(pid))}</small></span>${big&&rank?`<b class="ci-rank">${esc(rank)}</b>`:''}</div></div>`;
   document.body.appendChild(el);setTimeout(()=>el.remove(),ms+80);
+  if(big){try{sfx.fanfare(kind==='yakuman');}catch(e){}
+    if(kind==='yakuman'){document.body.classList.remove('ci-shake');void document.body.offsetWidth;document.body.classList.add('ci-shake');setTimeout(()=>document.body.classList.remove('ci-shake'),700);setTimeout(confetti,Math.round(ms*.4));}}
   return true;
 }
+/* カットインを出す（部屋主の時は参加者にも送る）。出したら長さ（ms）、出さなければ 0 */
+function cutIn(pid,word,kind,rank){
+  if(!G||G.tutorial)return 0;
+  const ms=cutLen(kind);
+  if(MP.active&&MODE==='host'&&NET.started){   // オンライン：全員の画面で同じ瞬間に出す（出さない設定の人には文字）
+    netFx('cut',{pid,word,kind,ms,rank:rank||''});
+    if(!cutShow(pid,word,kind,ms,rank))flash(pname(pid)+'の'+word+(rank?'　'+rank:''),true);
+    return ms;
+  }
+  if(MP.active&&MODE!=='hot')return 0;   // 参加者の端末は部屋主から届いた時だけ出す
+  return cutShow(pid,word,kind,ms,rank)?ms:0;
+}
+/* 結果画面の金の枠：中身に .bw-mark がある時だけ（画面が入れ替わったら自動で外れる） */
+new MutationObserver(()=>{const m=document.getElementById('modal'),k=m.querySelector(':scope > .bw-mark');m.classList.toggle('bigwin',!!k);m.classList.toggle('yakuwin',!!(k&&k.classList.contains('y')));}).observe(document.getElementById('modal'),{childList:true});
 let flashT;function flash(m,localOnly){if(!localOnly&&typeof netFx==='function')netFx('flash',m);const e=document.getElementById('callflash');e.textContent=m;e.style.display='block';e.style.animation='none';e.offsetHeight;e.style.animation='flash .6s';clearTimeout(flashT);flashT=setTimeout(()=>e.style.display='none',900);}
 
 /* ===== 局のふりかえり：局の終わりに全員の手牌・待ち・打牌の流れをまとめる ===== */
@@ -3270,7 +3356,8 @@ function showResult(pid,fromPid,tsumo,hand,winTile,ev,pay,gained,sticks,after,mu
   const tip=!MP.active&&document.getElementById('begChk').checked&&G.review&&G.review.tip;
   const tipStr=tip?`<div class="sub tip1 hidden"><span class="tl">ワンポイント</span>${tip.txt}${reviewOK()?' <span class="more">くわしく ›</span>':''}</div>`:'';
   const exStr=extra>0?`<div class="sub ex hidden">${exParts.join('　')}　＝ 計 <b>${total.toLocaleString()}</b>点</div>`:'';
-  m.innerHTML=`${multi?`<div class="chap-num">ダブロン　${multi}</div>`:''}<h2>${nm(pid)} ${tsumo?'ツモ':'ロン'}</h2>
+  const bgw=bigOf(ev);
+  m.innerHTML=`${bgw?`<i class="bw-mark ${bgw.kind==='yakuman'?'y':''}" hidden></i>`:''}${multi?`<div class="chap-num">ダブロン　${multi}</div>`:''}<h2>${nm(pid)} ${tsumo?'ツモ':'ロン'}</h2>
     <div class="sub">あがり牌 ${tileName(winTile)}　${payStr}</div>
     <div class="handshow reveal">${hs}</div>
     ${reviewOK()?'<div><button class="linkbtn" id="rvLink" style="margin-top:4px">この局のふりかえり（全員の手牌と流れ）</button></div>':''}
@@ -3382,11 +3469,11 @@ function showFinal(){
     accLine=`<div class="sub fin-acc hidden">打ち方の正確さ <b>${pc}%</b>（おすすめと同じ ${a.s}/${a.n}打）${base!=null&&base!==pc?`　いつもより <span class="dlt ${pc>base?'p':'m'}">${pc>base?'+':'−'}${Math.abs(pc-base)}pt</span>`:''}</div>`;}
   let danHtml='';
   if(dan){const b=dan.before,pct=(lv,p)=>danNeed(lv)?Math.max(0,Math.min(100,p/danNeed(lv)*100)):100;
-    const why=`${myRank+1}位${(G.cpuLv||CPU_LV)!=='normal'?'・'+((CPU_LEVELS.find(L=>L.id===(G.cpuLv||CPU_LV))||{}).t||'')+' ×'+DAN_MUL[G.cpuLv||CPU_LV]:''}${G.len==='ton'?'・東風戦 ×0.6':''}`;
+    const why=dan.match?`${myRank+1}位${dan.ev?'':myRank===1?'（そのまま）':'（少し減る）'}`:`${myRank+1}位${(G.cpuLv||CPU_LV)!=='normal'?'・'+((CPU_LEVELS.find(L=>L.id===(G.cpuLv||CPU_LV))||{}).t||'')+' ×'+DAN_MUL[G.cpuLv||CPU_LV]:''}${G.len==='ton'?'・東風戦 ×0.6':''}`;
     danHtml=`<div class="fin-dan hidden" data-p0="${pct(b.lv,b.pts)}" data-p1="${pct(dan.after.lv,dan.after.pts)}">
-      <div class="fd-top"><span class="fd-l">段位</span><b class="fd-n">${danName(b.lv)}</b><span class="dlt ${dan.delta>=0?'p':'m'}">${dan.delta>=0?'+':'−'}${Math.abs(dan.delta)}</span><small class="fd-why">${esc(why)}</small></div>
+      <div class="fd-top"><span class="fd-l">${dan.match?'昇段戦':'段位'}</span><b class="fd-n">${danName(b.lv)}</b>${dan.delta?`<span class="dlt ${dan.delta>=0?'p':'m'}">${dan.delta>=0?'+':'−'}${Math.abs(dan.delta)}</span>`:'<span class="dlt">±0</span>'}<small class="fd-why">${esc(why)}</small></div>
       <div class="fd-bar"><i style="width:${pct(b.lv,b.pts)}%"></i></div>
-      <div class="fd-sub">${danNeed(dan.after.lv)?`昇段まで あと ${danNeed(dan.after.lv)-dan.after.pts}`:'最高の段位'}${dan.after.lv<DAN_FIRST?'（級のうちは下がりません）':''}</div>
+      <div class="fd-sub">${danNeed(dan.after.lv)?`昇段まで あと ${danNeed(dan.after.lv)-dan.after.pts}`:'最高の段位'}${dan.match&&!dan.ev?'（昇段まであと少しになれば、また昇段戦に挑戦できます）':dan.after.lv<DAN_FIRST?'（級のうちは下がりません）':''}</div>
       ${dan.ev?`<div class="fd-ev ${dan.ev}">${dan.ev==='up'?'昇段！':'降段'}　${danName(b.lv)} → <b>${danName(dan.after.lv)}</b></div>`:''}</div>`;}
   m.classList.add('fin');   // 横に広い画面では2列（左に順位、右にひとこと・ハイライト・段位）。ボタンで閉じる時に外す
   m.innerHTML=`<h2>終局</h2>
@@ -4252,6 +4339,7 @@ function guestOnData(m,giveUp){
     case 'ask':guestOnAsk(m);break;
     case 'fx':
       if(m.k==='flash')flash(m.v,true);
+      else if(m.k==='cut'&&G&&m.v){if(!cutShow(m.v.pid,m.v.word,m.v.kind,m.v.ms,m.v.rank))flash(pname(m.v.pid)+'の'+m.v.word+(m.v.rank?'　'+m.v.rank:''),true);}
       else if(m.k==='sfx'){const f=sfx[m.v];if(f)f();}
       else if(m.k==='deltas'&&G)showDeltas(m.v);
       else if(m.k==='fly'&&G&&m.v){flyTile(m.v.pid,m.v.tile,srcRectFor(m.v.pid,-1));}
@@ -6661,7 +6749,7 @@ function showChooser(){if(MP.active)return mpMenu();showHome();}
 
 
 /* ===== タイトル画面・ホーム画面・対局中メニュー・設定 ===== */
-const APP_VER='2026.11.06.2';
+const APP_VER='2026.11.06.3';
 const BATTLE_FACE={nao:'smile',yakumo:'calm',shino:'calm',fukuju:'smile',tome:'smile',domoto:'angry',kuroda:'angry',karasu:'smile',washio:'calm',minato:'calm',shizuka:'calm',master:'smile',hayato:'smile',gen:'smile',ren:'smile'};   // 「○○ 戦」のカットインの表情
 const HM_IC={
  daily:'<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/><circle cx="12" cy="15.5" r="2"/>',
@@ -6721,10 +6809,10 @@ function showHome(){
 }
 /* ===== 更新のお知らせ：版が変わって最初にホームを開いた時に1回。まっさらな端末には出さない ===== */
 const WHATS_NEW=[
+ '跳満以上のあがりは金色の豪華なカットイン（画面が光り、役の名前の判子とファンファーレ）。役満は暗転と回る光の筋。結果画面も金の枠に。昇段まであと少しになると「昇段戦」：常連3人と東風戦の1回勝負で、1位なら即昇段。オンライン対戦でもカットインが全員の画面に出ます',
  'カットイン演出：リーチ・ロン・ツモの瞬間に、打った人の顔と言葉が帯になって画面を横切ります（ひとり用と交代モード。設定で切れます）',
  '着せ替え：卓の色と牌の背（各6種）。段位・実績・ライバル・今日の1問で解放（ホームの「着せ替え」か設定から）。ライバル：自由対局で相手ごとの勝ち負けを記録し、初めて勝ち越すとその相手からひとこと（戦績に「ライバル」タブ）。実績に段位とライバルの5個を追加（全40個）',
- '自由対局に「段位」：打ち終えた順位で入門→9級…→初段…→十段と上がります（強い相手ほど多くもらえる。級のうちは下がらない）。半荘の終わりは順位を1人ずつ発表し、キャラのひとこと・この半荘のハイライト・段位の増減を表示',
- '道場に「今日の1問」：毎日1問の「何を切る？」。ワンポイントでまちがえた場面は復習問題になります。戦績に「上達」タブ（日ごとの打ち方の正確さと放銃率）。半荘の終わりに「この半荘の打ち方」'
+ '自由対局に「段位」：打ち終えた順位で入門→9級…→初段…→十段と上がります（強い相手ほど多くもらえる。級のうちは下がらない）。半荘の終わりは順位を1人ずつ発表し、キャラのひとこと・この半荘のハイライト・段位の増減を表示'
 ];
 function maybeWhatsNew(){
   if(lsGet('mjSeenVer')===APP_VER)return;
@@ -6775,7 +6863,7 @@ function renderHome(){
        <span class="who">${portraitSVG(o?'hero_'+HERO.origin:nx.who,'calm',o?'smile':'calm')}</span>
      </button>
      <div class="hm-grid">
-       <button class="hm-card free" id="hmFree"><span class="ic">${hmIc('free')}</span><span class="tx"><b>自由対局${(STATS.dan&&STATS.dan.games)?`<span class="hm-dan">${danName(STATS.dan.lv)}</span>`:''}</b><small>${FREE_CAST?'相手：'+FREE_CAST.map(id=>CHARS[id]?CHARS[id].n:'?').join('・'):'相手はおまかせ'}／${GAME_LEN==='ton'?'東風戦':'半荘'}／CPU：${lvl}</small></span></button>
+       <button class="hm-card free" id="hmFree"><span class="ic">${hmIc('free')}</span><span class="tx"><b>自由対局${(STATS.dan&&STATS.dan.games)?`<span class="hm-dan">${danName(STATS.dan.lv)}</span>`:''}${(STATS.dan&&STATS.dan.games&&danMatchReady())?'<span class="hm-dm">昇段戦</span>':''}</b><small>${FREE_CAST?'相手：'+FREE_CAST.map(id=>CHARS[id]?CHARS[id].n:'?').join('・'):'相手はおまかせ'}／${GAME_LEN==='ton'?'東風戦':'半荘'}／CPU：${lvl}</small></span></button>
        <button class="hm-card vs" id="hmVs"><span class="ic">${hmIc('vs')}</span><span class="tx"><b>みんなで対戦</b><small>この端末で交代／オンライン（部屋コード）</small></span></button>
        <button class="hm-card dojo" id="hmDojo"><span class="ic">${hmIc('dojo')}</span><span class="tx"><b>道場</b><small>8レッスン ${done}/${LESSONS.length}・${nkLabel()}</small></span></button>
        <button class="hm-card notes" id="hmNotes"><span class="ic">${hmIc('notes')}</span><span class="tx"><b>翠ノート</b><small>集めた秘密と結末 ${HERO.notes.length}/${NOTES.length}</small></span></button>
@@ -6969,6 +7057,7 @@ function showFreeSetup(){
     const seatHtml=[1,2,3].map((sn,k)=>{const id=cast?cast[k]:null;return `<div class="fs-seat"><small>${POS[sn]}</small><button class="fs-port ${id?'':'rand'}" data-k="${k}" title="タップで入れ替え">${id?portraitSVG(id,'calm'):'？'}</button><b>${id?esc(CHARS[id].n):'おまかせ'}</b><span class="fs-style">${id?(STYLE_JA[CHAR_STYLE[id]]||''):'毎回ちがう相手'}</span>${id&&rivLine(id)?`<span class="fs-style fs-riv">${rivLine(id)}</span>`:''}${id&&vsLine(id)?`<span class="fs-style" title="この相手との記録">${vsLine(id)}</span>`:''}</div>`;}).join('');
     const cur=CPU_LEVELS.find(L=>L.id===CPU_LV)||CPU_LEVELS[1];
     m.innerHTML=`<h2>自由対局</h2>
+      ${danMatchReady()?`<div class="dm-box"><b>昇段戦に挑戦できます</b><small>常連3人（マスター・シズカ・ゲン／${(CPU_LEVELS.find(L=>L.id===danMatchLv())||{}).t}）と東風戦の1回勝負。1位なら ${danName(danData().lv+1)} に即昇段。2位はそのまま、3位・4位は段位の点が少し減ります（段位は下がりません）</small><button class="btn" id="fsDan">昇段戦をはじめる</button></div>`:''}
       <div class="dojo-sec">相手（タップで入れ替え）</div>
       <div class="fs-seats">${seatHtml}</div>
       <div class="seg" id="fsRand"><button class="${cast?'':'on'}" data-v="rand">おまかせ</button><button class="${cast?'on':''}" data-v="pick">指名する</button></div>
@@ -6988,6 +7077,7 @@ function showFreeSetup(){
     m.querySelectorAll('#fsLv button').forEach(b=>b.onclick=()=>{CPU_LV=b.dataset.lv;lsSet('mjCpuLv',CPU_LV);draw();});
     m.querySelectorAll('#fsLen button').forEach(b=>b.onclick=()=>{GAME_LEN=b.dataset.v;lsSet('mjLen',GAME_LEN);draw();});
     document.getElementById('fsStart').onclick=()=>{FREE_CAST=cast;lsSet('mjFreeCast',cast?JSON.stringify(cast):'null');ov.style.display='none';startFreeGame();};
+    {const b=document.getElementById('fsDan');if(b)b.onclick=()=>{ov.style.display='none';startDanMatch();};}
     document.getElementById('fsClose').onclick=()=>{ov.style.display='none';};
   };
   draw();
@@ -7074,7 +7164,7 @@ function showSettings(back){
   document.getElementById('setSkin').onclick=()=>showSkins(again);
   document.getElementById('setCutin').onclick=()=>{CUTIN_ON=!CUTIN_ON;lsSet('mjCutin',CUTIN_ON?'1':'0');again();};
   m.querySelectorAll('#setLv button').forEach(b=>b.onclick=()=>{CPU_LV=b.dataset.lv;lsSet('mjCpuLv',CPU_LV);
-    if(G&&!G.tutorial&&G.stage==null&&!G.storyFinal&&G.practice==null){G.players.forEach((q,i)=>{if(i&&q.ai!==undefined&&q.ai!==null){q.ai=CPU_LV;q.level=CPU_LV_LEVEL[CPU_LV];}});
+    if(G&&!G.tutorial&&G.stage==null&&!G.storyFinal&&G.practice==null&&!G.danMatch){G.players.forEach((q,i)=>{if(i&&q.ai!==undefined&&q.ai!==null){q.ai=CPU_LV;q.level=CPU_LV_LEVEL[CPU_LV];}});
       if(G.cpuLv&&LV_ORDER.indexOf(CPU_LV)<LV_ORDER.indexOf(G.cpuLv))G.cpuLv=CPU_LV;}   // 段位は、対局中に使ったうちで一番やさしい強さで数える
     again();});
   document.getElementById('setAutoWin').onclick=()=>{AUTO_WIN=!AUTO_WIN;lsSet('mjAutoWin',AUTO_WIN?'1':'0');again();};
